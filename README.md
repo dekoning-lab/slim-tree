@@ -1,4 +1,4 @@
-# SLiMTree
+# SLiM-Tree
 
 SLiMTree is a Wright-Fisher simulation tool that simulates evolution along a phylogeny using SLiM written by the Messer Lab. 
 
