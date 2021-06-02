@@ -1,4 +1,8 @@
 #Program to write SLiMTree code for a high performance computing cluster
+#Required packages:
+#random
+#csv
+#os
 
 
 import random, csv, os

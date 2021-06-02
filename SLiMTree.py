@@ -6,7 +6,7 @@
 #BioPython
 #matplotlib
 #random
-#csv
+#pandas
 #numpy
 #os
 #json
