@@ -434,20 +434,33 @@ class writeSLiM:
 
         #Sample according to number given by user
         terminal_output_string = ""
-        if(samp_size == "all"):
-            terminal_output_string += "\n\tgenomes = " + pop_name + ".genomes;"
+        
+        #Formulate and output consensus sequence
+        if (samp_size == "consensus"):
+            terminal_output_string += ("\n\n\tconsensus = \"\";" +
+                                    "\n\tfor (i in 0:" + str(self.genome_length * 3 - 1) + "){" +
+                                    "\n\t\tconsensus = consensus+ c(\"A\", \"C\", \"G\", \"T\")[whichMax(nucleotideCounts(paste0(matrix(sapply(" + pop_name + 
+                                    ".genomes.nucleotides(), \"strsplit(applyValue, sep = '');\"), ncol = " + str(self.genome_length * 3) + ", byrow = T)[,i])))];\n\t}" +
+                                    "\n\n\tfasta_string_nuc = paste0(\">" + pop_name + ": \\n\", consensus);" + 
+                                    "\n\n\tfasta_string_prot = paste0(\">" + pop_name + ": \\n\", codonsToAminoAcids(nucleotidesToCodons(consensus)));" +
+                                    "\n\twriteFile(\"" + nuc_filename + "\", fasta_string_nuc,append = T);" +
+                                    "\n\twriteFile(\"" + aa_filename + "\", fasta_string_prot,append = T);")
+                                    
         else:
-            terminal_output_string += ("\n\tgenomes = sample(" + pop_name + ".genomes, min(" + str(int(samp_size)) +
-                                ", 2*" + pop_name + ".individualCount), replace=F);")
+            if(samp_size == "all"):
+                terminal_output_string += "\n\tgenomes = " + pop_name + ".genomes;"
+            else:
+                terminal_output_string += ("\n\tgenomes = sample(" + pop_name + ".genomes, min(" + str(int(samp_size)) +
+                                    ", 2*" + pop_name + ".individualCount), replace=F);")
 
 
 
-        #Iterate through each random sample to write script to output samples of amino acids and nucleotides to fasta files
-        terminal_output_string += ("\n\n\tfor (g in genomes){" +
-                                    "\n\t\tfasta_string_nuc = paste0(\">\", g.individual, \": \\n\", g.nucleotides());" +
-                                    "\n\t\tfasta_string_prot = paste0(\">\", g.individual, \": \\n\", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));" +
-                                    "\n\t\twriteFile(\"" + nuc_filename + "\", fasta_string_nuc,append = T);" +
-                                    "\n\t\twriteFile(\"" + aa_filename + "\", fasta_string_prot,append = T);}" )
+            #Iterate through each random sample to write script to output samples of amino acids and nucleotides to fasta files
+            terminal_output_string += ("\n\n\tfor (g in genomes){" +
+                                        "\n\t\tfasta_string_nuc = paste0(\">\", g.individual, \": \\n\", g.nucleotides());" +
+                                        "\n\t\tfasta_string_prot = paste0(\">\", g.individual, \": \\n\", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));" +
+                                        "\n\t\twriteFile(\"" + nuc_filename + "\", fasta_string_nuc,append = T);" +
+                                        "\n\t\twriteFile(\"" + aa_filename + "\", fasta_string_prot,append = T);}" )
         return terminal_output_string
 
 
