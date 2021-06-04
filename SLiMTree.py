@@ -190,8 +190,7 @@ class SLiMTree:
             return None
         
         percent_coding = math.ceil(int(genome_length) * coding_ratio) #Gives approximate number of coding amino acids
-        avg_coding_length = math.ceil(percent_coding / gene_count) #Gives avg length of coding regions
-        print(avg_coding_length)
+        avg_coding_length = math.ceil(percent_coding / gene_count) #Gives avg length of coding region
         avg_noncoding_length = 0
         if (gene_count != 1):
             avg_noncoding_length = math.floor((genome_length - percent_coding) / (gene_count - 1)) #Average length of non-coding regions by subtracting number of coding aa from total aa
@@ -239,7 +238,8 @@ class SLiMTree:
         fitness_length = fitness_dist.shape[1] - 1 
         coding_poses = self.starting_parameters["coding_seqs"]
         for coding_pos in range(len(coding_poses)):
-            fitness_profile_nums = fitness_profile_nums + random.choices(range(fitness_length),k=coding_poses[coding_pos,1] - coding_poses[coding_pos,0])
+            fitness_profile_nums = (fitness_profile_nums + random.choices(range(fitness_length), weights = fitness_profiles["M"][:-1], k = 1) +
+                        random.choices(range(fitness_length),k=coding_poses[coding_pos,1] - coding_poses[coding_pos,0] - 1))
             
             if (coding_pos != len(coding_poses) - 1):
                 fitness_profile_nums = fitness_profile_nums + list(np.repeat(fitness_length, coding_poses[coding_pos+1,0] - coding_poses[coding_pos,1] ))
