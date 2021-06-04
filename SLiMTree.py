@@ -19,6 +19,7 @@ from Bio import Phylo
 from matplotlib.pyplot import show, savefig
 from writeSLiM import writeSLiM
 from writeSLiMHPC import writeSLiMHPC
+from writeSLiMProtein import writeSLiMProtein
 
 class SLiMTree:
 
@@ -77,6 +78,14 @@ class SLiMTree:
         parser.add_argument('-G', '--gene_count', type = int, default = 1, help = "Number of genes in the model. Default = 1.")
         parser.add_argument('-C', '--coding_ratio', type = float, default = 1.0, help = "Ratio of the genome which are coding regions as a ratio coding/noncoding. Default = 1.0")
 
+        parser.add_argument('-f', '--fitness_profile_calc', type = self.str2bool, default = True, const = True, nargs='?',
+                help = 'boolean specifying whether fitness profiles should be used to calculate fitness. If false, protein structure fitness will be calculated, and a contact map must be provided. Default = True.')
+
+        #parser.add_argument('P', '--pmd_file', type = str, help = 'Path to file containing a PMD file with a valid protein structure. Either this or a contact map is required for calculating fitness based on protein structure.')
+        #Add in PMD functionality later perhaps?
+
+        parser.add_argument('-m', '--contact_map', type = str, help = "Path to file containing a contact map showing protein contacts. This is required for calculating fitness based on protein structure.")
+
         #Get arguments from user
         arguments = parser.parse_args()
 
@@ -98,7 +107,14 @@ class SLiMTree:
             print("Coding ratio must be greater than 0 and less than or equal to 1. Please re-enter as a ratio (0, 1]. Closing program.")
             sys.exit(0);
 
-        
+
+        #If using protein-based fitness, make sure a contact map is provided.
+
+        if (arguments.fitness_profile_calc == False and arguments.contact_map == None):
+            print("When calculating protein-based fitness, a contact map must be provided. Closing program.")
+            sys.exit(0)
+
+
 
         #Set up the starting parameters
         self.starting_parameters["mutation_rate"] = arguments.mutation_rate
@@ -108,11 +124,24 @@ class SLiMTree:
         self.starting_parameters["burn_in"] = arguments.burn_in_multiplier * arguments.population_size
         self.starting_parameters["sample_size"] = arguments.sample_size
 
+        self.starting_parameters["fitness_profile_calc"] = arguments.fitness_profile_calc
+
+        self.starting_parameters["contact_map"] = arguments.contact_map
+
+        if (arguments.contact_map != None):
+            self.starting_parameters["contact_map"] = np.loadtxt(open(arguments.contact_map, "rb"), delimiter=",")
+            #Overwrite the length of the genome with the length of the contact map.
+            self.starting_parameters["genome_length"] = len(self.starting_parameters["contact_map"])
+            #Add else-if for a PMD file here
+        else:
+            self.starting_parameters["contact_map"] = None
+
         self.starting_parameters["wf_model"] = arguments.wright_fisher_model
 
         self.starting_parameters["gene_count"] = arguments.gene_count
         self.starting_parameters["coding_ratio"] = arguments.coding_ratio
         self.starting_parameters["coding_seqs"] = self.get_coding_seqs()
+
 
         self.starting_parameters["partition"] = arguments.partition
         self.starting_parameters["time"] = arguments.time
@@ -130,6 +159,8 @@ class SLiMTree:
             self.data_file = arguments.tree_data_file[0]
         else:
             self.data_file = None
+
+
 
 
         #Set up the output of scripts to a single folder
@@ -176,19 +207,19 @@ class SLiMTree:
             return False
         else:
             raise argparse.ArgumentTypeError('Boolean value expected.')
-            
-            
-            
+
+
+
     #Return the range of coding sequences for the set number of genes.
     def get_coding_seqs(self):
 
         genome_length = self.starting_parameters["genome_length"]
         coding_ratio = self.starting_parameters["coding_ratio"]
         gene_count = self.starting_parameters["gene_count"]
-        
+
         if(gene_count == 0 or coding_ratio == 0):
             return None
-        
+
         percent_coding = math.ceil(int(genome_length) * coding_ratio) #Gives approximate number of coding amino acids
         avg_coding_length = math.ceil(percent_coding / gene_count) #Gives avg length of coding regions
         avg_noncoding_length = 0
@@ -202,7 +233,7 @@ class SLiMTree:
             coding_regions.append(current_aa)
             coding_regions.append(current_aa + avg_coding_length)
             current_aa = current_aa + avg_noncoding_length + avg_coding_length  #Accounts for the non-coding region + coding region added previously
-            
+
             #Make sure that the genome will not be longer than the genome
             if (current_aa + avg_coding_length > genome_length - 1):
                 current_aa = genome_length - avg_coding_length - 1
@@ -216,9 +247,9 @@ class SLiMTree:
         #Open stationary and fitness effects csv
         fitness_dist = pandas.io.parsers.read_csv (os.path.dirname(os.path.realpath(__file__)) + '/fitnessDataFiles/table_fitness_profiles.csv')
         stationary_distributions = pandas.io.parsers.read_csv (os.path.dirname(os.path.realpath(__file__)) + '/fitnessDataFiles/table_stationary_distributions.csv')
-        
+
         #Add an extra distribution for non-coding neutral alleles - neutral, 20 AA + stop codon
-        stationary_distributions["neutral"] = 1   
+        stationary_distributions["neutral"] = 1
         fitness_dist["neutral"] = 1
         fitness_distributions = fitness_dist.values.tolist()
 
@@ -232,14 +263,14 @@ class SLiMTree:
                 aa = amino_acids[amino_acid_num]
                 fitness_profiles[aa] = fitness_distributions[amino_acid_num]
 
-        
+
         #Find which profile is associated with each position
         fitness_profile_nums = []
-        fitness_length = fitness_dist.shape[1] - 1 
+        fitness_length = fitness_dist.shape[1] - 1
         coding_poses = self.starting_parameters["coding_seqs"]
         for coding_pos in range(len(coding_poses)):
             fitness_profile_nums = fitness_profile_nums + random.choices(range(fitness_length),k=coding_poses[coding_pos,1] - coding_poses[coding_pos,0])
-            
+
             if (coding_pos != len(coding_poses) - 1):
                 fitness_profile_nums = fitness_profile_nums + list(np.repeat(fitness_length, coding_poses[coding_pos+1,0] - coding_poses[coding_pos,1] ))
             else:
@@ -250,19 +281,19 @@ class SLiMTree:
         self.starting_parameters["stationary_distributions"] = stationary_distributions
         self.starting_parameters["fitness_profiles"] = fitness_profiles
         self.starting_parameters["amino_acids"] = amino_acids
-        
+
         #Find scaling for non-wright-fisher models
         if(self.starting_parameters["wf_model"] == False):
             self.find_fitness_scaling(fitness_distributions)
 
 
-    
+
     #Calculates expected fitness from fitness profiles for scaling in non-wright-fisher models
     def find_fitness_scaling(self, fitness_profiles):
         fitness_profiles = np.transpose(fitness_profiles)
         stationary_dists = self.starting_parameters["stationary_distributions"]
         expected_fitness_profiles = []
-        
+
         #Find the expected value for each fitness profile
         for num_dist in range(len(stationary_dists.columns)-1):
             mean = 0
@@ -270,21 +301,21 @@ class SLiMTree:
             fitness = fitness_profiles[num_dist]
             for num_profile in range(len(fitness)-1):
                 mean += stationary[num_profile] * fitness[num_profile]
-            
+
             expected_fitness_profiles.append(mean)
-        
+
         #Add fitness profile with mean of 1 to account for the neutral areas
         expected_fitness_profiles = expected_fitness_profiles + [1]
 
         expected_fitnesses = []
-        
+
         #Find the expected value for each site in the genome based on it's respective fitness profile
         for fitness_profile in self.starting_parameters["fitness_profile_nums"]:
             expected_fitnesses.append(expected_fitness_profiles[fitness_profile])
-            
+
         #Find the expected value of all sites by multiplying expected values - squared because there are 2 xsomes
         self.starting_parameters["scaling_value"] = np.prod(expected_fitnesses)**2
-        
+
 
 
     #Read individaul data from the file - to add more parameters modify data_translation_dict
@@ -494,7 +525,10 @@ class SLiMTree:
 
         #Open SLiM writer based on tool type and write the initialize statement
         if(self.simulationType == "slimtree"):
-            SLiM_Writer = writeSLiM(self.starting_parameters)
+            if (self.starting_parameters["fitness_profile_calc"]): #If this is using protein-based fitness, use writeSLiMProtein
+                SLiM_Writer = writeSLiM(self.starting_parameters)
+            else:
+                SLiM_Writer = writeSLiMProtein(self.starting_parameters)
         elif(self.simulationType == "slimtreehpc"):
             SLiM_Writer = writeSLiMHPC(self.starting_parameters)
         else:
