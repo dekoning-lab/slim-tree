@@ -6,7 +6,7 @@
 #BioPython
 #matplotlib
 #random
-#csv
+#pandas
 #numpy
 #os
 #json
@@ -63,7 +63,7 @@ class SLiMTree:
         parser.add_argument('-g','--genome_length', help = 'length of the genome - amino acids, default = 500', type=int, default = 500)
         parser.add_argument('-r','--recombination_rate', help = 'recombination rate, default = 2.5e-8', type=float, default = 2.5e-8)
         parser.add_argument('-b','--burn_in_multiplier', help = 'value to multiply population size by for burn in, default = 10', type=float, default = 10)
-        parser.add_argument('-k','--sample_size', help = 'size of sample obtained from each population at output. Input all for whole sample,  default = 10', type=str, default = "10")
+        parser.add_argument('-k','--sample_size', help = 'size of sample obtained from each population at output. Input all for whole sample and consensus for consensus sequence. default = 10', type=str, default = "10")
 
         parser.add_argument('-c','--count_subs', type = self.str2bool, default = True, const=True, nargs='?',
                 help = 'boolean specifying whether to count substitutions, turning off will speed up sims. default = True')
@@ -222,6 +222,7 @@ class SLiMTree:
 
         percent_coding = math.ceil(int(genome_length) * coding_ratio) #Gives approximate number of coding amino acids
         avg_coding_length = math.ceil(percent_coding / gene_count) #Gives avg length of coding regions
+        print(avg_coding_length)
         avg_noncoding_length = 0
         if (gene_count != 1):
             avg_noncoding_length = math.floor((genome_length - percent_coding) / (gene_count - 1)) #Average length of non-coding regions by subtracting number of coding aa from total aa
@@ -231,7 +232,7 @@ class SLiMTree:
 
         for i in range (gene_count):
             coding_regions.append(current_aa)
-            coding_regions.append(current_aa + avg_coding_length)
+            coding_regions.append(min(current_aa + avg_coding_length, genome_length - 1)) #Ensures that you are not surpasssing the length of the genome
             current_aa = current_aa + avg_noncoding_length + avg_coding_length  #Accounts for the non-coding region + coding region added previously
 
             #Make sure that the genome will not be longer than the genome
