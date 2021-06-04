@@ -31,7 +31,10 @@ class writeSLiM:
         #Set up type of model
         self.model_type = start_para_dict["wf_model"]
         if(self.model_type == False):
-            self.scaling_factor = start_para_dict["scaling_value"]
+            if (start_para_dict["fitness_profile_calc"]):
+                self.scaling_factor = start_para_dict["scaling_value"]
+            else:
+                self.scaling_factor = 1
 
         self.coding_regions = start_para_dict["coding_seqs"]
 
@@ -332,7 +335,9 @@ class writeSLiM:
             #If this is the last population broken off, take the last half of the parent population
             if (population_parameters["last_child_clade"] == True):
                 define_population_string += str("\n\tcatn(" + population_parameters["parent_pop_name"] + ".individualCount);"+
-                "\n\t" + population_parameters["pop_name"] + ".takeMigrants(" + population_parameters["parent_pop_name"] + ".individuals);" )
+                "\n\t" + population_parameters["pop_name"] + ".takeMigrants(" + population_parameters["parent_pop_name"] + ".individuals);"+
+                "\n\t" + population_parameters["parent_pop_name"] + ".removeSubpopulation();" )
+
             else:
                 #Take half of the parent population
                 define_population_string += str("\n\tmigrants = sample(" + population_parameters["parent_pop_name"] + ".individuals, integerDiv("
