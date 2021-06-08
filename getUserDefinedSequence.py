@@ -1,8 +1,8 @@
 #Program to take in gb file and fasta file and create ancestral sequence, coding ranges and fitness profiles
 #Required packages:
-#Bio, random, pandas, numpy
+#Bio, random, pandas, numpy, sys
 
-import random, pandas
+import random, pandas, sys
 import numpy as np
 from Bio import SeqIO
 from Bio.Seq import Seq
@@ -23,13 +23,20 @@ class getUserDefinedSequence:
         #Find the sequence to be taken
         for record in SeqIO.parse(self.gb_file, "gb"):
             features = record.features
+            
+
     
         #Get the coding sequence numbers from the sequences
-        cds = []                                                                                                          
-        for feature in features:
-            if(feature.type=="CDS"):
-                cds.append(str(feature.location))
-        
+        cds = []
+
+        try:    
+            for feature in features:
+                if(feature.type=="CDS"):
+                    cds.append(str(feature.location))
+        except:
+            print("Please provide gb file in genbank format. Program closing.")
+            sys.exit(0)
+            
         #Find the coding numbers as ints and format according to SLiM-Tree requirements
         orfs = []
         for seq in cds:
@@ -62,7 +69,13 @@ class getUserDefinedSequence:
         for record in SeqIO.parse(self.fasta_file, "fasta"):
             sequence = str(record.seq)
         
-        return sequence
+        try:    
+            return sequence
+        except:
+            print("Please provide fasta file in fasta format. Program closing.")
+            sys.exit(0)
+            
+        
             
     
     #Find the fitness profiles for a given coding sequence

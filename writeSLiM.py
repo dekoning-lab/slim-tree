@@ -192,8 +192,6 @@ class writeSLiM:
                 new_profile_num = profile_num + int((coding_seq[1] - coding_seq[0])/3)
                 fitness_vector = str(self.fitness_profile_nums[profile_num:new_profile_num])
                 profile_num = new_profile_num
-                print(fitness_vector)
-                print(profile_num)
             else :
                 fitness_vector = str(self.fitness_profile_nums[coding_seq[0]:(coding_seq[1]+1)])
             
@@ -271,7 +269,7 @@ class writeSLiM:
                                     "\n\tfor (pose in poses){" + 
                                     "\n\t\tfitnesses[pose] = sim.getValue(aa_seq[pose])[sim.getValue(\"fitness_profiles\" + row_num)[pose]];\n\t}" +   
                                     "\n\n\t\tif(any(aa_seq[poses] == \"X\")){" +
-                                    "\n\t\t\tpos_stop =which(aa_seq[0:(length(aa_seq)-2)] == \"X\");"+
+                                    "\n\t\t\tpos_stop =which(aa_seq[0:(length(aa_seq)-2)] == \"X\")[0];"+
                                     "\n\t\t\tfitnesses[(pos_stop+1):(length(fitnesses)-2)] = 0.1/fitnesses[(pos_stop+1):(length(fitnesses)-2)];\n\t\t}" +
                                     "\n\n\t\tfitness_value = fitness_value * product(fitnesses);\n\t}"+
                                     "\n\n\treturn fitness_value;\n}\n\n\n")
