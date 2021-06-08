@@ -20,7 +20,8 @@ class writeSLiM:
         self.genome_length = start_para_dict["genome_length"]
         self.fasta_filename = start_para_dict["fasta_filename"]
         self.user_provided_sequence = start_para_dict["user_provided_sequence"]
-        self.ancestral_sequence = start_para_dict["ancestral_sequence"]
+        if(self.user_provided_sequence):
+            self.ancestral_sequence = start_para_dict["ancestral_sequence"]
 
         #Set up the fitness profile and starting distribution of amino acids
         self.fitness_profile_nums = start_para_dict["fitness_profile_nums"]

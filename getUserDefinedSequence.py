@@ -10,10 +10,11 @@ from Bio.Seq import Seq
 class getUserDefinedSequence:
     
     #Initialize a gb file and fasta file given by the user to find the ancestral sequence and coding regions from. Also initialize stationary distributions
-    def __init__(self, gb_file, fasta_file, stationary_dists):
+    def __init__(self, gb_file, fasta_file, stationary_dists, fitness_dists):
         self.gb_file = gb_file
         self.fasta_file = fasta_file
         self.stationary_dists = stationary_dists
+        self.fitness_dists = fitness_dists
         
         self.stationary_dists = self.stationary_dists.transpose()
         self.stationary_dists = self.stationary_dists.drop("neutral")
@@ -81,21 +82,34 @@ class getUserDefinedSequence:
     #Find the fitness profiles for a given coding sequence
     def find_fitness_profiles(self, sequence, coding_features):
         fitness_profiles = []
+        expected_fitnesses = []
         
         #Filter through each amino acid and choose fitness profile appropriately
         for feature in coding_features:
             coding_seq = list(Seq(sequence[feature[0]: feature[1]]).translate())
             
             for aa in coding_seq:
+                #print(aa)
                 if (aa == "*"):
                     profile = [len(self.stationary_dists.index)]
                 else:
-                    profile = random.choices(range(len(self.stationary_dists.index)), weights = self.stationary_dists[aa], k = 1)
-                    
+                    scaled_data = self.stationary_dists[aa]/sum(self.stationary_dists[aa])
+                    profile = random.choices(range(len(self.stationary_dists.index)), weights = scaled_data, k = 1)
+                    expected_profile_mean = sum(scaled_data * self.fitness_dists[aa][:-1])
+                    expected_fitnesses.append(expected_profile_mean)
+                    expected_fitnesses.append(expected_profile_mean)
                 fitness_profiles = fitness_profiles + profile
                 
-
+            
+            #sys.exit(0)
+        self.expected_fitness = np.prod(expected_fitnesses)
+        
         return fitness_profiles
+        
+        
+    #Find the expected fitness of each amino acid for scaling in non-WF models
+    def get_fitness_scaling(self):
+        return self.expected_fitness
     
 
 

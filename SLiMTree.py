@@ -267,7 +267,7 @@ class SLiMTree:
         #Set up fitness profiles
         if (self.starting_parameters["user_provided_sequence"]): #Use user provided fitness profiles if given
             get_seq = getUserDefinedSequence(self.starting_parameters["genbank_file"], 
-                        self.starting_parameters["fasta_file"], stationary_distributions)
+                        self.starting_parameters["fasta_file"], stationary_distributions, fitness_profiles)
                         
             coding_feats = get_seq.get_coding_features()
             ans_seq = get_seq.get_ancestral_sequence()
@@ -300,7 +300,10 @@ class SLiMTree:
         
         #Find scaling for non-wright-fisher models
         if(self.starting_parameters["wf_model"] == False):
-            self.find_fitness_scaling(fitness_distributions)
+            if(self.starting_parameters["user_provided_sequence"]): #Different fitness scaling for user defined sequence because expected value based on AA rather then seq
+                self.starting_parameters["scaling_value"] = get_seq.get_fitness_scaling()
+            else:
+                self.find_fitness_scaling(fitness_distributions)
 
 
     
@@ -319,16 +322,14 @@ class SLiMTree:
                 mean += stationary[num_profile] * fitness[num_profile]
             
             expected_fitness_profiles.append(mean)
-        
+
         #Add fitness profile with mean of 1 to account for the neutral areas
         expected_fitness_profiles = expected_fitness_profiles + [1]
-
         expected_fitnesses = []
         
         #Find the expected value for each site in the genome based on it's respective fitness profile
         for fitness_profile in self.starting_parameters["fitness_profile_nums"]:
             expected_fitnesses.append(expected_fitness_profiles[fitness_profile])
-            
         #Find the expected value of all sites by multiplying expected values - squared because there are 2 xsomes
         self.starting_parameters["scaling_value"] = np.prod(expected_fitnesses)**2
         
