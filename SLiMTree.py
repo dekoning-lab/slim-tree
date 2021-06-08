@@ -19,6 +19,7 @@ from Bio import Phylo
 from matplotlib.pyplot import show, savefig
 from writeSLiM import writeSLiM
 from writeSLiMHPC import writeSLiMHPC
+from getUserDefinedSequence import getUserDefinedSequence
 
 class SLiMTree:
 
@@ -76,6 +77,11 @@ class SLiMTree:
 
         parser.add_argument('-G', '--gene_count', type = int, default = 1, help = "Number of genes in the model. Default = 1.")
         parser.add_argument('-C', '--coding_ratio', type = float, default = 1.0, help = "Ratio of the genome which are coding regions as a ratio coding/noncoding. Default = 1.0")
+        
+        parser.add_argument('-s', '--user_provided_sequence', type = self.str2bool, default = False, const = True, nargs = '?',
+                help = 'boolean specifying whether user provides ancestral sequence and coding regions, Default = False')
+        parser.add_argument('-f', '--fasta_file', type = str, default = None, help = 'fasta file containing ancestral sequence - please provide only 1 sequence')
+        parser.add_argument('-gb', '--genbank_file', type = str, default = None, help = 'genbank file containing information about ancestral genome - please provide data for only 1 genome')
 
         #Get arguments from user
         arguments = parser.parse_args()
@@ -97,29 +103,48 @@ class SLiMTree:
         if (arguments.coding_ratio < 0 or arguments.coding_ratio > 1.0):
             print("Coding ratio must be greater than 0 and less than or equal to 1. Please re-enter as a ratio (0, 1]. Closing program.")
             sys.exit(0);
+            
+            
+        #Ensure that if users specify a user provided sequence they include fasta file and gb file
+        if (arguments.user_provided_sequence and (arguments.fasta_file == None or arguments.genbank_file == None )):
+            print("When specifying an ancestral sequence, a fasta file containing the sequence and a genbank file containing coding regions must " +
+                    "be provided. Closing program.")
+            sys.exit(0);
 
         
 
         #Set up the starting parameters
         self.starting_parameters["mutation_rate"] = arguments.mutation_rate
         self.starting_parameters["population_size"] = arguments.population_size
-        self.starting_parameters["genome_length"] = int(arguments.genome_length)
         self.starting_parameters["recombination_rate"] = arguments.recombination_rate
         self.starting_parameters["burn_in"] = arguments.burn_in_multiplier * arguments.population_size
         self.starting_parameters["sample_size"] = arguments.sample_size
-
-        self.starting_parameters["wf_model"] = arguments.wright_fisher_model
-
-        self.starting_parameters["gene_count"] = arguments.gene_count
-        self.starting_parameters["coding_ratio"] = arguments.coding_ratio
-        self.starting_parameters["coding_seqs"] = self.get_coding_seqs()
-
+        
         self.starting_parameters["partition"] = arguments.partition
         self.starting_parameters["time"] = arguments.time
 
         self.starting_parameters["count_subs"] = arguments.count_subs
         self.starting_parameters["output_gens"] = arguments.output_gens
         self.starting_parameters["backup"] = arguments.backup
+        
+
+        self.starting_parameters["user_provided_sequence"] = arguments.user_provided_sequence
+        self.starting_parameters["fasta_file"] = arguments.fasta_file
+        self.starting_parameters["genbank_file"] = arguments.genbank_file
+        
+        self.starting_parameters["wf_model"] = arguments.wright_fisher_model
+        
+        #Set up coding sequences if no user defined sequence is specified
+        if (not arguments.user_provided_sequence):
+            self.starting_parameters["genome_length"] = int(arguments.genome_length)
+            self.starting_parameters["gene_count"] = arguments.gene_count
+            self.starting_parameters["coding_ratio"] = arguments.coding_ratio
+            self.starting_parameters["coding_seqs"] = self.get_coding_seqs()
+        
+            
+
+
+        
 
         #Set up the filenames for file io
         input_file_start = os.getcwd() + '/' + self.input_file.split('.')[0]
@@ -226,25 +251,46 @@ class SLiMTree:
         #Find fitness effects for each amino acid
         amino_acids = (["A", "C", "D", "E", "F", "G", "H", "I", "K", "L", "M", "N"] +
                                ["P", "Q", "R", "S", "T", "V", "W", "Y", "X"])
+                               
+        stationary_distributions.rename(index = {0 : 'A', 1 : 'C', 2 : 'D', 3 : 'E', 4 : 'F', 5 : 'G', 
+                    6 : 'H', 7 : 'I', 8 : 'K', 9 : 'L', 10 : 'M', 11 : 'N', 12 : 'P', 13 : 'Q', 
+                    14 : 'R', 15 : 'S', 16 : 'T', 17 : 'V', 18 : 'W', 19 : 'Y', 20 : 'X'}, inplace = True)
+               
+               
         fitness_profiles = {}
 
         for amino_acid_num in range(len(amino_acids)):
                 aa = amino_acids[amino_acid_num]
                 fitness_profiles[aa] = fitness_distributions[amino_acid_num]
-
+                
         
-        #Find which profile is associated with each position
-        fitness_profile_nums = []
-        fitness_length = fitness_dist.shape[1] - 1 
-        coding_poses = self.starting_parameters["coding_seqs"]
-        for coding_pos in range(len(coding_poses)):
-            fitness_profile_nums = (fitness_profile_nums + random.choices(range(fitness_length), weights = fitness_profiles["M"][:-1], k = 1) +
-                        random.choices(range(fitness_length),k=coding_poses[coding_pos,1] - coding_poses[coding_pos,0] - 1))
+        #Set up fitness profiles
+        if (self.starting_parameters["user_provided_sequence"]): #Use user provided fitness profiles if given
+            get_seq = getUserDefinedSequence(self.starting_parameters["genbank_file"], 
+                        self.starting_parameters["fasta_file"], stationary_distributions, fitness_profiles)
+                        
+            coding_feats = get_seq.get_coding_features()
+            ans_seq = get_seq.get_ancestral_sequence()
+            fitness_profile_nums = get_seq.find_fitness_profiles(ans_seq, coding_feats)
             
-            if (coding_pos != len(coding_poses) - 1):
-                fitness_profile_nums = fitness_profile_nums + list(np.repeat(fitness_length, coding_poses[coding_pos+1,0] - coding_poses[coding_pos,1] ))
-            else:
-                fitness_profile_nums = fitness_profile_nums + list(np.repeat(fitness_length, self.starting_parameters["genome_length"] - coding_poses[coding_pos,1]))
+            self.starting_parameters["coding_seqs"] = coding_feats
+            self.starting_parameters["ancestral_sequence"] = ans_seq
+            self.starting_parameters["genome_length"] = len(ans_seq)
+        
+        else: #Randomly set up fitness profiles if not provided by user
+            fitness_profile_nums = []
+            fitness_length = fitness_dist.shape[1] - 1 
+            coding_poses = self.starting_parameters["coding_seqs"]
+            for coding_pos in range(len(coding_poses)):
+                fitness_profile_nums = (fitness_profile_nums + random.choices(range(fitness_length), weights = stationary_distributions.transpose()["M"][:-1], k = 1) +
+                            random.choices(range(fitness_length),k=coding_poses[coding_pos,1] - coding_poses[coding_pos,0] - 1))
+                
+                if (coding_pos != len(coding_poses) - 1):
+                    fitness_profile_nums = fitness_profile_nums + list(np.repeat(fitness_length, coding_poses[coding_pos+1,0] - coding_poses[coding_pos,1] ))
+                else:
+                    fitness_profile_nums = fitness_profile_nums + list(np.repeat(fitness_length, self.starting_parameters["genome_length"] - coding_poses[coding_pos,1]))
+    
+    
 
         #Set up distributions in starting parameters
         self.starting_parameters["fitness_profile_nums"] = fitness_profile_nums
@@ -254,7 +300,10 @@ class SLiMTree:
         
         #Find scaling for non-wright-fisher models
         if(self.starting_parameters["wf_model"] == False):
-            self.find_fitness_scaling(fitness_distributions)
+            if(self.starting_parameters["user_provided_sequence"]): #Different fitness scaling for user defined sequence because expected value based on AA rather then seq
+                self.starting_parameters["scaling_value"] = get_seq.get_fitness_scaling()
+            else:
+                self.find_fitness_scaling(fitness_distributions)
 
 
     
@@ -273,16 +322,14 @@ class SLiMTree:
                 mean += stationary[num_profile] * fitness[num_profile]
             
             expected_fitness_profiles.append(mean)
-        
+
         #Add fitness profile with mean of 1 to account for the neutral areas
         expected_fitness_profiles = expected_fitness_profiles + [1]
-
         expected_fitnesses = []
         
         #Find the expected value for each site in the genome based on it's respective fitness profile
         for fitness_profile in self.starting_parameters["fitness_profile_nums"]:
             expected_fitnesses.append(expected_fitness_profiles[fitness_profile])
-            
         #Find the expected value of all sites by multiplying expected values - squared because there are 2 xsomes
         self.starting_parameters["scaling_value"] = np.prod(expected_fitnesses)**2
         
