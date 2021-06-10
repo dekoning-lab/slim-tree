@@ -234,9 +234,8 @@ class writeSLiM:
                                 "\n\tposes = start_stop_codon_positions;" +
                                 "\n\n\tfor (row_num in (0:(nrow(start_stop_codon_positions)-1))){" +
                                 "\n\t\tfitnesses = c();" +
-                                "\n\t\taas = strsplit(codonsToAminoAcids(nucleotidesToCodons(paste0(strsplit(" +
-                                "sim.chromosome.ancestralNucleotides(), sep = \"\")[drop(poses[row_num,0]):" +
-                                "drop(poses[row_num,1]+2)]))), sep = \"\");" +
+                                "\n\t\taas = strsplit(codonsToAminoAcids(nucleotidesToCodons(substr(sim.chromosome.ancestralNucleotides(), " +
+                                "drop(poses[row_num,0]), drop(poses[row_num,1]+2)))), sep = \"\");" +
                                 "\n\n\t\tsim.setValue(\"ancestral_aa_seq\" + asString(row_num),aas); " +
                                 "\n\n\t\tcount = 0;" +
                                 "\n\t\tfor (aa in aas){" +
@@ -257,18 +256,18 @@ class writeSLiM:
                                     "\n\tfor (row_num in (0:(nrow(start_stop_codon_positions) -1))){" +
                                     "\n\t\tstarting_pos = drop(start_stop_codon_positions[row_num,0]);" +
                                     "\n\t\tending_pos = drop(start_stop_codon_positions[row_num,1]+2);" +
-                                    "aa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(paste0(strsplit(" +
-                                    "nucs, sep = \"\")[starting_pos: ending_pos]))),sep = \"\");" +
-                                    "\n\tposes = which(aa_seq != sim.getValue(\"ancestral_aas\" + row_num));" +
-                                    "\n\n\tif(length(poses) == 0){" +
-                                    "\n\t\tfitness_value = fitness_value * sim.getValue(\"ancestral_fitness_value\" + asString(row_num));" +
-                                    "\n\t\t next;\n\t}" + 
-                                    "\n\n\tif(any(poses == length(aa_seq)-1)){" +
-                                    "\n\t\tfitness_value = fitness_value * 0.001;" +
-                                    "\n\t\tnext;\n\t}" +
-                                    "\n\n\tfitnesses = sim.getValue(\"ancestral_fitnesses\"+row_num);" +
-                                    "\n\tfor (pose in poses){" + 
-                                    "\n\t\tfitnesses[pose] = sim.getValue(aa_seq[pose])[sim.getValue(\"fitness_profiles\" + row_num)[pose]];\n\t}" +   
+                                    "\n\t\taa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(substr(nucs, " +
+                                    "starting_pos, ending_pos))),sep = \"\");" + 
+                                    "\n\t\tposes = (aa_seq != sim.getValue(\"ancestral_aas\" + row_num));" +
+                                    "\n\n\t\tif(sum(poses) == 0){" +
+                                    "\n\t\t\tfitness_value = fitness_value * sim.getValue(\"ancestral_fitness_value\" + asString(row_num));" +
+                                    "\n\t\t\t next;\n\t}" + 
+                                    "\n\n\t\tif(any(poses == length(aa_seq)-1)){" +
+                                    "\n\t\t\tfitness_value = fitness_value * 0.001;" +
+                                    "\n\t\t\tnext;\n\t}" +
+                                    "\n\n\t\tfitnesses = sim.getValue(\"ancestral_fitnesses\"+row_num);" +
+                                    "\n\t\tfitnesses[poses] = sapply(which(poses), \"sim.getValue(aa_seq[applyValue]);\")" +
+                                    "[sim.getValue(\"fitness_profiles\" + row_num)[poses]];"  
                                     "\n\n\t\tif(any(aa_seq[poses] == \"X\")){" +
                                     "\n\t\t\tpos_stop =which(aa_seq[0:(length(aa_seq)-2)] == \"X\")[0];"+
                                     "\n\t\t\tfitnesses[(pos_stop+1):(length(fitnesses)-2)] = 0.1/fitnesses[(pos_stop+1):(length(fitnesses)-2)];\n\t\t}" +
