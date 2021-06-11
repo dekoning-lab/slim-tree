@@ -80,7 +80,7 @@ class writeSLiM:
             
         else:
             initialize_string += ("\n\tinitializeAncestralNucleotides(\"" +
-                                  population_parameters["parent_pop_name"] + ".fasta\"));")
+                                  population_parameters["parent_pop_name"] + ".fasta\");")
 
         initialize_string += ("\n\tmm = mmJukesCantor(" + str(population_parameters ["mutation_rate"]/3) + ");" +
                         "\n\tinitializeMutationTypeNuc(\"m1\", 0.5, \"f\", 0.0);" +
@@ -505,17 +505,17 @@ class writeSLiM:
                                     
         else:
             if(samp_size == "all"):
-                terminal_output_string += "\n\tgenomes = " + pop_name + ".genomes;"
+                terminal_output_string += "\n\tgenomes = " + pop + ".genomes;"
             else:
-                terminal_output_string += ("\n\tgenomes = sample(" + pop_name + ".genomes, min(" + str(int(samp_size)) +
-                                    ", 2*" + pop_name + ".individualCount), replace=F);")
+                terminal_output_string += ("\n\tgenomes = sample(" + pop + ".genomes, min(" + str(int(samp_size)) +
+                                    ", 2*" + pop + ".individualCount), replace=F);")
 
 
 
             #Iterate through each random sample to write script to output samples of amino acids and nucleotides to fasta files
             terminal_output_string += ("\n\n\tfor (g in genomes){" +
-                                        "\n\t\tfasta_string_nuc = paste0(\">\", g.individual, \": \\n\", g.nucleotides());" +
-                                        "\n\t\tfasta_string_prot = paste0(\">\", g.individual, \": \\n\", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));" +
+                                        "\n\t\tfasta_string_nuc = paste0(\">\", g.individual, \", " + pop_name + ": \\n\", g.nucleotides());" +
+                                        "\n\t\tfasta_string_prot = paste0(\">\", g.individual, \", " + pop_name + ": \\n\", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));" +
                                         "\n\t\twriteFile(\"" + nuc_filename + "\", fasta_string_nuc,append = T);" +
                                         "\n\t\twriteFile(\"" + aa_filename + "\", fasta_string_prot,append = T);}" )
         return terminal_output_string

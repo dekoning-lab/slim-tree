@@ -125,7 +125,7 @@ class writeSLiMHPC(writeSLiM):
     #Write code for early functions in nonWF models.
     def write_early_function(self, start_dist, end_dist, population_parameters):
             early_event = str(int(population_parameters["dist_from_start"]) + 2) + ":" + str(int(population_parameters["end_dist"]) + 1) + " early(){"
-            early_event += "\n\tp1.fitnessScaling = " + str(int(population_parameters["population_size"])) + "/ (p1.individualCount" +str(self.scaling_factor) + ");" + "\n}\n\n\n"
+            early_event += "\n\tp1.fitnessScaling = " + str(int(population_parameters["population_size"])) + "/ (p1.individualCount *" +str(self.scaling_factor) + ");" + "\n}\n\n\n"
             self.output_file.write(early_event)
 
 
@@ -180,7 +180,7 @@ class writeSLiMHPC(writeSLiM):
 
         #If terminal clade output data otherwise create data to be loaded into scripts of the clades children
         if(population_parameters["terminal_clade"]):
-            end_population_string += super().write_terminal_output(population_parameters)
+            end_population_string += super().write_terminal_output(population_parameters, "p1")
         else:
             if (self.model_type == False):
                 #Tag each individual with either 1 or 2 to go into different subpopulations. Should be split evenly.
