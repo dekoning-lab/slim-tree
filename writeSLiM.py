@@ -234,8 +234,9 @@ class writeSLiM:
                                 "\n\tposes = start_stop_codon_positions;" +
                                 "\n\n\tfor (row_num in (0:(nrow(start_stop_codon_positions)-1))){" +
                                 "\n\t\tfitnesses = c();" +
-                                "\n\t\taas = strsplit(codonsToAminoAcids(nucleotidesToCodons(substr(sim.chromosome.ancestralNucleotides(), " +
-                                "drop(poses[row_num,0]), drop(poses[row_num,1]+2)))), sep = \"\");" +
+                                "\n\t\taas = codonsToAminoAcids(sim.chromosome.ancestralNucleotides(start = " +
+                                "drop(poses[row_num,0]), end = drop(poses[row_num, 1]) + 2, format = \"codon\"), " +
+                                "paste = F);" +
                                 "\n\n\t\tsim.setValue(\"ancestral_aa_seq\" + asString(row_num),aas); " +
                                 "\n\n\t\tcount = 0;" +
                                 "\n\t\tfor (aa in aas){" +
@@ -251,13 +252,13 @@ class writeSLiM:
         
         #Defining a function in SLiM which returns the fitness of an individual genome
        
-        genome_fitness_function_string = ("function (float) get_genome_fitness (string nucs){" +
+        genome_fitness_function_string = ("function (float) get_genome_fitness (object nucs){" +
                                     "\n\tfitness_value = 1.0;" +
                                     "\n\tfor (row_num in (0:(nrow(start_stop_codon_positions) -1))){" +
                                     "\n\t\tstarting_pos = drop(start_stop_codon_positions[row_num,0]);" +
                                     "\n\t\tending_pos = drop(start_stop_codon_positions[row_num,1]+2);" +
-                                    "\n\t\taa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(substr(nucs, " +
-                                    "starting_pos, ending_pos))),sep = \"\");" + 
+                                    "\n\t\taa_seq = codonsToAminoAcids(nucs.nucleotides(start = starting_pos, " + 
+                                    "end = ending_pos, format = \"codon\"), paste = F);" +
                                     "\n\t\tposes = (aa_seq != sim.getValue(\"ancestral_aas\" + row_num));" +
                                     "\n\n\t\tif(sum(poses) == 0){" +
                                     "\n\t\t\tfitness_value = fitness_value * sim.getValue(\"ancestral_fitness_value\" + asString(row_num));" +
@@ -280,8 +281,8 @@ class writeSLiM:
 
 
        #Now write out the fitness callback based on the fitness distribution
-        fitness_callback_string = ("fitness(NULL) {return(get_genome_fitness(genome1.nucleotides())" +
-                            "*get_genome_fitness(genome2.nucleotides()));}\n\n\n")
+        fitness_callback_string = ("fitness(NULL) {return(get_genome_fitness(genome1)" +
+                            "*get_genome_fitness(genome2));}\n\n\n")
 
         self.output_file.write(fitness_callback_string)
 
@@ -303,6 +304,7 @@ class writeSLiM:
         start_dist = int(population_parameters["dist_from_start"])+1
         end_dist = int(population_parameters["end_dist"])
         pop_name =  population_parameters["pop_name"]
+        num_genomes = str(population_parameters["population_size"]*2)
 
         repeated_commands_string = str(start_dist) +":" + str(end_dist) + "late () {"
 
@@ -310,16 +312,17 @@ class writeSLiM:
         if (population_parameters["count_subs"]):
             repeated_commands_string += ("\n\tif(length(sim.mutations)!= 0){"
                         "\n\t\tancestral_genome = sim.getValue(\"fixations_" + pop_name + "\");" +
-                        "\n\t\tcompare_genome = strsplit(" + pop_name + ".genomes[0].nucleotides(), sep = \'\');"+
-                        "\n\t\tfixed_nucs = rep(T, length(compare_genome));" +
-                        "\n\n\t\tfor (genome in (" + pop_name + ".genomes)){" +
-                        "\n\t\t\tsame_nucs = (compare_genome == strsplit(genome.nucleotides(), sep = \'\'));" +
-                        "\n\t\t\tfixed_nucs = (fixed_nucs & same_nucs);\n\t\t}" +
-                        "\n\n\t\tdifferent_muts = (ancestral_genome != compare_genome);" +
+                        "\n\t\tmuts_mat = " + pop_name + ".genomes;"
+                        "\n\t\tmuts_mat = muts_mat.nucleotides(format = \"integer\");" +
+                        "\n\t\tmuts_mat = matrix(muts_mat, nrow = " + num_genomes + ", byrow = T);" +
+                        "\n\t\tcompare_seq = c(muts_mat[0,]);"+
+                        "\n\n\t\tfixed_nucs = c(matrixMult(matrix(rep(1, " + num_genomes + "), ncol = " +
+                        num_genomes + "), muts_mat)%" + num_genomes + "== 0);" +
+                        "\n\n\t\tdifferent_muts = (ancestral_genome != compare_seq);" +
                         "\n\t\tnew_fixations = different_muts & fixed_nucs;" +
                         "\n\t\tsim.setValue(\"fixations_counted_" + pop_name +
                         "\", sim.getValue(\"fixations_counted_" + pop_name+ "\") + sum(new_fixations));" +
-                        "\n\n\t\tancestral_genome[new_fixations] = compare_genome[new_fixations];" +
+                        "\n\n\t\tancestral_genome[new_fixations] = compare_seq[new_fixations];" +
                         "\n\t\tsim.setValue(\"fixations_" + pop_name + "\", ancestral_genome);\n\t};")
 
         #Write a command to output when every 100th generation has passed
@@ -437,7 +440,7 @@ class writeSLiM:
                     "\n\tsim.addSubpop(\"p1\", " + str(population_parameters["population_size"]) + ");")
 
         #Write code to start a fixed state from the starting nucleotide sequence
-        pop_string += "\n\tsim.setValue(\"fixations_p1\", strsplit(sim.chromosome.ancestralNucleotides(),sep = \"\"));"
+        pop_string += "\n\tsim.setValue(\"fixations_p1\", sim.chromosome.ancestralNucleotides(format = \"integer\"));"
 
         #At the start of the sim there are no fixations counted
         pop_string += "\n\tsim.setValue(\"fixations_counted_p1\", 0);"
