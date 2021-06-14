@@ -282,7 +282,7 @@ class SLiMTree:
             fitness_length = fitness_dist.shape[1] - 1 
             coding_poses = self.starting_parameters["coding_seqs"]
             for coding_pos in range(len(coding_poses)):
-                fitness_profile_nums = (fitness_profile_nums + random.choices(range(fitness_length), weights = stationary_distributions.transpose()["M"][:-1], k = 1) +
+                fitness_profile_nums = (fitness_profile_nums + [fitness_length] + #starting codon is correct
                             random.choices(range(fitness_length),k=coding_poses[coding_pos,1] - coding_poses[coding_pos,0] - 1))
                 
                 if (coding_pos != len(coding_poses) - 1):
