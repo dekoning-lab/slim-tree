@@ -270,8 +270,10 @@ class writeSLiM:
                                     "\n\t\tfitnesses[poses] = sapply(which(poses), \"sim.getValue(aa_seq[applyValue]);\")" +
                                     "[sim.getValue(\"fitness_profiles\" + row_num)[poses]];"  
                                     "\n\n\t\tif(any(aa_seq[poses] == \"X\")){" +
-                                    "\n\t\t\tpos_stop =which(aa_seq[0:(length(aa_seq)-2)] == \"X\")[0];"+
-                                    "\n\t\t\tfitnesses[(pos_stop+1):(length(fitnesses)-2)] = 0.1/fitnesses[(pos_stop+1):(length(fitnesses)-2)];\n\t\t}" +
+                                    "\n\t\t\tpos_stop =which(aa_seq[0:(length(aa_seq)-1)] == \"X\")[0];"+
+                                    "\n\t\t\tif(pos_stop == 0){fitnesses = 0.1/fitnesses;}" +
+                                    "\n\t\t\telse if (pos_stop + 1 < length(fitnesses-2)) " +
+                                    "{fitnesses[(pos_stop+1):(length(fitnesses)-1)] = 0.1/fitnesses[(pos_stop+1):(length(fitnesses)-1)];}\n\t\t}" +
                                     "\n\n\t\tfitness_value = fitness_value * product(fitnesses);\n\t}"+
                                     "\n\n\treturn fitness_value;\n}\n\n\n")
         
@@ -499,9 +501,10 @@ class writeSLiM:
                                     "\n\t\tconsensus = consensus+ c(\"A\", \"C\", \"G\", \"T\")[whichMax(nucleotideCounts(paste0(matrix(sapply(" + pop_name + 
                                     ".genomes.nucleotides(), \"strsplit(applyValue, sep = '');\"), ncol = " + str(self.genome_length * 3) + ", byrow = T)[,i])))];\n\t}" +
                                     "\n\n\tfasta_string_nuc = paste0(\">" + pop_name + ": \\n\", consensus);" + 
-                                    "\n\n\tfasta_string_prot = paste0(\">" + pop_name + ": \\n\", codonsToAminoAcids(nucleotidesToCodons(consensus)));" +
-                                    "\n\twriteFile(\"" + nuc_filename + "\", fasta_string_nuc,append = T);" +
-                                    "\n\twriteFile(\"" + aa_filename + "\", fasta_string_prot,append = T);")
+                                    "\n\twriteFile(\"" + nuc_filename + "\", fasta_string_nuc,append = T);" )
+            if (not self.user_provided_sequence):
+                terminal_output_string +=("\n\n\tfasta_string_prot = paste0(\">" + pop_name + ": \\n\", codonsToAminoAcids(nucleotidesToCodons(consensus)));" +
+                                        "\n\twriteFile(\"" + aa_filename + "\", fasta_string_prot,append = T);")
                                     
         else:
             if(samp_size == "all"):
@@ -515,9 +518,13 @@ class writeSLiM:
             #Iterate through each random sample to write script to output samples of amino acids and nucleotides to fasta files
             terminal_output_string += ("\n\n\tfor (g in genomes){" +
                                         "\n\t\tfasta_string_nuc = paste0(\">\", g.individual, \", " + pop_name + ": \\n\", g.nucleotides());" +
-                                        "\n\t\tfasta_string_prot = paste0(\">\", g.individual, \", " + pop_name + ": \\n\", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));" +
-                                        "\n\t\twriteFile(\"" + nuc_filename + "\", fasta_string_nuc,append = T);" +
-                                        "\n\t\twriteFile(\"" + aa_filename + "\", fasta_string_prot,append = T);}" )
+                                        "\n\t\twriteFile(\"" + nuc_filename + "\", fasta_string_nuc,append = T);" )
+                                        
+            if(self.user_provided_sequence):
+                terminal_output_string += "}"
+            else:
+                terminal_output_string =+ ("\n\t\tfasta_string_prot = paste0(\">\", g.individual, \", " + pop_name + ": \\n\", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));" +
+                                        "\n\t\twriteFile(\"" + aa_filename + "\", fasta_string_prot,append = T);}" )    
         return terminal_output_string
 
 
