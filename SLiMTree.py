@@ -294,6 +294,7 @@ class SLiMTree:
 
         #Set up distributions in starting parameters
         self.starting_parameters["fitness_profile_nums"] = fitness_profile_nums
+        self.starting_parameters["min_fitness"] = min(np.array(fitness_distributions).flatten())
         self.starting_parameters["stationary_distributions"] = stationary_distributions
         self.starting_parameters["fitness_profiles"] = fitness_profiles
         self.starting_parameters["amino_acids"] = amino_acids
