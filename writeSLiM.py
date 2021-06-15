@@ -28,6 +28,7 @@ class writeSLiM:
         self.fitness_profiles = start_para_dict["fitness_profiles"]
         self.starting_allele_dist = start_para_dict["stationary_distributions"]
         self.amino_acids = start_para_dict["amino_acids"]
+        self.min_fitness = str(start_para_dict["min_fitness"])
 
         #Set up type of model
         self.model_type = start_para_dict["wf_model"]
@@ -268,13 +269,13 @@ class writeSLiM:
                                     "\n\t\tfitnesses[poses] = sapply(which(poses), \"sim.getValue(aa_seq[applyValue]);\")" +
                                     "[sim.getValue(\"fitness_profiles\" + row_num)[poses]];"  +
                                     "\n\n\t\tif(any(poses[0] | poses[aa_stop_pos])){" +
-                                    "\n\t\t\tfitness_value = fitness_value * product(0.1/fitnesses);" +
+                                    "\n\t\t\tfitness_value = fitness_value * product(" + self.min_fitness + "/fitnesses);" +
                                     "\n\t\t\tnext;\n\t\t}" +
                                     "\n\n\t\tif(any(aa_seq[poses] == \"X\")){" +
                                     "\n\t\t\tpos_stop =which(aa_seq[0:(length(aa_seq)-1)] == \"X\")[0];"+
-                                    "\n\t\t\tif(pos_stop == 0){fitnesses = 0.1/fitnesses;}" +
+                                    "\n\t\t\tif(pos_stop == 0){fitnesses = " + self.min_fitness + "/fitnesses;}" +
                                     "\n\t\t\telse if (pos_stop + 1 < aa_stop_pos) " +
-                                    "{fitnesses[(pos_stop+1):aa_stop_pos] = 0.1/fitnesses[(pos_stop+1):aa_stop_pos];}\n\t\t}" +
+                                    "{fitnesses[(pos_stop+1):aa_stop_pos] = " + self.min_fitness + "/fitnesses[(pos_stop+1):aa_stop_pos];}\n\t\t}" +
                                     "\n\n\t\tfitness_value = fitness_value * product(fitnesses);\n\t}"+
                                     "\n\n\treturn fitness_value;\n}\n\n\n")
         
