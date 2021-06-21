@@ -20,6 +20,10 @@ from matplotlib.pyplot import show, savefig
 from writeSLiM import writeSLiM
 from writeSLiMHPC import writeSLiMHPC
 from writeSLiMProtein import writeSLiMProtein
+from Bio.PDB.PDBParser import PDBParser
+from Bio.PDB.Polypeptide import PPBuilder
+from ContactMap import ContactMap
+from utils import get_structure
 
 class SLiMTree:
 
@@ -81,10 +85,10 @@ class SLiMTree:
         parser.add_argument('-f', '--fitness_profile_calc', type = self.str2bool, default = True, const = True, nargs='?',
                 help = 'boolean specifying whether fitness profiles should be used to calculate fitness. If false, protein structure fitness will be calculated, and a contact map must be provided. Default = True.')
 
-        #parser.add_argument('P', '--pmd_file', type = str, help = 'Path to file containing a PMD file with a valid protein structure. Either this or a contact map is required for calculating fitness based on protein structure.')
-        #Add in PMD functionality later perhaps?
+        parser.add_argument('-pdb', '--pdb_file', type = str, help = 'Path to file containing a PDB file with a valid protein structure. Either this or a contact map is required for calculating fitness based on protein structure.')
+        #Add in PDB functionality later perhaps?
 
-        parser.add_argument('-m', '--contact_map', type = str, help = "Path to file containing a contact map showing protein contacts. This is required for calculating fitness based on protein structure.")
+        parser.add_argument('-cm', '--contact_map', type = str, help = "Path to file containing a contact map showing protein contacts. This is required for calculating fitness based on protein structure.")
 
         #Get arguments from user
         arguments = parser.parse_args()
@@ -110,8 +114,8 @@ class SLiMTree:
 
         #If using protein-based fitness, make sure a contact map is provided.
 
-        if (arguments.fitness_profile_calc == False and arguments.contact_map == None):
-            print("When calculating protein-based fitness, a contact map must be provided. Closing program.")
+        if (arguments.fitness_profile_calc == False and arguments.contact_map == None and arguments.pdb_file == None):
+            print("When calculating protein-based fitness, a contact map or PDB file must be provided. Closing program.")
             sys.exit(0)
 
 
@@ -131,10 +135,30 @@ class SLiMTree:
         if (arguments.contact_map != None):
             self.starting_parameters["contact_map"] = np.loadtxt(open(arguments.contact_map, "rb"), delimiter=",")
             #Overwrite the length of the genome with the length of the contact map.
-            self.starting_parameters["genome_length"] = len(self.starting_parameters["contact_map"])
-            #Add else-if for a PMD file here
+            self.starting_parameters["genome_length"] = len(self.starting_parameters["contact_map"]) + 1
+            #Add else-if for a PDB file here
         else:
             self.starting_parameters["contact_map"] = None
+
+        if (arguments.pdb_file != None):
+            # structure = get_structure(arguments.pdb_file)
+            # model = structure[0]
+
+            pdbstructure = PDBParser().get_structure("pdb", arguments.pdb_file) #Placeholder - replace with file later
+            model = pdbstructure[0]
+            ppb = PPBuilder()
+            aa_seq = ""
+            for pp in ppb.build_peptides(pdbstructure):
+                aa_seq += pp.get_sequence()
+
+            #aa_seq = aa_seq.tomutable()
+            self.starting_parameters["aa_seq"] = aa_seq
+            self.starting_parameters["genome_length"] = len(aa_seq) + 1
+            if (arguments.contact_map == None):
+                map = ContactMap(model, threshold = 7.0)
+                self.starting_parameters["contact_map"] = map.get_data().tolist() #Generates a contact map.
+        else:
+            self.starting_parameters["aa_seq"] = None
 
         self.starting_parameters["wf_model"] = arguments.wright_fisher_model
 

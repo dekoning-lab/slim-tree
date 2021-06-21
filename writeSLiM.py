@@ -28,6 +28,8 @@ class writeSLiM:
 
         self.contact_map = start_para_dict["contact_map"]
 
+        self.aa_seq = start_para_dict["aa_seq"]
+
         #Set up type of model
         self.model_type = start_para_dict["wf_model"]
         if(self.model_type == False):
@@ -72,7 +74,17 @@ class writeSLiM:
 
         #Starting population does not inherit parent sequence, other populations do
         if(population_parameters["parent_pop_name"] == None):
-            aa_codon_sequence = str(self.create_codon_seq())
+            if (self.aa_seq == None):
+                aa_codon_sequence = str(self.create_codon_seq())
+            else:
+                aas = str(self.aa_seq).split()
+                print(aas)
+                aa_codon_sequence = []
+                for a in aas:
+                    aa_codon_sequence += map(self.convert_amino_acid, self.aa_seq)
+                stop_codons = [48, 50, 56]
+                aa_codon_sequence += random.choices(stop_codons, k = 1) #Add stop codon to end
+                aa_codon_sequence = str(aa_codon_sequence)
             aa_codon_sequence_str = "c(" + aa_codon_sequence[1: len(aa_codon_sequence) -1] + ")" #Remove brackets and add parentheses
             initialize_string += ("\n\tdefineConstant(\"codons\", " + aa_codon_sequence_str + ");" +
                             "\n\tinitializeAncestralNucleotides(codonsToNucleotides(codons, format=\"char\"));" +
