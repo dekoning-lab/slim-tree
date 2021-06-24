@@ -32,6 +32,8 @@ class writeSLiM:
 
         self.contact_map = start_para_dict["contact_map"]
 
+        self.aa_seq = start_para_dict["aa_seq"]
+
         #Set up type of model
         self.model_type = start_para_dict["wf_model"]
         if(self.model_type == False):
@@ -78,9 +80,21 @@ class writeSLiM:
             #Initialize with codons if random, otherwise initialize with sequence given by the user
             if (self.user_provided_sequence):
                 initialize_string += "\n\tinitializeAncestralNucleotides(\"" + self.ancestral_sequence + "\");"
+            elif(self.aa_seq != None):
+                aas = str(self.aa_seq).split()
+                print(aas)
+                aa_codon_sequence = []
+                for a in aas:
+                    aa_codon_sequence += map(self.convert_amino_acid, self.aa_seq)
+                stop_codons = [48, 50, 56]
+                aa_codon_sequence += random.choices(stop_codons, k = 1) #Add stop codon to end
+                aa_codon_sequence = str(aa_codon_sequence)
+                aa_codon_sequence_str = "c(" + aa_codon_sequence[1: len(aa_codon_sequence) -1] + ")"
+                initialize_string += ("\n\tdefineConstant(\"codons\", " + aa_codon_sequence_str + ");" +
+                                "\n\tinitializeAncestralNucleotides(codonsToNucleotides(codons, format=\"char\"));")
             else:
                 aa_codon_sequence = str(self.create_codon_seq())
-                aa_codon_sequence_str = "c(" + aa_codon_sequence[1: len(aa_codon_sequence) -1] + ")" #Remove brackets and add parentheses
+                aa_codon_sequence_str = "c(" + aa_codon_sequence[1: len(aa_codon_sequence) -1] + ")"
                 initialize_string += ("\n\tdefineConstant(\"codons\", " + aa_codon_sequence_str + ");" +
                                 "\n\tinitializeAncestralNucleotides(codonsToNucleotides(codons, format=\"char\"));")
 
@@ -396,7 +410,7 @@ class writeSLiM:
             #If this is the last population broken off, take the last half of the parent population
             if (population_parameters["last_child_clade"] == True):
                 define_population_string += str("\n\tcatn(" + population_parameters["parent_pop_name"] + ".individualCount);"+
-                "\n\t" + population_parameters["pop_name"] + ".takeMigrants(" + population_parameters["parent_pop_name"] + ".individuals);" )
+                "\n\t" + population_parameters["pop_name"] + ".takeMigrants(" + population_parameters["parent_pop_name"] + ".individuals);" + "\n\t" + population_parameters["parent_pop_name"] + ".removeSubpopulation();" )
             else:
                 #Take half of the parent population
                 define_population_string += str("\n\tmigrants = sample(" + population_parameters["parent_pop_name"] + ".individuals, integerDiv("

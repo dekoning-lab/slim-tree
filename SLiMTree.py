@@ -89,7 +89,7 @@ class SLiMTree:
         parser.add_argument('-f', '--fasta_file', type = str, default = None, help = 'fasta file containing ancestral sequence - please provide only 1 sequence')
         parser.add_argument('-gb', '--genbank_file', type = str, default = None, help = 'genbank file containing information about ancestral genome - please provide data for only 1 genome')
 
-        parser.add_argument('-f', '--fitness_profile_calc', type = self.str2bool, default = True, const = True, nargs='?',
+        parser.add_argument('-fc', '--fitness_profile_calc', type = self.str2bool, default = True, const = True, nargs='?',
                 help = 'boolean specifying whether fitness profiles should be used to calculate fitness. If false, protein structure fitness will be calculated, and a contact map must be provided. Default = True.')
 
         parser.add_argument('-pdb', '--pdb_file', type = str, help = 'Path to file containing a PDB file with a valid protein structure. Either this or a contact map is required for calculating fitness based on protein structure.')
@@ -149,7 +149,6 @@ class SLiMTree:
             self.starting_parameters["contact_map"] = np.loadtxt(open(arguments.contact_map, "rb"), delimiter=",")
             #Overwrite the length of the genome with the length of the contact map.
             self.starting_parameters["genome_length"] = len(self.starting_parameters["contact_map"]) + 1
-            #Add else-if for a PDB file here
         else:
             self.starting_parameters["contact_map"] = None
 
@@ -195,7 +194,7 @@ class SLiMTree:
         self.starting_parameters["wf_model"] = arguments.wright_fisher_model
 
         #Set up coding sequences if no user defined sequence is specified
-        if (not arguments.user_provided_sequence):
+        if (not arguments.user_provided_sequence and arguments.pdb_file == None and arguments.contact_map == None):
             self.starting_parameters["genome_length"] = int(arguments.genome_length)
             self.starting_parameters["gene_count"] = arguments.gene_count
             self.starting_parameters["coding_ratio"] = arguments.coding_ratio
