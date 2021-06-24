@@ -19,16 +19,18 @@ class writeSLiM:
         self.general_output_filename = start_para_dict["output_file"]
         self.genome_length = start_para_dict["genome_length"]
         self.fasta_filename = start_para_dict["fasta_filename"]
+        self.user_provided_sequence = start_para_dict["user_provided_sequence"]
+        if(self.user_provided_sequence):
+            self.ancestral_sequence = start_para_dict["ancestral_sequence"]
 
         #Set up the fitness profile and starting distribution of amino acids
         self.fitness_profile_nums = start_para_dict["fitness_profile_nums"]
         self.fitness_profiles = start_para_dict["fitness_profiles"]
         self.starting_allele_dist = start_para_dict["stationary_distributions"]
         self.amino_acids = start_para_dict["amino_acids"]
+        self.min_fitness = str(start_para_dict["min_fitness"])
 
         self.contact_map = start_para_dict["contact_map"]
-
-        self.aa_seq = start_para_dict["aa_seq"]
 
         #Set up type of model
         self.model_type = start_para_dict["wf_model"]
@@ -59,8 +61,6 @@ class writeSLiM:
                     self.slim_codon_dict[amino_acid] = [slim_codon_number]
 
 
-        self.create_codon_seq()
-
 
         #Write the initialize function for the SLiM script
     def write_initialize(self, population_parameters):
@@ -74,24 +74,19 @@ class writeSLiM:
 
         #Starting population does not inherit parent sequence, other populations do
         if(population_parameters["parent_pop_name"] == None):
-            if (self.aa_seq == None):
-                aa_codon_sequence = str(self.create_codon_seq())
+
+            #Initialize with codons if random, otherwise initialize with sequence given by the user
+            if (self.user_provided_sequence):
+                initialize_string += "\n\tinitializeAncestralNucleotides(\"" + self.ancestral_sequence + "\");"
             else:
-                aas = str(self.aa_seq).split()
-                print(aas)
-                aa_codon_sequence = []
-                for a in aas:
-                    aa_codon_sequence += map(self.convert_amino_acid, self.aa_seq)
-                stop_codons = [48, 50, 56]
-                aa_codon_sequence += random.choices(stop_codons, k = 1) #Add stop codon to end
-                aa_codon_sequence = str(aa_codon_sequence)
-            aa_codon_sequence_str = "c(" + aa_codon_sequence[1: len(aa_codon_sequence) -1] + ")" #Remove brackets and add parentheses
-            initialize_string += ("\n\tdefineConstant(\"codons\", " + aa_codon_sequence_str + ");" +
-                            "\n\tinitializeAncestralNucleotides(codonsToNucleotides(codons, format=\"char\"));" +
-                            "\n\tdefineConstant(\"L\"," + str(int(self.genome_length*3)) + ");")
+                aa_codon_sequence = str(self.create_codon_seq())
+                aa_codon_sequence_str = "c(" + aa_codon_sequence[1: len(aa_codon_sequence) -1] + ")" #Remove brackets and add parentheses
+                initialize_string += ("\n\tdefineConstant(\"codons\", " + aa_codon_sequence_str + ");" +
+                                "\n\tinitializeAncestralNucleotides(codonsToNucleotides(codons, format=\"char\"));")
+
         else:
-            initialize_string += ("\n\tdefineConstant(\"L\", initializeAncestralNucleotides(\"" +
-                                  population_parameters["parent_pop_name"] + ".fasta\"));")
+            initialize_string += ("\n\tinitializeAncestralNucleotides(\"" +
+                                  population_parameters["parent_pop_name"] + ".fasta\");")
 
         initialize_string += ("\n\tmm = mmJukesCantor(" + str(population_parameters ["mutation_rate"]/3) + ");" +
                         "\n\tinitializeMutationTypeNuc(\"m1\", 0.5, \"f\", 0.0);" +
@@ -101,13 +96,34 @@ class writeSLiM:
                         "\n\tinitializeRecombinationRate("+ str(population_parameters ["recombination_rate"])+");")
 
         #Initialize Genomic Elements according to number of genes for easy visualization in SLiMgui. g1 = coding region, g2 = non-coding region
-        for region_num in range(len(self.coding_regions)):
-            initialize_string += "\n\tinitializeGenomicElement(g1, " + str(self.coding_regions[region_num, 0] * 3) + ", " + str(self.coding_regions[region_num, 1] * 3) + ");"
 
-            if(region_num == len(self.coding_regions)-1):
-                initialize_string += "\n\tinitializeGenomicElement(g2, " + str((self.coding_regions[region_num, 1] * 3) + 1) + ", " + str(int(self.genome_length*3)-1) + ");"
+        for region_num in range(len(self.coding_regions)):
+            if(self.user_provided_sequence):
+                if (region_num == 0):
+                    start_pos = self.coding_regions[region_num, 0]
+                    if(start_pos != 0):
+                        initialize_string += "\n\tinitializeGenomicElement(g2, 0, " + str(start_pos -1) + ");"
+
+                    stop_pos = self.coding_regions[region_num, 1]
+
+                elif(self.coding_regions[region_num, 0] <= stop_pos + 1):
+                    stop_pos = self.coding_regions[region_num, 1]
+
+                else :
+                    initialize_string += ("\n\tinitializeGenomicElement(g1, " + str(start_pos)  + ", " + str(stop_pos) + ");" +
+                                        "\n\tinitializeGenomicElement(g2, " + str(stop_pos + 1) + ", " + str(self.coding_regions[region_num, 0] -1) + ");")
+                    start_pos = self.coding_regions[region_num, 0]
+                    stop_pos = self.coding_regions[region_num, 1]
+                if(region_num == (len(self.coding_regions) -1)):
+                    initialize_string += ("\n\tinitializeGenomicElement(g1, " + str(start_pos)  + ", " + str(stop_pos) + ");" +
+                                        "\n\tinitializeGenomicElement(g2, " + str(stop_pos + 1) + ", " + str(self.genome_length -1) + ");")
             else:
-                initialize_string += "\n\tinitializeGenomicElement(g2, " + str((self.coding_regions[region_num, 1] * 3) + 1) + ", " + str((self.coding_regions[region_num+1, 0] * 3) -1) + ");"
+                initialize_string += "\n\tinitializeGenomicElement(g1, " + str(self.coding_regions[region_num, 0] * 3) + ", " + str(self.coding_regions[region_num, 1] * 3) + ");"
+
+                if(region_num == len(self.coding_regions)-1):
+                    initialize_string += "\n\tinitializeGenomicElement(g2, " + str((self.coding_regions[region_num, 1] * 3) + 1) + ", " + str(int(self.genome_length*3)-1) + ");"
+                else:
+                    initialize_string += "\n\tinitializeGenomicElement(g2, " + str((self.coding_regions[region_num, 1] * 3) + 1) + ", " + str((self.coding_regions[region_num+1, 0] * 3) -1) + ");"
 
 
         initialize_string +="\n}\n\n\n"
@@ -141,7 +157,6 @@ class writeSLiM:
         for codon_num in start_codon_nums: codons[codon_num] = start_codon
         for codon_num in stop_codon_nums: codons[codon_num] = random.choice(stop_codons)
 
-
         return (codons)
 
 
@@ -170,21 +185,46 @@ class writeSLiM:
 
 
 
-        fitness_vector = str(self.fitness_profile_nums)
-        fitness_vector = "c(" + fitness_vector[1:len(fitness_vector)-1] + ")"
-
         #Define required constants
-        set_up_fitness += ("\n\tdefineConstant(\"fitness_profiles\", " + fitness_vector +");" +
-                           "\n\tdefineConstant(\"seq_length\", " + str(len(self.fitness_profile_nums)) + ");" +
-                           "\n\tdefineConstant(\"ancestral_aa_seq\", strsplit(codonsToAminoAcids(codons), sep = \"\"));" +
-                           "\n\tdefineConstant(\"ancestral_fitnesses\", get_fitness ());" +
-                           "\n\tdefineConstant(\"ancestral_fitness_value\", product(ancestral_fitnesses));" )
+        count = 0;
+        profile_num = 0;
 
-        start_stop_codons = str(list(self.coding_regions.flatten()))
-        set_up_fitness += "\n\tdefineConstant(\"start_stop_codon_positions\",c(" + start_stop_codons[1: len(start_stop_codons) -1] + "));" #Remove first and last parts of strings (the brackets) and add parentheses
+        textfile = open("a_file.txt", "w")
+        for element in self.fitness_profile_nums:
+            textfile.write(str(element) + "\n")
+        textfile.close()
+
+        for coding_seq in self.coding_regions:
+            if(self.user_provided_sequence):
+                new_profile_num = profile_num + int((coding_seq[1] - coding_seq[0])/3)
+                fitness_vector = str(self.fitness_profile_nums[profile_num:new_profile_num])
+                profile_num = new_profile_num
+            else :
+                fitness_vector = str(self.fitness_profile_nums[coding_seq[0]:(coding_seq[1]+1)])
+
+            fitness_vector = "c(" + fitness_vector[1:len(fitness_vector)-1] + ")"
+            set_up_fitness += "\n\tsim.setValue(\"fitness_profiles" + str(count) +"\"," + fitness_vector + ");"
+            count += 1
+
+
+        #List of start and stop codons, remove first and last parts of strings (the brackets) and add parentheses
+        if(self.user_provided_sequence):
+            coding_regs = self.coding_regions
+            coding_regs[:,1] = coding_regs[:,1] - 3
+            start_stop_codons = str(list(coding_regs.flatten()))
+        else:
+            start_stop_codons = str(list(self.coding_regions.flatten()*3))
+        set_up_fitness += ("\n\tdefineConstant(\"start_stop_codon_positions\",matrix(c(" +
+                        start_stop_codons[1: len(start_stop_codons) -1] + "), ncol = 2, byrow = T));\n")
+
+        #Set up the starting fitnesses
+        set_up_fitness += ("\n\tdefineConstant(\"seq_length\", " + str(len(self.fitness_profile_nums)) + ");" +
+                        "\n\tget_fitness();\n")
+
+
 
         #Write code to start a fixed state from the starting nucleotide sequence
-        set_up_fitness += "\n\tsim.setValue(\"fixations_p1\", strsplit(sim.chromosome.ancestralNucleotides(),sep = \"\"));"
+        set_up_fitness += "\n\tsim.setValue(\"fixations_p1\", sim.chromosome.ancestralNucleotides(format = \"integer\"));"
 
 
         #At the start of the sim there are no fixations counted
@@ -196,14 +236,21 @@ class writeSLiM:
 
 
         #Defining a function in SLiM which returns the fitness of the ancestral amino acid sequence
-        fitness_function_string = ("function (float) get_fitness (void){" +
-                                "\n\tfitnesses = c(1);" +  #Starting methionine is the right amino acid so it has a fitness of 1
-                                "\n\tcount = 1;" +
-                                "\n\tfor (i in ancestral_aa_seq[1:(seq_length-1)]){" +
-                                "\n\t\tfitnesses = c(fitnesses, sim.getValue(i)[fitness_profiles[count]]);" +
-                                "\n\t\tcount = count +1;" +
-                                "\n\t}" +
-                                "\n\n\treturn fitnesses;\n}\n\n\n")
+        fitness_function_string = ("function (void) get_fitness (void){" +
+                                "\n\tposes = start_stop_codon_positions;" +
+                                "\n\n\tfor (row_num in (0:(nrow(start_stop_codon_positions)-1))){" +
+                                "\n\t\tfitnesses = c();" +
+                                "\n\t\taas = codonsToAminoAcids(sim.chromosome.ancestralNucleotides(start = " +
+                                "drop(poses[row_num,0]), end = drop(poses[row_num, 1]) + 2, format = \"codon\"), " +
+                                "paste = F);" +
+                                "\n\n\t\tsim.setValue(\"ancestral_aa_seq\" + asString(row_num),aas); " +
+                                "\n\n\t\tcount = 0;" +
+                                "\n\t\tfor (aa in aas){" +
+                                "\n\t\t\tfitnesses = c(fitnesses, sim.getValue(aa)[sim.getValue(\"fitness_profiles\" + row_num)[count]]);" +
+                                "\n\t\t\tcount = count + 1; \n\t\t}\n" +
+                                "\n\t\tsim.setValue(\"ancestral_fitnesses\" + asString(row_num), fitnesses);" +
+                                "\n\t\tsim.setValue(\"ancestral_fitness_value\" + asString(row_num), product(fitnesses));"+
+                                "\n\t\tsim.setValue(\"ancestral_aas\" + asString(row_num), aas);\n\n\t}\n}\n\n\n")
 
         self.output_file.write(fitness_function_string)
 
@@ -211,31 +258,31 @@ class writeSLiM:
 
         #Defining a function in SLiM which returns the fitness of an individual genome
 
-        genome_fitness_function_string = ("function (float) get_genome_fitness (string nucs){" +
-                                    "\n\taa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(nucs)), sep = \"\");" +
-                                    "\n\tposes = which(aa_seq != ancestral_aa_seq);" +
-                                    "\n\n\tif(length(poses) == 0){" +
-                                    "\n\t\treturn ancestral_fitness_value;\n\t}" +
-                                    "\n\n\tseqs = aa_seq[poses];" +
-                                    "\n\n\tif(length(setIntersection(poses, start_stop_codon_positions)) != 0 ){" +
-                                    "\n\t\treturn 0.00001;\n\t}" +
-                                    "\n\n\tfitness_values = c();" +
-                                    "\n\tcount = 0;" +
-                                    "\n\tfor (i in seqs){" +
-                                    "\n\t\tfitness_values = c(fitness_values, sim.getValue(i)[fitness_profiles[poses[count]-1]]);" +
-                                    "\n\t\tcount = count +1;\n\t}" +
-                                    "\n\n\tfitness = ancestral_fitnesses;" +
-                                    "\n\tfitness[poses] = fitness_values;" +
-                                    "\n\n\tif(any(seqs == \"X\")){" +
-                                    "\n\t\tposes_stop = (poses[which(seqs == \"X\")]);"+
-                                    "\n\n\t\tfor (stop_position in poses_stop){")
-
-        for coding_regions in self.coding_regions:
-            genome_fitness_function_string += ("\n\t\t\tif (stop_position >= " + str(coding_regions[0]) + " & stop_position < " +  str(coding_regions[1]) + "){" +
-                                    "\n\t\t\t\t fitness[(stop_position+1):" + str(coding_regions[1]) + "] = 0.1/fitness[(stop_position+1):" + str(coding_regions[1]) + "];" +
-                                    "\n\t\t\t}\n")
-
-        genome_fitness_function_string += "\t\t}\n\t}\n\n\treturn product(fitness);\n}\n\n\n"
+        genome_fitness_function_string = ("function (float) get_genome_fitness (object nucs){" +
+                                    "\n\tfitness_value = 1.0;" +
+                                    "\n\tfor (row_num in (0:(nrow(start_stop_codon_positions) -1))){" +
+                                    "\n\t\tstarting_pos = drop(start_stop_codon_positions[row_num,0]);" +
+                                    "\n\t\tending_pos = drop(start_stop_codon_positions[row_num,1]+2);" +
+                                    "\n\t\taa_stop_pos = (ending_pos - starting_pos)/3;" +
+                                    "\n\t\taa_seq = codonsToAminoAcids(nucs.nucleotides(start = starting_pos, " +
+                                    "end = ending_pos, format = \"codon\"), paste = F);" +
+                                    "\n\t\tposes = (aa_seq != sim.getValue(\"ancestral_aas\" + row_num));" +
+                                    "\n\n\t\tif(sum(poses) == 0){" +
+                                    "\n\t\t\tfitness_value = fitness_value * sim.getValue(\"ancestral_fitness_value\" + asString(row_num));" +
+                                    "\n\t\t\t next;\n\t\t}" +
+                                    "\n\n\t\tfitnesses = sim.getValue(\"ancestral_fitnesses\"+row_num);" +
+                                    "\n\t\tfitnesses[poses] = sapply(which(poses), \"sim.getValue(aa_seq[applyValue]);\")" +
+                                    "[sim.getValue(\"fitness_profiles\" + row_num)[poses]];"  +
+                                    "\n\n\t\tif(any(poses[0] | poses[aa_stop_pos])){" +
+                                    "\n\t\t\tfitness_value = fitness_value * product(" + self.min_fitness + "/fitnesses);" +
+                                    "\n\t\t\tnext;\n\t\t}" +
+                                    "\n\n\t\tif(any(aa_seq[poses] == \"X\")){" +
+                                    "\n\t\t\tpos_stop =which(aa_seq[0:(length(aa_seq)-1)] == \"X\")[0];"+
+                                    "\n\t\t\tif(pos_stop == 0){fitnesses = " + self.min_fitness + "/fitnesses;}" +
+                                    "\n\t\t\telse if (pos_stop + 1 < aa_stop_pos) " +
+                                    "{fitnesses[(pos_stop+1):aa_stop_pos] = " + self.min_fitness + "/fitnesses[(pos_stop+1):aa_stop_pos];}\n\t\t}" +
+                                    "\n\n\t\tfitness_value = fitness_value * product(fitnesses);\n\t}"+
+                                    "\n\n\treturn fitness_value;\n}\n\n\n")
 
         self.output_file.write(genome_fitness_function_string)
 
@@ -243,8 +290,8 @@ class writeSLiM:
 
 
        #Now write out the fitness callback based on the fitness distribution
-        fitness_callback_string = ("fitness(NULL) {return(get_genome_fitness(genome1.nucleotides())" +
-                            "*get_genome_fitness(genome2.nucleotides()));}\n\n\n")
+        fitness_callback_string = ("fitness(NULL) {return(get_genome_fitness(genome1)" +
+                            "*get_genome_fitness(genome2));}\n\n\n")
 
         self.output_file.write(fitness_callback_string)
 
@@ -273,16 +320,18 @@ class writeSLiM:
         if (population_parameters["count_subs"]):
             repeated_commands_string += ("\n\tif(length(sim.mutations)!= 0){"
                         "\n\t\tancestral_genome = sim.getValue(\"fixations_" + pop_name + "\");" +
-                        "\n\t\tcompare_genome = strsplit(" + pop_name + ".genomes[0].nucleotides(), sep = \'\');"+
-                        "\n\t\tfixed_nucs = rep(T, length(compare_genome));" +
-                        "\n\n\t\tfor (genome in (" + pop_name + ".genomes)){" +
-                        "\n\t\t\tsame_nucs = (compare_genome == strsplit(genome.nucleotides(), sep = \'\'));" +
-                        "\n\t\t\tfixed_nucs = (fixed_nucs & same_nucs);\n\t\t}" +
-                        "\n\n\t\tdifferent_muts = (ancestral_genome != compare_genome);" +
+                        "\n\t\tmuts_mat = " + pop_name + ".genomes;"
+                        "\n\t\tmuts_mat = muts_mat.nucleotides(format = \"integer\");" +
+                        "\n\t\trow_num = " + pop_name + ".individualCount * 2;" +
+                        "\n\t\tmuts_mat = matrix(muts_mat, nrow = row_num, byrow = T);" +
+                        "\n\t\tcompare_seq = c(muts_mat[0,]);"+
+                        "\n\n\t\tfixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = " +
+                        "row_num), muts_mat)% row_num == 0);" +
+                        "\n\n\t\tdifferent_muts = (ancestral_genome != compare_seq);" +
                         "\n\t\tnew_fixations = different_muts & fixed_nucs;" +
                         "\n\t\tsim.setValue(\"fixations_counted_" + pop_name +
                         "\", sim.getValue(\"fixations_counted_" + pop_name+ "\") + sum(new_fixations));" +
-                        "\n\n\t\tancestral_genome[new_fixations] = compare_genome[new_fixations];" +
+                        "\n\n\t\tancestral_genome[new_fixations] = compare_seq[new_fixations];" +
                         "\n\t\tsim.setValue(\"fixations_" + pop_name + "\", ancestral_genome);\n\t};")
 
         #Write a command to output when every 100th generation has passed
@@ -347,9 +396,7 @@ class writeSLiM:
             #If this is the last population broken off, take the last half of the parent population
             if (population_parameters["last_child_clade"] == True):
                 define_population_string += str("\n\tcatn(" + population_parameters["parent_pop_name"] + ".individualCount);"+
-                "\n\t" + population_parameters["pop_name"] + ".takeMigrants(" + population_parameters["parent_pop_name"] + ".individuals);"+
-                "\n\t" + population_parameters["parent_pop_name"] + ".removeSubpopulation();" )
-
+                "\n\t" + population_parameters["pop_name"] + ".takeMigrants(" + population_parameters["parent_pop_name"] + ".individuals);" )
             else:
                 #Take half of the parent population
                 define_population_string += str("\n\tmigrants = sample(" + population_parameters["parent_pop_name"] + ".individuals, integerDiv("
@@ -402,7 +449,7 @@ class writeSLiM:
                     "\n\tsim.addSubpop(\"p1\", " + str(population_parameters["population_size"]) + ");")
 
         #Write code to start a fixed state from the starting nucleotide sequence
-        pop_string += "\n\tsim.setValue(\"fixations_p1\", strsplit(sim.chromosome.ancestralNucleotides(),sep = \"\"));"
+        pop_string += "\n\tsim.setValue(\"fixations_p1\", sim.chromosome.ancestralNucleotides(format = \"integer\"));"
 
         #At the start of the sim there are no fixations counted
         pop_string += "\n\tsim.setValue(\"fixations_counted_p1\", 0);"
@@ -454,9 +501,6 @@ class writeSLiM:
         #Sample according to number given by user
         terminal_output_string = ""
 
-        if(samp_size == "all"):
-            terminal_output_string += "\n\tgenomes = " + pop_name + ".genomes;"
-
         #Formulate and output consensus sequence
         if (samp_size == "consensus"):
             terminal_output_string += ("\n\n\tconsensus = \"\";" +
@@ -464,23 +508,30 @@ class writeSLiM:
                                     "\n\t\tconsensus = consensus+ c(\"A\", \"C\", \"G\", \"T\")[whichMax(nucleotideCounts(paste0(matrix(sapply(" + pop_name +
                                     ".genomes.nucleotides(), \"strsplit(applyValue, sep = '');\"), ncol = " + str(self.genome_length * 3) + ", byrow = T)[,i])))];\n\t}" +
                                     "\n\n\tfasta_string_nuc = paste0(\">" + pop_name + ": \\n\", consensus);" +
-                                    "\n\n\tfasta_string_prot = paste0(\">" + pop_name + ": \\n\", codonsToAminoAcids(nucleotidesToCodons(consensus)));" +
-                                    "\n\twriteFile(\"" + nuc_filename + "\", fasta_string_nuc,append = T);" +
-                                    "\n\twriteFile(\"" + aa_filename + "\", fasta_string_prot,append = T);")
-
+                                    "\n\twriteFile(\"" + nuc_filename + "\", fasta_string_nuc,append = T);" )
+            if (not self.user_provided_sequence):
+                terminal_output_string +=("\n\n\tfasta_string_prot = paste0(\">" + pop_name + ": \\n\", codonsToAminoAcids(nucleotidesToCodons(consensus)));" +
+                                        "\n\twriteFile(\"" + aa_filename + "\", fasta_string_prot,append = T);")
 
         else:
-            terminal_output_string += ("\n\tgenomes = sample(" + pop_name + ".genomes, min(" + str(int(samp_size)) +
-                                ", 2*" + pop_name + ".individualCount), replace=F);")
+            if(samp_size == "all"):
+                terminal_output_string += "\n\tgenomes = " + pop + ".genomes;"
+            else:
+                terminal_output_string += ("\n\tgenomes = sample(" + pop + ".genomes, min(" + str(int(samp_size)) +
+                                    ", 2*" + pop + ".individualCount), replace=F);")
 
 
 
-        #Iterate through each random sample to write script to output samples of amino acids and nucleotides to fasta files
-        terminal_output_string += ("\n\n\tfor (g in genomes){" +
-                                    "\n\t\tfasta_string_nuc = paste0(\">\", g.individual, \": \\n\", g.nucleotides());" +
-                                    "\n\t\tfasta_string_prot = paste0(\">\", g.individual, \": \\n\", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));" +
-                                    "\n\t\twriteFile(\"" + nuc_filename + "\", fasta_string_nuc,append = T);" +
-                                    "\n\t\twriteFile(\"" + aa_filename + "\", fasta_string_prot,append = T);}" )
+            #Iterate through each random sample to write script to output samples of amino acids and nucleotides to fasta files
+            terminal_output_string += ("\n\n\tfor (g in genomes){" +
+                                        "\n\t\tfasta_string_nuc = paste0(\">\", g.individual, \", " + pop_name + ": \\n\", g.nucleotides());" +
+                                        "\n\t\twriteFile(\"" + nuc_filename + "\", fasta_string_nuc,append = T);" )
+
+            if(self.user_provided_sequence):
+                terminal_output_string += "}"
+            else:
+                terminal_output_string += ("\n\t\tfasta_string_prot = paste0(\">\", g.individual, \", " + pop_name + ": \\n\", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));" +
+                                        "\n\t\twriteFile(\"" + aa_filename + "\", fasta_string_prot,append = T);}" )
         return terminal_output_string
 
 

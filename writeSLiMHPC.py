@@ -125,7 +125,7 @@ class writeSLiMHPC(writeSLiM):
     #Write code for early functions in nonWF models.
     def write_early_function(self, start_dist, end_dist, population_parameters):
             early_event = str(int(population_parameters["dist_from_start"]) + 2) + ":" + str(int(population_parameters["end_dist"]) + 1) + " early(){"
-            early_event += "\n\tp1.fitnessScaling = " + str(int(population_parameters["population_size"])) + "/ (p1.individualCount" +str(self.scaling_factor) + ");" + "\n}\n\n\n"
+            early_event += "\n\tp1.fitnessScaling = " + str(int(population_parameters["population_size"])) + "/ (p1.individualCount *" +str(self.scaling_factor) + ");" + "\n}\n\n\n"
             self.output_file.write(early_event)
 
 
@@ -135,6 +135,7 @@ class writeSLiMHPC(writeSLiM):
         start_dist = int(population_parameters["dist_from_start"])+1
         end_dist = int(population_parameters["end_dist"])
         pop_name =  population_parameters["pop_name"]
+        num_genomes = str(population_parameters["population_size"]*2)
         
         repeated_commands_string = str(start_dist) +":" + str(end_dist) + "late () {"
 
@@ -142,15 +143,17 @@ class writeSLiMHPC(writeSLiM):
         if (population_parameters["count_subs"]):
             repeated_commands_string += ("\n\tif(length(sim.mutations)!= 0){"
                         "\n\t\tancestral_genome = sim.getValue(\"fixations_p1\");" +
-                        "\n\t\tcompare_genome = strsplit(p1.genomes[0].nucleotides(), sep = \'\');"+
-                        "\n\t\tfixed_nucs = rep(T, length(compare_genome));" +
-                        "\n\n\t\tfor (genome in (p1.genomes)){" +
-                        "\n\t\t\tsame_nucs = (compare_genome == strsplit(genome.nucleotides(), sep = \'\'));" +
-                        "\n\t\t\tfixed_nucs = (fixed_nucs & same_nucs);\n\t\t}" +
-                        "\n\n\t\tdifferent_muts = (ancestral_genome != compare_genome);" +
+                        "\n\t\tmuts_mat = p1.genomes;"
+                        "\n\t\tmuts_mat = muts_mat.nucleotides(format = \"integer\");" +
+                        "\n\t\tmuts_mat = matrix(muts_mat, nrow = " + num_genomes + ", byrow = T);" +
+                        "\n\t\tcompare_seq = c(muts_mat[0,]);"+
+                        "\n\n\t\tfixed_nucs = c(matrixMult(matrix(rep(1, " + num_genomes + "), ncol = " +
+                        num_genomes + "), muts_mat)%" + num_genomes + "== 0);" +
+                        "\n\n\t\tdifferent_muts = (ancestral_genome != compare_seq);" +
                         "\n\t\tnew_fixations = different_muts & fixed_nucs;" +
-                        "\n\t\tsim.setValue(\"fixations_counted_p1\", sim.getValue(\"fixations_counted_p1\") + sum(new_fixations));" +
-                        "\n\n\t\tancestral_genome[new_fixations] = compare_genome[new_fixations];" +
+                        "\n\t\tsim.setValue(\"fixations_counted_p1" + 
+                        "\", sim.getValue(\"fixations_counted_p1\") + sum(new_fixations));" +
+                        "\n\n\t\tancestral_genome[new_fixations] = compare_seq[new_fixations];" +
                         "\n\t\tsim.setValue(\"fixations_p1\", ancestral_genome);\n\t};")
 
         #Write a command to output when every 100th generation has passed
@@ -177,7 +180,7 @@ class writeSLiMHPC(writeSLiM):
 
         #If terminal clade output data otherwise create data to be loaded into scripts of the clades children
         if(population_parameters["terminal_clade"]):
-            end_population_string += super().write_terminal_output(population_parameters)
+            end_population_string += super().write_terminal_output(population_parameters, "p1")
         else:
             if (self.model_type == False):
                 #Tag each individual with either 1 or 2 to go into different subpopulations. Should be split evenly.
