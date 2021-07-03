@@ -63,7 +63,7 @@ class SLiMTree:
         parser.add_argument('-g','--genome_length', help = 'length of the genome - amino acids, default = 500', type=int, default = 500)
         parser.add_argument('-r','--recombination_rate', help = 'recombination rate, default = 2.5e-8', type=float, default = 2.5e-8)
         parser.add_argument('-b','--burn_in_multiplier', help = 'value to multiply population size by for burn in, default = 10', type=float, default = 10)
-        parser.add_argument('-k','--sample_size', help = 'size of sample obtained from each population at output. Input all for whole sample and consensus for consensus sequence. default = 10', type=str, default = "10")
+        parser.add_argument('-k','--sample_size', help = 'size of sample obtained from each population at output. Input \'all\' for whole sample and consensus for consensus sequence. default = all', type=str, default = "all")
 
         parser.add_argument('-c','--count_subs', type = self.str2bool, default = True, const=True, nargs='?',
                 help = 'boolean specifying whether to count substitutions, turning off will speed up sims. default = True')
@@ -82,6 +82,9 @@ class SLiMTree:
                 help = 'boolean specifying whether user provides ancestral sequence and coding regions, Default = False')
         parser.add_argument('-f', '--fasta_file', type = str, default = None, help = 'fasta file containing ancestral sequence - please provide only 1 sequence')
         parser.add_argument('-gb', '--genbank_file', type = str, default = None, help = 'genbank file containing information about ancestral genome - please provide data for only 1 genome')
+        parser.add_argument('-R', '--randomize_fitness_profiles', type = self.str2bool, default = True, const = True, nargs = '?',
+                help = ('boolean specifying whether to randomize fitness profiles provided in the fitness data files folder. Default = True. If false, there' +
+                                'must be equal fitness profiles to protein sequence length'))
 
         #Get arguments from user
         arguments = parser.parse_args()
@@ -126,6 +129,7 @@ class SLiMTree:
         self.starting_parameters["count_subs"] = arguments.count_subs
         self.starting_parameters["output_gens"] = arguments.output_gens
         self.starting_parameters["backup"] = arguments.backup
+        self.starting_parameters["randomize_fitness_profiles"] = arguments.randomize_fitness_profiles
         
 
         self.starting_parameters["user_provided_sequence"] = arguments.user_provided_sequence
@@ -140,10 +144,6 @@ class SLiMTree:
             self.starting_parameters["gene_count"] = arguments.gene_count
             self.starting_parameters["coding_ratio"] = arguments.coding_ratio
             self.starting_parameters["coding_seqs"] = self.get_coding_seqs()
-        
-            
-
-
         
 
         #Set up the filenames for file io
