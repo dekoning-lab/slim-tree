@@ -150,6 +150,7 @@ class writeSLiM:
         
         #Replace start and stop codons with start and stop codons
         for codon_num in start_codon_nums: codons[codon_num] = start_codon
+       
         for codon_num in stop_codon_nums: codons[codon_num] = random.choice(stop_codons) 
 
         return (codons)

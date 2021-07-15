@@ -84,7 +84,7 @@ class SLiMTree:
         parser.add_argument('-gb', '--genbank_file', type = str, default = None, help = 'genbank file containing information about ancestral genome - please provide data for only 1 genome')
         parser.add_argument('-R', '--randomize_fitness_profiles', type = self.str2bool, default = True, const = True, nargs = '?',
                 help = ('boolean specifying whether to randomize fitness profiles provided in the fitness data files folder. Default = True. If false, there' +
-                                'must be equal fitness profiles to protein sequence length'))
+                                ' must be equal fitness profiles to protein sequence length'))
 
         #Get arguments from user
         arguments = parser.parse_args()
@@ -219,7 +219,7 @@ class SLiMTree:
         avg_noncoding_length = 0
         if (gene_count != 1):
             avg_noncoding_length = math.floor((genome_length - percent_coding) / (gene_count - 1)) #Average length of non-coding regions by subtracting number of coding aa from total aa
-
+            
         coding_regions = []
         current_aa = 0
 
@@ -231,7 +231,7 @@ class SLiMTree:
             #Make sure that the genome will not be longer than the genome
             if (current_aa + avg_coding_length > genome_length - 1):
                 current_aa = genome_length - avg_coding_length - 1
-
+                
         coding_regions = np.stack(np.array_split(coding_regions, gene_count))
         return coding_regions
 
@@ -258,6 +258,13 @@ class SLiMTree:
                
                
         fitness_profiles = {}
+        fitness_length = fitness_dist.shape[1] - 1 
+        
+        #Make sure there are the same number of fitness profiles as stationary dists
+        if(fitness_length != stationary_distributions.shape[1] - 1):
+            print("Please ensure that the same number of fitness distributions and stationary " +
+                "distributions are provided")
+            sys.exit(0)
 
         for amino_acid_num in range(len(amino_acids)):
                 aa = amino_acids[amino_acid_num]
@@ -265,7 +272,24 @@ class SLiMTree:
                 
         
         #Set up fitness profiles
-        if (self.starting_parameters["user_provided_sequence"]): #Use user provided fitness profiles if given
+        if(not self.starting_parameters["randomize_fitness_profiles"]): #Use user provided fitness profiles
+            
+            if(self.starting_parameters["user_provided_sequence"]):
+                get_seq = getUserDefinedSequence(self.starting_parameters["genbank_file"], 
+                        self.starting_parameters["fasta_file"])
+                self.starting_parameters["ancestral_sequence"] = ans_seq
+                self.starting_parameters["genome_length"] = len(ans_seq)
+                
+            if(fitness_length != self.starting_parameters["genome_length"]):
+                print("Please ensure that when fitness profiles are not randomized, the " +
+                "same number of fitness profiles are provided as the genome length")
+                sys.exit(0)
+                
+            #A fitness profile is given for every position in genome
+            fitness_profile_nums = list(range(0,fitness_length))
+        
+        #Use user provided sequence to sudo-randomly select fitness profiles for each position
+        elif (self.starting_parameters["user_provided_sequence"]): 
             get_seq = getUserDefinedSequence(self.starting_parameters["genbank_file"], 
                         self.starting_parameters["fasta_file"], stationary_distributions, fitness_profiles)
                         
@@ -279,7 +303,6 @@ class SLiMTree:
         
         else: #Randomly set up fitness profiles if not provided by user
             fitness_profile_nums = []
-            fitness_length = fitness_dist.shape[1] - 1 
             coding_poses = self.starting_parameters["coding_seqs"]
             for coding_pos in range(len(coding_poses)):
                 fitness_profile_nums = (fitness_profile_nums + [fitness_length] + #starting codon is correct
