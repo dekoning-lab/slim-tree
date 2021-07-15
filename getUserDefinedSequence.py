@@ -10,14 +10,15 @@ from Bio.Seq import Seq
 class getUserDefinedSequence:
     
     #Initialize a gb file and fasta file given by the user to find the ancestral sequence and coding regions from. Also initialize stationary distributions
-    def __init__(self, gb_file, fasta_file, stationary_dists, fitness_dists):
+    def __init__(self, gb_file, fasta_file, stationary_dists = None, fitness_dists = None):
         self.gb_file = gb_file
         self.fasta_file = fasta_file
         self.stationary_dists = stationary_dists
         self.fitness_dists = fitness_dists
         
-        self.stationary_dists = self.stationary_dists.transpose()
-        self.stationary_dists = self.stationary_dists.drop("neutral")
+        if (self.stationary_dists != None):
+            self.stationary_dists = self.stationary_dists.transpose()
+            self.stationary_dists = self.stationary_dists.drop("neutral")
 
     #Get the coding ranges of sequences from the gb file
     def get_coding_features(self):

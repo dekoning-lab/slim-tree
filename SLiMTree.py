@@ -63,7 +63,7 @@ class SLiMTree:
         parser.add_argument('-g','--genome_length', help = 'length of the genome - amino acids, default = 500', type=int, default = 500)
         parser.add_argument('-r','--recombination_rate', help = 'recombination rate, default = 2.5e-8', type=float, default = 2.5e-8)
         parser.add_argument('-b','--burn_in_multiplier', help = 'value to multiply population size by for burn in, default = 10', type=float, default = 10)
-        parser.add_argument('-k','--sample_size', help = 'size of sample obtained from each population at output. Input all for whole sample and consensus for consensus sequence. default = 10', type=str, default = "10")
+        parser.add_argument('-k','--sample_size', help = 'size of sample obtained from each population at output. Input \'all\' for whole sample and consensus for consensus sequence. default = all', type=str, default = "all")
 
         parser.add_argument('-c','--count_subs', type = self.str2bool, default = True, const=True, nargs='?',
                 help = 'boolean specifying whether to count substitutions, turning off will speed up sims. default = True')
@@ -84,6 +84,9 @@ class SLiMTree:
                 help = 'boolean specifying whether user provides ancestral sequence and coding regions, Default = False')
         parser.add_argument('-f', '--fasta_file', type = str, default = None, help = 'fasta file containing ancestral sequence - please provide only 1 sequence')
         parser.add_argument('-gb', '--genbank_file', type = str, default = None, help = 'genbank file containing information about ancestral genome - please provide data for only 1 genome')
+        parser.add_argument('-R', '--randomize_fitness_profiles', type = self.str2bool, default = True, const = True, nargs = '?',
+                help = ('boolean specifying whether to randomize fitness profiles provided in the fitness data files folder. Default = True. If false, there' +
+                                ' must be equal fitness profiles to protein sequence length'))
 
         #Get arguments from user
         arguments = parser.parse_args()
@@ -128,6 +131,8 @@ class SLiMTree:
         self.starting_parameters["count_subs"] = arguments.count_subs
         self.starting_parameters["output_gens"] = arguments.output_gens
         self.starting_parameters["backup"] = arguments.backup
+        self.starting_parameters["randomize_fitness_profiles"] = arguments.randomize_fitness_profiles
+        
         self.starting_parameters["polymorphisms"] = arguments.polymorphisms
 
 
@@ -143,11 +148,6 @@ class SLiMTree:
             self.starting_parameters["gene_count"] = arguments.gene_count
             self.starting_parameters["coding_ratio"] = arguments.coding_ratio
             self.starting_parameters["coding_seqs"] = self.get_coding_seqs()
-
-
-
-
-
 
         #Set up the filenames for file io
         input_file_start = os.getcwd() + '/' + self.input_file.split('.')[0]
@@ -222,7 +222,7 @@ class SLiMTree:
         avg_noncoding_length = 0
         if (gene_count != 1):
             avg_noncoding_length = math.floor((genome_length - percent_coding) / (gene_count - 1)) #Average length of non-coding regions by subtracting number of coding aa from total aa
-
+            
         coding_regions = []
         current_aa = 0
 
@@ -234,7 +234,7 @@ class SLiMTree:
             #Make sure that the genome will not be longer than the genome
             if (current_aa + avg_coding_length > genome_length - 1):
                 current_aa = genome_length - avg_coding_length - 1
-
+                
         coding_regions = np.stack(np.array_split(coding_regions, gene_count))
         return coding_regions
 
@@ -261,6 +261,13 @@ class SLiMTree:
 
 
         fitness_profiles = {}
+        fitness_length = fitness_dist.shape[1] - 1 
+        
+        #Make sure there are the same number of fitness profiles as stationary dists
+        if(fitness_length != stationary_distributions.shape[1] - 1):
+            print("Please ensure that the same number of fitness distributions and stationary " +
+                "distributions are provided")
+            sys.exit(0)
 
         for amino_acid_num in range(len(amino_acids)):
                 aa = amino_acids[amino_acid_num]
@@ -268,8 +275,25 @@ class SLiMTree:
 
 
         #Set up fitness profiles
-        if (self.starting_parameters["user_provided_sequence"]): #Use user provided fitness profiles if given
-            get_seq = getUserDefinedSequence(self.starting_parameters["genbank_file"],
+        if(not self.starting_parameters["randomize_fitness_profiles"]): #Use user provided fitness profiles
+            
+            if(self.starting_parameters["user_provided_sequence"]):
+                get_seq = getUserDefinedSequence(self.starting_parameters["genbank_file"], 
+                        self.starting_parameters["fasta_file"])
+                self.starting_parameters["ancestral_sequence"] = ans_seq
+                self.starting_parameters["genome_length"] = len(ans_seq)
+                
+            if(fitness_length != self.starting_parameters["genome_length"]):
+                print("Please ensure that when fitness profiles are not randomized, the " +
+                "same number of fitness profiles are provided as the genome length")
+                sys.exit(0)
+                
+            #A fitness profile is given for every position in genome
+            fitness_profile_nums = list(range(0,fitness_length))
+        
+        #Use user provided sequence to sudo-randomly select fitness profiles for each position
+        elif (self.starting_parameters["user_provided_sequence"]): 
+            get_seq = getUserDefinedSequence(self.starting_parameters["genbank_file"], 
                         self.starting_parameters["fasta_file"], stationary_distributions, fitness_profiles)
 
             coding_feats = get_seq.get_coding_features()
