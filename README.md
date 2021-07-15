@@ -43,3 +43,6 @@ Additional arguments include:
 Users may also specify another file under -d with changes to parameters for different branches. 
 
 The folder DataPostProcessing contains scripts that were can be used for post processing of the output data and the folder. ExampleBatchScripts contains scripts used to run SLiM-Tree for some of the simulations we ran.
+	
+	
+**Structure based fitness functions coming soon - stay tuned**
