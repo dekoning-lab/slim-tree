@@ -43,7 +43,7 @@ class writeSLiMHPC(writeSLiM):
 
     def write_subpop_nonwf(self, population_parameters):
         pop_name = population_parameters["pop_name"]
-    
+
         #Create a new script and batch file for the population
         batch_file = open(self.general_output_filename + "_" + pop_name + ".sh", "w")
         batch_file.write("#!/bin/sh\n\n#SBATCH -J SLiM_Simulation_" + pop_name + "\n#SBATCH -t " + population_parameters["time"] +
@@ -108,7 +108,7 @@ class writeSLiMHPC(writeSLiM):
 
             if(population_parameters["last_child_clade"]):
                 parent_output_file.write("\n}")
-            
+
             parent_output_file.close()
 
             #Write code to import in the prevouisly fixed state
@@ -136,7 +136,7 @@ class writeSLiMHPC(writeSLiM):
         end_dist = int(population_parameters["end_dist"])
         pop_name =  population_parameters["pop_name"]
         num_genomes = str(population_parameters["population_size"]*2)
-        
+
         repeated_commands_string = str(start_dist) +":" + str(end_dist) + "late () {"
 
         #Write a command to count the substitutions (identity by state)
@@ -151,7 +151,7 @@ class writeSLiMHPC(writeSLiM):
                         num_genomes + "), muts_mat)%" + num_genomes + "== 0);" +
                         "\n\n\t\tdifferent_muts = (ancestral_genome != compare_seq);" +
                         "\n\t\tnew_fixations = different_muts & fixed_nucs;" +
-                        "\n\t\tsim.setValue(\"fixations_counted_p1" + 
+                        "\n\t\tsim.setValue(\"fixations_counted_p1" +
                         "\", sim.getValue(\"fixations_counted_p1\") + sum(new_fixations));" +
                         "\n\n\t\tancestral_genome[new_fixations] = compare_seq[new_fixations];" +
                         "\n\t\tsim.setValue(\"fixations_p1\", ancestral_genome);\n\t};")
@@ -200,6 +200,15 @@ class writeSLiMHPC(writeSLiM):
                 "\n\tpaste(sim.getValue(\"fixations_p1\"), sep = \"\"));")
 
         end_population_string += "\n\tsim.outputFixedMutations();"
+
+        #Write files containing polymorphisms in each population and relative proportions
+        if(population_parameters["polymorphisms"]):
+            end_population_string += ("\n\tpop_seq = sample("+ population_parameters["pop_name"] +".individuals.genomes, 1).nucleotides();\n\tpop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = \"\");" +
+                            "\n\tpolymorph_str = c();\n\tfor (a in 0:(length(pop_seq)-1)) {\n\t\tdiffs = c();\n\t\tfor (g in " + population_parameters["pop_name"] + ".individuals.genomes.nucleotides()){" +
+                            "\n\t\taa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = \"\");\n\t\tdiffs = c(diffs, aa_seq[a]);\n\t}" +
+                            "\n\tunique_diffs = unique(diffs);\n\tif (length(unique_diffs) > 1) {\n\t\tpolymorph_str = c(polymorph_str, a, \": \");\n\t\tfor (p in unique_diffs) {" +
+                            "\n\t\t\tpolymorph_str = c(polymorph_str, p, \": \", length(which(diffs == p)) / length(diffs), \" \");\n\t\t}\n\tpolymorph_str = c(polymorph_str, \"\\n\");\n\t}" +
+                            "}\n\twriteFile(\"" + os.getcwd() + "/" + population_parameters["pop_name"] + "_polymorphisms.txt\", paste(polymorph_str, sep = \"\"));")
 
 
         #If this is the last clade from a certain parent, write script to destroy that parent's temporary files
