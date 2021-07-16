@@ -65,6 +65,8 @@ class SLiMTree:
         parser.add_argument('-b','--burn_in_multiplier', help = 'value to multiply population size by for burn in, default = 10', type=float, default = 10)
         parser.add_argument('-k','--sample_size', help = 'size of sample obtained from each population at output. Input \'all\' for whole sample and consensus for consensus sequence. default = all', type=str, default = "all")
 
+        parser.add_argument('-sr', '--split_ratio', help = "proportion of the population that goes into the [left?] branch upon splitting in non-wright fisher models. must be ratio between 0 and 1.0. default = 0.5", type = float, default = 0.5)
+
         parser.add_argument('-c','--count_subs', type = self.str2bool, default = True, const=True, nargs='?',
                 help = 'boolean specifying whether to count substitutions, turning off will speed up sims. default = True')
         parser.add_argument('-o','--output_gens', type = self.str2bool, default = True, const=True, nargs='?',
@@ -125,6 +127,8 @@ class SLiMTree:
         self.starting_parameters["burn_in"] = arguments.burn_in_multiplier * arguments.population_size
         self.starting_parameters["sample_size"] = arguments.sample_size
 
+        self.starting_parameters["split_ratio"] = arguments.split_ratio
+
         self.starting_parameters["partition"] = arguments.partition
         self.starting_parameters["time"] = arguments.time
 
@@ -132,7 +136,7 @@ class SLiMTree:
         self.starting_parameters["output_gens"] = arguments.output_gens
         self.starting_parameters["backup"] = arguments.backup
         self.starting_parameters["randomize_fitness_profiles"] = arguments.randomize_fitness_profiles
-        
+
         self.starting_parameters["polymorphisms"] = arguments.polymorphisms
 
 
@@ -222,7 +226,7 @@ class SLiMTree:
         avg_noncoding_length = 0
         if (gene_count != 1):
             avg_noncoding_length = math.floor((genome_length - percent_coding) / (gene_count - 1)) #Average length of non-coding regions by subtracting number of coding aa from total aa
-            
+
         coding_regions = []
         current_aa = 0
 
@@ -234,7 +238,7 @@ class SLiMTree:
             #Make sure that the genome will not be longer than the genome
             if (current_aa + avg_coding_length > genome_length - 1):
                 current_aa = genome_length - avg_coding_length - 1
-                
+
         coding_regions = np.stack(np.array_split(coding_regions, gene_count))
         return coding_regions
 
@@ -261,8 +265,8 @@ class SLiMTree:
 
 
         fitness_profiles = {}
-        fitness_length = fitness_dist.shape[1] - 1 
-        
+        fitness_length = fitness_dist.shape[1] - 1
+
         #Make sure there are the same number of fitness profiles as stationary dists
         if(fitness_length != stationary_distributions.shape[1] - 1):
             print("Please ensure that the same number of fitness distributions and stationary " +
@@ -276,24 +280,24 @@ class SLiMTree:
 
         #Set up fitness profiles
         if(not self.starting_parameters["randomize_fitness_profiles"]): #Use user provided fitness profiles
-            
+
             if(self.starting_parameters["user_provided_sequence"]):
-                get_seq = getUserDefinedSequence(self.starting_parameters["genbank_file"], 
+                get_seq = getUserDefinedSequence(self.starting_parameters["genbank_file"],
                         self.starting_parameters["fasta_file"])
                 self.starting_parameters["ancestral_sequence"] = ans_seq
                 self.starting_parameters["genome_length"] = len(ans_seq)
-                
+
             if(fitness_length != self.starting_parameters["genome_length"]):
                 print("Please ensure that when fitness profiles are not randomized, the " +
                 "same number of fitness profiles are provided as the genome length")
                 sys.exit(0)
-                
+
             #A fitness profile is given for every position in genome
             fitness_profile_nums = list(range(0,fitness_length))
-        
+
         #Use user provided sequence to sudo-randomly select fitness profiles for each position
-        elif (self.starting_parameters["user_provided_sequence"]): 
-            get_seq = getUserDefinedSequence(self.starting_parameters["genbank_file"], 
+        elif (self.starting_parameters["user_provided_sequence"]):
+            get_seq = getUserDefinedSequence(self.starting_parameters["genbank_file"],
                         self.starting_parameters["fasta_file"], stationary_distributions, fitness_profiles)
 
             coding_feats = get_seq.get_coding_features()
@@ -371,6 +375,7 @@ class SLiMTree:
             'n': 'population_size',
             'r': 'recombination_rate',
             'k': 'sample_size',
+            'sr': 'split_ratio',
             'p': 'partition',
             't': 'time',
             'c': 'count_subs',
@@ -381,6 +386,7 @@ class SLiMTree:
             'population_size': 'population_size',
             'recombination_rate': 'recombination_rate',
             'sample_size': 'sample_size',
+            'split_ratio': 'split_ratio',
             'partition': 'partition',
             'time': 'time',
             'count_subs': 'count_subs',
@@ -433,6 +439,7 @@ class SLiMTree:
             "population_size" : self.starting_parameters["population_size"],
             "recombination_rate" : self.starting_parameters["recombination_rate"],
             "sample_size": self.starting_parameters["sample_size"],
+            "split_ratio": self.starting_parameters["split_ratio"],
             "partition": self.starting_parameters["partition"],
             "time" : self.starting_parameters["time"],
             "count_subs" : self.starting_parameters["count_subs"],
@@ -488,6 +495,7 @@ class SLiMTree:
         pop_size = parent_clade_dict["population_size"]
         rec_rate = parent_clade_dict["recombination_rate"]
         samp_size = parent_clade_dict["sample_size"]
+        split_ratio = parent_clade_dict["split_ratio"]
         part = parent_clade_dict["partition"]
         time = parent_clade_dict["time"]
         subs = parent_clade_dict["count_subs"]
@@ -509,6 +517,8 @@ class SLiMTree:
                     rec_rate = float(current_clade_data['recombination_rate'])
                 if('sample_size' in current_clade_data.keys()):
                     samp_size = int(current_clade_data['sample_size'])
+                if ('split_ratio' in current_clade_data.keys()):
+                    split_ratio = int(current_clade_data['split_ratio'])
                 if('partition' in current_clade_data.keys()):
                     part = current_clade_data['partition']
                 if('time' in current_clade_data.keys()):
@@ -556,6 +566,7 @@ class SLiMTree:
             "mutation_rate" : mut_rate,
             "population_size" : pop_size,
             "recombination_rate": rec_rate,
+            "split_ratio": split_ratio,
             "dist_from_start" : dist_from_start,
             "end_dist": self.starting_parameters["burn_in"]  + phylogeny.distance(clade),
             "terminal_clade" : clade.clades == [],

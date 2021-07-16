@@ -183,8 +183,8 @@ class writeSLiMHPC(writeSLiM):
             end_population_string += super().write_terminal_output(population_parameters, "p1")
         else:
             if (self.model_type == False):
-                #Tag each individual with either 1 or 2 to go into different subpopulations. Should be split evenly.
-                end_population_string += "\n\tp1.individuals.tag = 0;\n\tsample(p1.individuals, integerDiv(p1.individualCount, 2)).tag = 1;\n\tp1.individuals[p1.individuals.tag == 0].tag = 2;\n\tsim.addSubpop(\"p2\", 0);"
+                #Tag each individual with either 1 or 2 to go into different subpopulations. Should be split according to proportions.
+                end_population_string += "\n\tp1.individuals.tag = 0;\n\tsample(p1.individuals, asInteger(p1.individualCount* "+ str(population_parameters["split_ratio"]) +")).tag = 1;\n\tp1.individuals[p1.individuals.tag == 0].tag = 2;\n\tsim.addSubpop(\"p2\", 0);"
                 end_population_string += "\n\tp2.takeMigrants(p1.individuals[p1.individuals.tag == 2]);\n\tsim.outputFull(\""+ population_parameters["pop_name"] +"_1.txt\");\n\tp1.takeMigrants(p2.individuals);\n\tp2.takeMigrants(p1.individuals[p1.individuals.tag == 1]);"
                 end_population_string += "\n\tsim.outputFull(\""+ population_parameters["pop_name"] +"_2.txt\");\n\tp1.takeMigrants(p2.individuals);\n\tp2.removeSubpopulation();"
             else:

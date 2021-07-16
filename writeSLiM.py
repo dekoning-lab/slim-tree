@@ -150,7 +150,7 @@ class writeSLiM:
 
         #Replace start and stop codons with start and stop codons
         for codon_num in start_codon_nums: codons[codon_num] = start_codon
-        for codon_num in stop_codon_nums: codons[codon_num] = random.choice(stop_codons) 
+        for codon_num in stop_codon_nums: codons[codon_num] = random.choice(stop_codons)
 
         return (codons)
 
@@ -315,7 +315,7 @@ class writeSLiM:
         if (population_parameters["count_subs"]):
             repeated_commands_string += ("\n\tif(length(sim.mutations)!= 0){"
                         "\n\t\tancestral_genome = sim.getValue(\"fixations_" + pop_name + "\");" +
-                        "\n\t\trow_num = " + pop_name + ".individualCount * 2;" + 
+                        "\n\t\trow_num = " + pop_name + ".individualCount * 2;" +
                         "\n\t\tmuts_mat = integer(row_num*1500);"
                         "\n\t\tmuts_mat = " + pop_name + ".genomes.nucleotides(NULL, NULL, \"integer\");" +
                         "\n\t\tmuts_mat = matrix(muts_mat, nrow = row_num, byrow = T);" +
@@ -388,14 +388,14 @@ class writeSLiM:
             #Not the starting population, break off from existing population
             define_population_string = (str(int(population_parameters["dist_from_start"])) + " late() { \n" +
                                     "\tsim.addSubpop(\"" + population_parameters["pop_name"] + "\", 0);")
-            #If this is the last population broken off, take the last half of the parent population
+            #If this is the last population broken off, take the remainder of the parent population
             if (population_parameters["last_child_clade"] == True):
                 define_population_string += str("\n\tcatn(" + population_parameters["parent_pop_name"] + ".individualCount);"+
                 "\n\t" + population_parameters["pop_name"] + ".takeMigrants(" + population_parameters["parent_pop_name"] + ".individuals);" )
             else:
-                #Take half of the parent population
-                define_population_string += str("\n\tmigrants = sample(" + population_parameters["parent_pop_name"] + ".individuals, integerDiv("
-                                    + population_parameters["parent_pop_name"] + ".individualCount, 2));\n\t"
+                #Take proportion of the parent population
+                define_population_string += str("\n\tmigrants = sample(" + population_parameters["parent_pop_name"] + ".individuals, asInteger("
+                                    + population_parameters["parent_pop_name"] + ".individualCount * " + str(population_parameters["split_ratio"]) + "));\n\t"
                                     + population_parameters["pop_name"] + ".takeMigrants(migrants);" +
                                     "\n\tcatn(" + population_parameters["parent_pop_name"] + ".individualCount);")
 
