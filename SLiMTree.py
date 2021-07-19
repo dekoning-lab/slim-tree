@@ -74,7 +74,7 @@ class SLiMTree:
         parser.add_argument('-B','--backup', type = self.str2bool, default = True, const=True, nargs='?',
                 help = 'boolean specifying whether to backup simulations, turning off will save space. default = True')
         parser.add_argument('-P', '--polymorphisms', type = self.str2bool, default = True, const = True, nargs = '?',
-                help = "boolean specifying whether to output all polymorphisms at the end of each population. default = True")
+                help = "boolean specifying whether to specify all polymorphisms and fixed states at the end of each population. default = True")
 
         parser.add_argument('-w', '--wright_fisher_model', type = self.str2bool, default=True, const=True, nargs='?',
                 help = 'boolean specifying whether this is a wright-fisher model or non-wright-fisher model. default = True')
