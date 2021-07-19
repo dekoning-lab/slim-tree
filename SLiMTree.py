@@ -7,28 +7,44 @@
 #matplotlib
 #random
 #pandas
+#re
 #numpy
 #os
 #json
 #string
 #math
 
-import sys, argparse, random, os, json, string, math, pandas
+import sys, argparse, random, os, json, string, math, pandas, re
 import numpy as np
+
 from Bio import Phylo
 from matplotlib.pyplot import show, savefig
 from writeSLiM import writeSLiM
 from writeSLiMHPC import writeSLiMHPC
 from getUserDefinedSequence import getUserDefinedSequence
 
+from contactmaps import ContactMap
+from contactmaps import utils
+
 class SLiMTree:
 
     #Main script to run other commands
     def __init__(self):
         self.read_user_input()
-        self.find_fitness_profile()
-
+        
+        if (self.starting_parameters["fitness_profile_calc"]):
+            self.find_fitness_profile()
+        else:
+            chain_ids = self.set_up_pdbs(self.starting_parameters["pdb_file"], 
+                    self.starting_parameters["distribution_pdb_files"], 
+                    self.starting_parameters["pdb_chain_id"],
+                    self.starting_parameters["distribution_chain_ids"], 
+                    self.starting_parameters["cmap_files_directory"])
+            
+            self.run_goldstein(chain_ids)
+            
         clade_data = self.read_clade_data()
+        
         if (self.data_file != None):
             self.data_file.close()
 
@@ -60,7 +76,7 @@ class SLiMTree:
         #Default parameters are somewhat arbitrary and should be changed for each sim
         parser.add_argument('-n','--population_size', help = 'starting population size for the simulation, default = 100', type = int, default = 100)
         parser.add_argument('-v','--mutation_rate', help = 'starting mutation rate for the simulation, default = 2.5e-6', type=float, default = 2.5e-6)
-        parser.add_argument('-g','--genome_length', help = 'length of the genome - amino acids, default = 500', type=int, default = 500)
+        parser.add_argument('-g','--genome_length', help = 'length of the genome - amino acids, default = 300', type=int, default = 300)
         parser.add_argument('-r','--recombination_rate', help = 'recombination rate, default = 2.5e-8', type=float, default = 2.5e-8)
         parser.add_argument('-b','--burn_in_multiplier', help = 'value to multiply population size by for burn in, default = 10', type=float, default = 10)
         parser.add_argument('-k','--sample_size', help = 'size of sample obtained from each population at output. Input \'all\' for whole sample and consensus for consensus sequence. default = all', type=str, default = "all")
@@ -88,7 +104,25 @@ class SLiMTree:
         parser.add_argument('-gb', '--genbank_file', type = str, default = None, help = 'genbank file containing information about ancestral genome - please provide data for only 1 genome')
         parser.add_argument('-R', '--randomize_fitness_profiles', type = self.str2bool, default = True, const = True, nargs = '?',
                 help = ('boolean specifying whether to randomize fitness profiles provided in the fitness data files folder. Default = True. If false, there' +
-                                ' must be equal fitness profiles to protein sequence length'))
+                        ' must be equal fitness profiles to protein sequence length'))
+        
+        parser.add_argument('-fc', '--fitness_profile_calc', type = self.str2bool, default = True, const = True, nargs='?',
+                help = 'boolean specifying whether fitness profiles should be used to calculate fitness. ' +
+                    'If false, protein structure fitness will be calculated, and a pdb files must be provided. ' +
+                    'If protein structure fitness calculated, a non-Wright-Fisher model must be used. Default = True.')
+        parser.add_argument('-pdb', '--pdb_file', type = str, help = 'Path to file containing a PDB file with a valid ' +
+                'protein structure to model protein structure fitness off of.')
+        parser.add_argument('-pdbs', '--distribution_pdb_files', type = str, default = sys.path[0] + "/" + 'pdbfiles', 
+                help = 'Path to folder containing a PDB files with a valid protein structures to act as distributions ' +
+                'of proteins for protein structure fitness effects. Default = pdbfiles this is a folder in SLiM-Tree based off ' +
+                'the work by Goldstein and Pollock (2017).')
+        parser.add_argument('-cid', '--pdb_chain_id', type = str, default = 'A', help = 'Chain id for the main pdb file.')
+        parser.add_argument('-cids', '--distribution_chain_ids', type = str, default = sys.path[0] + "/" + 'pdbfiles/chain_ids.txt',
+                help = 'File specifying chain ids for the pdbs used in the distribution of fitness effects. In file specify <pdb_name>:<chain_id>. ' +
+                'Default = pdbfiles/chain_ids. This is a file in SLiM-Tree based off the work by Goldstein and Pollock (2017).')
+        parser.add_argument('-ct', '--contact_threshold', type = float, default = 7.0, help = 'Maximum distance two proteins may be apart ' +
+                'to be in contact in protein structure based fitness effects')
+
 
         #Get arguments from user
         arguments = parser.parse_args()
@@ -119,6 +153,48 @@ class SLiMTree:
             sys.exit(0);
 
 
+        #If using protein-based fitness, make sure pdb files are provided and non-WF model is selected. Make sure
+        #user does not give a coding ratio
+        if (arguments.fitness_profile_calc == False and arguments.pdb_file == None):
+            print("When calculating protein-based fitness, PDB file and folder of distribution proteins must be provided. Closing program.")
+            sys.exit(0)
+        if (arguments.fitness_profile_calc == False and arguments.wright_fisher_model):
+            print("When calculating protein-based fitness, a non-Wright-Fisher model must be used to ensure population survives.")
+            sys.exit(0)
+        if(arguments.fitness_profile_calc == False and 
+                (arguments.coding_ratio != 1.0 or arguments.gene_count != 1)):
+            print("When calculating protein-based fitness only one gene (ie. the protein) with a coding ratio of 1 may be used.")
+           
+        #Set up the filenames for file io
+        input_file_start = os.getcwd() + '/' + self.input_file.split('.')[0]
+        self.starting_parameters["tree_filename"] = input_file_start + "_phylogeny.png"
+        self.starting_parameters["fasta_filename"] = input_file_start
+
+        if(arguments.tree_data_file != None):
+            self.data_file = arguments.tree_data_file[0]
+        else:
+            self.data_file = None
+            
+       
+        #Set up the output of scripts to a single folder
+        split_starting_file = input_file_start.split('/')
+        output_files_directory = "/".join(split_starting_file[0:(len(split_starting_file)-1)]) + "/slimScripts"
+        backup_files_directory = "/".join(split_starting_file[0:(len(split_starting_file)-1)]) + "/backupFiles"
+        if(not arguments.fitness_profile_calc):
+            cmap_files_directory = "/".join(split_starting_file[0:(len(split_starting_file)-1)]) + "/cmaps"
+
+
+        try:
+            os.mkdir(output_files_directory)
+            os.mkdir(backup_files_directory)
+            if(not arguments.fitness_profile_calc):            
+                os.mkdir(cmap_files_directory)
+                
+        except OSError:
+            print ("The directory %s already exits, program files will be overwritten" % output_files_directory)
+
+        self.starting_parameters["output_file"] = output_files_directory + "/" + split_starting_file[-1]
+
 
         #Set up the starting parameters
         self.starting_parameters["mutation_rate"] = arguments.mutation_rate
@@ -126,6 +202,16 @@ class SLiMTree:
         self.starting_parameters["recombination_rate"] = arguments.recombination_rate
         self.starting_parameters["burn_in"] = arguments.burn_in_multiplier * arguments.population_size
         self.starting_parameters["sample_size"] = arguments.sample_size
+        self.starting_parameters["fitness_profile_calc"] = arguments.fitness_profile_calc
+        
+        if(not arguments.fitness_profile_calc):
+            self.starting_parameters["contact_threshold"] = arguments.contact_threshold
+            self.starting_parameters["pdb_file"] = arguments.pdb_file
+            self.starting_parameters["distribution_pdb_files"] = arguments.distribution_pdb_files
+            self.starting_parameters["pdb_chain_id"] = arguments.pdb_chain_id
+            self.starting_parameters["distribution_chain_ids"] = arguments.distribution_chain_ids
+            self.starting_parameters["cmap_files_directory"] = cmap_files_directory
+        
 
         self.starting_parameters["split_ratio"] = arguments.split_ratio
 
@@ -153,32 +239,6 @@ class SLiMTree:
             self.starting_parameters["coding_ratio"] = arguments.coding_ratio
             self.starting_parameters["coding_seqs"] = self.get_coding_seqs()
 
-        #Set up the filenames for file io
-        input_file_start = os.getcwd() + '/' + self.input_file.split('.')[0]
-        self.starting_parameters["tree_filename"] = input_file_start + "_phylogeny.png"
-        self.starting_parameters["fasta_filename"] = input_file_start
-
-        if(arguments.tree_data_file != None):
-            self.data_file = arguments.tree_data_file[0]
-        else:
-            self.data_file = None
-
-
-        #Set up the output of scripts to a single folder
-        split_starting_file = input_file_start.split('/')
-        output_files_directory = "/".join(split_starting_file[0:(len(split_starting_file)-1)]) + "/slimScripts"
-        backup_files_directory = "/".join(split_starting_file[0:(len(split_starting_file)-1)]) + "/backupFiles"
-
-
-        try:
-            os.mkdir(output_files_directory)
-            os.mkdir(backup_files_directory)
-        except OSError:
-            print ("The directory %s already exits, program files will be overwritten" % output_files_directory)
-
-        self.starting_parameters["output_file"] = output_files_directory + "/" + split_starting_file[-1]
-
-
 
         #Save starting parameters and value of theta to a file for later reference
         theta = 4*arguments.mutation_rate*arguments.population_size
@@ -197,6 +257,7 @@ class SLiMTree:
         parameter_file.close()
 
 
+
     #Command to take input from user and convert to bool
     #From: https://stackoverflow.com/questions/15008758/parsing-boolean-values-with-argparse
     def str2bool(self, v):
@@ -208,6 +269,94 @@ class SLiMTree:
             return False
         else:
             raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
+
+    #Sets up contact maps for main pdb file and pdb files for distribution by iterating through each pdb
+    def set_up_pdbs(self, pdb_file, distribution_pdbs, main_chain_id, distribution_chain_ids, 
+                contact_maps_dir):
+                
+        print("Making contact matrices")
+        
+        #Read chain ids of distribution of pdbs into dictionary
+        dist_ids_data = open(distribution_chain_ids)
+        chain_ids = {}
+        line = dist_ids_data.readline()
+        
+        while (line != ''):
+            line = line.split(':')
+            pdb_name = line[0]
+            chain_id = line[1].split('\n')[0]
+            
+            chain_ids[pdb_name] = chain_id
+
+            line = dist_ids_data.readline()
+        
+        
+        #Find the contact map for the main pdb file
+        contact_map = self.get_contact_map(pdb_file, pdb_file[0:-4], main_chain_id)
+        np.savetxt(contact_maps_dir + "/main_contact_mat.csv",contact_map, fmt = "%d", delimiter= ',', 
+                newline = ",")
+        
+        
+        #Find the contact map for each of the pdb files in the distribution
+        
+        with open(contact_maps_dir + "/distribution_contacts.csv", "w") as dist_contact_file:
+            pdb_count = 0
+        
+            for file in os.listdir(distribution_pdbs):
+                if file.endswith(".pdb"):
+                    protein_name = file[0:-4] #Remove '.pdb'
+                    
+                    if(protein_name in chain_ids.keys()):
+                        chain_id = chain_ids[protein_name]
+                    else:
+                        chain_id = 'A'
+                        chain_ids[protein_name] = chain_id
+                        
+                    contact_map = self.get_contact_map(distribution_pdbs + "/" + file, protein_name, chain_id)
+                    
+                    
+                    np.savetxt(dist_contact_file,contact_map, fmt = "%d", delimiter= ',', newline = ",")
+                    dist_contact_file.write("\n")
+                    
+                    pdb_count += 1
+                    
+        dist_contact_file.close()
+        self.starting_parameters["dist_pdb_count"] = pdb_count
+        
+        list_chain_ids = []
+        
+        for key, val in chain_ids.items():
+            list_chain_ids.append(key)
+            list_chain_ids.append(val)
+            
+        return list_chain_ids
+        
+
+        
+    
+    #Writes a file containing the contact map of a specific protein given a pdb and chain id
+    def get_contact_map(self, pdb_file, pdb_name, chain_id):
+        pdbstructure = utils.get_structure(pdb_file)
+        model = pdbstructure[0]
+
+            
+        contactMap = ContactMap.ContactMap(model, threshold=self.starting_parameters["contact_threshold"],
+                chain_id = chain_id)
+        
+        contact_dat = np.where(contactMap.get_data())
+        contact_dat = list(zip(contact_dat[0], contact_dat[1]))
+        
+        #Little function for helping to sort data
+        def getkey(item):
+            return item[0]
+        
+        contact_dat = sorted(contact_dat, key = getkey)
+        
+        return contact_dat
+        
+
 
 
 
@@ -241,6 +390,7 @@ class SLiMTree:
 
         coding_regions = np.stack(np.array_split(coding_regions, gene_count))
         return coding_regions
+
 
 
     #Read fitness profile and stationary distribution data from psi_c50 file, make fitness profiles
@@ -365,6 +515,60 @@ class SLiMTree:
         #Find the expected value of all sites by multiplying expected values - squared because there are 2 xsomes
         self.starting_parameters["scaling_value"] = np.prod(expected_fitnesses)**2
 
+
+
+    #Runs the Goldstein-Pollock (2017) scripts to get the ancestral protein
+    def run_goldstein(self, chain_ids):
+        print("\nMaking viable ancestral sequence from protein contacts")
+        
+        # Update parameter list for correct protein size
+        with open(sys.path[0] + "/Goldstein-Pollock-2017-master/ParameterList", "r+") as param_list:
+            string_param_list = ""
+            
+            line = param_list.readline()
+            while(line != ""):
+                param = line.split(" ")[0]
+                if(param == "PROTEIN_SIZE"):
+                    string_param_list += ("PROTEIN_SIZE = " + 
+                        str(self.starting_parameters["genome_length"]) + "\n")
+                elif (param == "CUTOFF"):
+                    string_param_list += ("CUTOFF = " + 
+                        str(self.starting_parameters["contact_threshold"]) + "\n")
+                elif (param == "LOG_UNFOLDED_STATES"):
+                    string_param_list += ("LOG_UNFOLDED_STATES = " + str(math.log(3.4 ** 
+                        self.starting_parameters["genome_length"])) + "\n")
+                else:
+                    string_param_list += line
+                
+                line = param_list.readline()
+            
+            param_list.seek(0)
+            param_list.write(string_param_list)
+        param_list.close()
+            
+        
+            
+        initial_working_dir = os.getcwd()
+        chain_ids = ",".join(chain_ids)
+            
+        
+        os.chdir(sys.path[0] + "/Goldstein-Pollock-2017-master/simulate/")
+        os.system("javac *.java")
+        os.chdir("..")
+        self.starting_parameters["ancestral_sequence"] = os.popen("java simulate.Simulate " + 
+            initial_working_dir + "/" + self.starting_parameters["pdb_file"] + " " + 
+            initial_working_dir + "/" + self.starting_parameters["distribution_pdb_files"] +
+            " \"" + self.starting_parameters["pdb_file"][0:-4] + "," + self.starting_parameters["pdb_chain_id"] +
+            "\" \"" + chain_ids + "\"").read()
+            
+            
+        #Additional little command to make sure that protein calculation can occur
+        os.chdir("..")
+        os.system ("gcc GetEnergy.c -o GetEnergy -lm");
+        
+        os.chdir(initial_working_dir)
+               
+        
 
 
     #Read individaul data from the file - to add more parameters modify data_translation_dict
