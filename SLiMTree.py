@@ -82,6 +82,8 @@ class SLiMTree:
         parser.add_argument('-G', '--gene_count', type = int, default = 1, help = "Number of genes in the model. Default = 1.")
         parser.add_argument('-C', '--coding_ratio', type = float, default = 1.0, help = "Ratio of the genome which are coding regions as a ratio coding/noncoding. Default = 1.0")
 
+        parser.add_argument('-hp', '--haploidy', type = self.str2bool, default = False, help = "boolean specifying whether to model haploidy. Default = False")
+
         parser.add_argument('-s', '--user_provided_sequence', type = self.str2bool, default = False, const = True, nargs = '?',
                 help = 'boolean specifying whether user provides ancestral sequence and coding regions, Default = False')
         parser.add_argument('-f', '--fasta_file', type = str, default = None, help = 'fasta file containing ancestral sequence - please provide only 1 sequence')
@@ -145,6 +147,8 @@ class SLiMTree:
         self.starting_parameters["genbank_file"] = arguments.genbank_file
 
         self.starting_parameters["wf_model"] = arguments.wright_fisher_model
+
+        self.starting_parameters["haploidy"] = arguments.haploidy
 
         #Set up coding sequences if no user defined sequence is specified
         if (not arguments.user_provided_sequence):
@@ -362,8 +366,11 @@ class SLiMTree:
         #Find the expected value for each site in the genome based on it's respective fitness profile
         for fitness_profile in self.starting_parameters["fitness_profile_nums"]:
             expected_fitnesses.append(expected_fitness_profiles[fitness_profile])
-        #Find the expected value of all sites by multiplying expected values - squared because there are 2 xsomes
-        self.starting_parameters["scaling_value"] = np.prod(expected_fitnesses)**2
+        #Find the expected value of all sites by multiplying expected values - squared because there are 2 xsomes in diploid models
+        if (self.starting_parameters["haploidy"]):
+            self.starting_parameters["scaling_value"] = np.prod(expected_fitnesses)
+        else:
+            self.starting_parameters["scaling_value"] = np.prod(expected_fitnesses)**2
 
 
 

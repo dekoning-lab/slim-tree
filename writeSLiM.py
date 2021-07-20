@@ -37,6 +37,8 @@ class writeSLiM:
 
         self.coding_regions = start_para_dict["coding_seqs"]
 
+        self.haploidy = start_para_dict["haploidy"]
+
         #Set up conversion from amino acid to codon
         with open(os.path.dirname(os.path.realpath(__file__)) + '/fitnessDataFiles/slim_codon_nums.csv', newline='') as slim_codon_nums:
             reader = csv.reader(slim_codon_nums)
@@ -87,8 +89,11 @@ class writeSLiM:
                         "\n\tinitializeMutationTypeNuc(\"m1\", 0.5, \"f\", 0.0);" +
                         "\n\tm1.convertToSubstitution = F;" +
                         "\n\tinitializeGenomicElementType(\"g1\", m1, 1.0, mm);" +
-                        "\n\tinitializeGenomicElementType(\"g2\", m1, 1.0, mm);" +
-                        "\n\tinitializeRecombinationRate("+ str(population_parameters ["recombination_rate"])+");")
+                        "\n\tinitializeGenomicElementType(\"g2\", m1, 1.0, mm);")
+        if (self.haploidy == True):
+            initialize_string += "\n\tinitializeRecombinationRate(0);"
+        else:
+            initialize_string += "\n\tinitializeRecombinationRate("+ str(population_parameters ["recombination_rate"])+");"
 
         #Initialize Genomic Elements according to number of genes for easy visualization in SLiMgui. g1 = coding region, g2 = non-coding region
 
@@ -285,8 +290,11 @@ class writeSLiM:
 
 
        #Now write out the fitness callback based on the fitness distribution
-        fitness_callback_string = ("fitness(NULL) {return(get_genome_fitness(genome1)" +
-                            "*get_genome_fitness(genome2));}\n\n\n")
+        if (self.haploidy == False):
+            fitness_callback_string = ("fitness(NULL) {return(get_genome_fitness(genome1)" +
+                            "*get_genome_fitness(genome2));//If error says total fitness < 0.0, mutation rate is lethal\n}\n\n\n")
+        else:
+            fitness_callback_string = ("fitness(NULL) {return(get_genome_fitness(genome1));//If error says total fitness < 0.0, mutation rate is lethal\n}\n\n\n")
 
         self.output_file.write(fitness_callback_string)
 
@@ -296,9 +304,12 @@ class writeSLiM:
     #Write the reproduction callback for non-Wright-Fisher models
     def write_reproduction(self):
         #Basic reproduction callback for now; more functionality could be added later if necessary.
-        reproduction_string = ("reproduction() { " +
+        if (self.haploidy == False):
+            reproduction_string = ("reproduction() { " +
                             "\n\tsubpop.addCrossed(individual, subpop.sampleIndividuals(1));" +
                             "\n }\n\n\n")
+        else:
+            reproduction_string = ("reproduction(){\n\tsubpop.addRecombinant(genome1, NULL, NULL, NULL, NULL, NULL);\n}\n\n\n")
 
         self.output_file.write(reproduction_string)
 
@@ -315,19 +326,22 @@ class writeSLiM:
         if (population_parameters["count_subs"]):
             repeated_commands_string += ("\n\tif(length(sim.mutations)!= 0){"
                         "\n\t\tancestral_genome = sim.getValue(\"fixations_" + pop_name + "\");" +
-                        "\n\t\trow_num = " + pop_name + ".individualCount * 2;" +
-                        "\n\t\tmuts_mat = integer(row_num*1500);"
-                        "\n\t\tmuts_mat = " + pop_name + ".genomes.nucleotides(NULL, NULL, \"integer\");" +
-                        "\n\t\tmuts_mat = matrix(muts_mat, nrow = row_num, byrow = T);" +
-                        "\n\t\tcompare_seq = c(muts_mat[0,]);"+
-                        "\n\n\t\tfixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = " +
-                        "row_num), muts_mat)% row_num == 0);" +
-                        "\n\n\t\tdifferent_muts = (ancestral_genome != compare_seq);" +
-                        "\n\t\tnew_fixations = different_muts & fixed_nucs;" +
-                        "\n\t\tsim.setValue(\"fixations_counted_" + pop_name +
-                        "\", sim.getValue(\"fixations_counted_" + pop_name+ "\") + sum(new_fixations));" +
-                        "\n\n\t\tancestral_genome[new_fixations] = compare_seq[new_fixations];" +
-                        "\n\t\tsim.setValue(\"fixations_" + pop_name + "\", ancestral_genome);\n\t};")
+                        "\n\t\trow_num = " + pop_name + ".individualCount")
+            if (self.haploidy):
+                repeated_commands_string += ";\n\t\tmuts_mat = integer(row_num*1500);\n\t\tmuts_mat = " + pop_name + ".individuals.genome1.nucleotides(NULL, NULL, \"integer\");"
+            else:
+                repeated_commands_string += "* 2;\n\t\tmuts_mat = integer(row_num*1500);\n\t\tmuts_mat = " + pop_name + ".genomes.nucleotides(NULL, NULL, \"integer\");"
+
+            repeated_commands_string += ("\n\t\tmuts_mat = matrix(muts_mat, nrow = row_num, byrow = T);" +
+                            "\n\t\tcompare_seq = c(muts_mat[0,]);"+
+                            "\n\n\t\tfixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = " +
+                            "row_num), muts_mat)% row_num == 0);" +
+                            "\n\n\t\tdifferent_muts = (ancestral_genome != compare_seq);" +
+                            "\n\t\tnew_fixations = different_muts & fixed_nucs;" +
+                            "\n\t\tsim.setValue(\"fixations_counted_" + pop_name +
+                            "\", sim.getValue(\"fixations_counted_" + pop_name+ "\") + sum(new_fixations));" +
+                            "\n\n\t\tancestral_genome[new_fixations] = compare_seq[new_fixations];" +
+                            "\n\t\tsim.setValue(\"fixations_" + pop_name + "\", ancestral_genome);\n\t};")
 
         #Write a command to output when every 100th generation has passed
         if(population_parameters["output_gens"]):
@@ -365,6 +379,9 @@ class writeSLiM:
 
             if(population_parameters["last_child_clade"] == True):
                 define_population_string += "\n\t" + population_parameters["parent_pop_name"]+".setSubpopulationSize(0);"
+
+            if (self.haploidy):
+                define_population_string += "\n\t" + population_parameters["pop_name"] + ".setCloningRate(1.0);"
 
             define_population_string += "\n}\n\n\n"
 
@@ -443,12 +460,18 @@ class writeSLiM:
                     "\n\twriteFile(\"" + self.fasta_filename + "_nuc.fasta\", \"\", append = F);" +
                     "\n\tsim.addSubpop(\"p1\", " + str(population_parameters["population_size"]) + ");")
 
+        if (self.haploidy and self.model_type == True):
+            pop_string += "\n\tp1.setCloningRate(1.0);"
+
         #Write code to start a fixed state from the starting nucleotide sequence
         pop_string += "\n\tsim.setValue(\"fixations_p1\", sim.chromosome.ancestralNucleotides(format = \"integer\"));"
 
         #At the start of the sim there are no fixations counted
         pop_string += "\n\tsim.setValue(\"fixations_counted_p1\", 0);"
         pop_string += "\n}\n\n\n"
+
+        if (self.haploidy and self.model_type == True):
+            pop_string += "late(){\n\tsim.subpopulations.individuals.genome2.removeMutations();\n}\n\n\n\n\n"
 
         self.output_file.write(pop_string)
 
@@ -466,7 +489,7 @@ class writeSLiM:
             end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_fixed_mutation_counts.txt\"," +
                 "asString(sim.getValue(\"fixations_counted_" + population_parameters["pop_name"] + "\")));" +
                 "\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_fixed_mutations.txt\"," +
-                " paste(sim.getValue(\"fixations_" + population_parameters["pop_name"] + "\"), sep = \"\"));")
+                " paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue(\"fixations_" + population_parameters["pop_name"] + "\"))), sep = \"\"));")
 
         #Write files containing polymorphisms in each population and relative proportions
         if(population_parameters["polymorphisms"]):
