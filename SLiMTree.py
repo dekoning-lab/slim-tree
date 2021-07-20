@@ -285,6 +285,7 @@ class SLiMTree:
         
         while (line != ''):
             line = line.split(':')
+           
             pdb_name = line[0]
             chain_id = line[1].split('\n')[0]
             
@@ -303,7 +304,8 @@ class SLiMTree:
         
         with open(contact_maps_dir + "/distribution_contacts.csv", "w") as dist_contact_file:
             pdb_count = 0
-        
+            max_contacts = 0
+            
             for file in os.listdir(distribution_pdbs):
                 if file.endswith(".pdb"):
                     protein_name = file[0:-4] #Remove '.pdb'
@@ -315,13 +317,18 @@ class SLiMTree:
                         chain_ids[protein_name] = chain_id
                         
                     contact_map = self.get_contact_map(distribution_pdbs + "/" + file, protein_name, chain_id)
-                    
+                    if((len(contact_map)*2)> max_contacts):
+                        max_contacts = len(contact_map)*2
+                        max_contact_string = (len(str(contact_map))-(max_contacts*2) + 2)
                     
                     np.savetxt(dist_contact_file,contact_map, fmt = "%d", delimiter= ',', newline = ",")
                     dist_contact_file.write("\n")
                     
                     pdb_count += 1
                     
+        self.starting_parameters["max_contacts"] = max_contacts
+        self.starting_parameters["max_contact_string"] = max_contact_string
+        
         dist_contact_file.close()
         self.starting_parameters["dist_pdb_count"] = pdb_count
         
@@ -555,11 +562,12 @@ class SLiMTree:
         os.chdir(sys.path[0] + "/Goldstein-Pollock-2017-master/simulate/")
         os.system("javac *.java")
         os.chdir("..")
-        self.starting_parameters["ancestral_sequence"] = os.popen("java simulate.Simulate " + 
-            initial_working_dir + "/" + self.starting_parameters["pdb_file"] + " " + 
-            initial_working_dir + "/" + self.starting_parameters["distribution_pdb_files"] +
-            " \"" + self.starting_parameters["pdb_file"][0:-4] + "," + self.starting_parameters["pdb_chain_id"] +
-            "\" \"" + chain_ids + "\"").read()
+        # self.starting_parameters["ancestral_sequence"] = os.popen("java simulate.Simulate " + 
+            # initial_working_dir + "/" + self.starting_parameters["pdb_file"] + " " + 
+            # initial_working_dir + "/" + self.starting_parameters["distribution_pdb_files"] +
+            # " \"" + self.starting_parameters["pdb_file"][0:-4] + "," + self.starting_parameters["pdb_chain_id"] +
+            # "\" \"" + chain_ids + "\"").read()
+        self.starting_parameters["ancestral_sequence"] = "TGCGACGAAACGCCCTGGGAACAACAAACCCCCTCGTCGCTCCTTCTTCCCGGATCACCAGAGTTGACGGAGTGGGCCTACCCGTGGATCAATCCCATGTTCGAGCCCATTTTGGCCCATAGATTCCGTATGTATTACTACCTCGACGACATTATTATCTCGAAAAAGCGCCGTTGTGAGAAGTCTGAGATGGGTTCCCACAAGCTGCGCTGTTGTATGAAGCGCAAGGATCGCGAGCTTGTATTTCGCCATATGATGTTTGCAAAATTTCTTGCTACTTTCCGTGAGGAGACTTGGAGACATCTGGAACCCATTAGGGAATTTGACTGCATAATGTTACTTGATCATCGCGAACTGAGATCAGCTCCGCTACCAAAGAGACCGACGCGTTTCATGTGGCAATTTCCGCCGCCCCAGTGTATCTTCCATGCCCTTATAGCCCTGCCATGTCCGCGTTGTCTTCAAATCCAATATGCCCTATGGGACATTACGCCATGCCTGAGGGGCTTTATGGATCTGGAAGAACGCAGGGGCCCGCTACCCTTTAGGAGAGCCGAGCCAACTACTACCACAGGGCAAATGCTTTACCCCATCCTCCGCGCCGCCTGCTGCCGGGAGTTTTGTCCCACACCCGGAGATCAGGAGCCAGATGATGACGACCCTCGCAGAAGGCGTTCCATCAAGCTCAGGACCACTCGGCGTCGGCGCAGGAGAAAAAAGCGCCGGTGTCGTAAGCGTCGCGATTTATTACGACTACTCCTTGATAGGCCTCTACAGAGGACGGATCTGAGCCGAGGCGACCACCCAGATATGAAACGGGACCGTATGATGGATACGGAAGAATTTTGGTTCACCGCACCGCTCCGAATGCCCCTCCTGCGCAAGGGGCGTCCACAGATA"
             
             
         #Additional little command to make sure that protein calculation can occur

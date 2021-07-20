@@ -36,6 +36,8 @@ class writeSLiM:
             self.dist_pdb_count = start_para_dict["dist_pdb_count"]
             self.main_pdb = os.getcwd() + "/cmaps/main_contact_mat.csv" 
             self.distribution_pdbs = os.getcwd() + "/cmaps/distribution_contacts.csv"
+            self.max_contacts = start_para_dict["max_contacts"]
+            self.max_contact_string = start_para_dict["max_contact_string"]
 
         #Set up type of model
         self.model_type = start_para_dict["wf_model"]
@@ -307,10 +309,14 @@ class writeSLiM:
     
         #Write function to get the fitness of all individuals
         fitness_calc_function = ("function (void) get_fitnesses (No sub_pop, string sub_pop_name) {" +
-            "\n\twriteFile(\"sequences.txt\", codonsToAminoAcids(sub_pop.genomes.nucleotides(format = \"codon\")));" +
-            "\n\tfitnesses = asFloat(strsplit(system(\"" + sys.path[0]+"/GetEnergy\", args =\"" +
+            "\n\tto_write = codonsToAminoAcids(nucleotidesToCodons(sim.getValue(\"fixations_\" + sub_pop_name)))" +
+            "+ codonsToAminoAcids(sub_pop.genomes.nucleotides(format = \"codon\"));" + 
+            "\n\tfilename = writeTempFile(sub_pop_name, \".txt\", to_write);" + 
+            "\n\tto_call = \"" + sys.path[0]+"GetEnergy " +
             str(self.genome_length) + " " + str(self.dist_pdb_count) + " " +  self.distribution_pdbs + " " +
-            self.main_pdb + " sequences.txt\"), sep = \",\"));" + 
+            self.main_pdb + " \" + filename + \" " + str(self.max_contacts) + " " + str(self.max_contact_string) + 
+            "\";"
+            "\n\tfitnesses = asFloat(strsplit(system(to_call), sep = \",\"));" +  
             "\n\tsim.setValue(sub_pop_name + \"_fitnesses\", fitnesses);\n}\n\n\n")
             
         self.output_file.write(fitness_calc_function)
