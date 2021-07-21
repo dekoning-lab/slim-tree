@@ -65,7 +65,7 @@ class SLiMTree:
         parser.add_argument('-b','--burn_in_multiplier', help = 'value to multiply population size by for burn in, default = 10', type=float, default = 10)
         parser.add_argument('-k','--sample_size', help = 'size of sample obtained from each population at output. Input \'all\' for whole sample and consensus for consensus sequence. default = all', type=str, default = "all")
 
-        parser.add_argument('-sr', '--split_ratio', help = "proportion of the population that goes into the [left?] branch upon splitting in non-wright fisher models. must be ratio between 0 and 1.0. default = 0.5", type = float, default = 0.5)
+        parser.add_argument('-sr', '--split_ratio', help = "proportion of the population that goes into the left branch upon splitting in non-wright fisher models. must be ratio between 0 and 1.0. default = 0.5", type = float, default = 0.5)
 
         parser.add_argument('-c','--count_subs', type = self.str2bool, default = True, const=True, nargs='?',
                 help = 'boolean specifying whether to count substitutions, turning off will speed up sims. default = True')
