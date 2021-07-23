@@ -72,8 +72,8 @@ class writeSLiM:
 
         initialize_string = ("initialize() {")
 
-        if (self.model_type == False): #***
-            initialize_string += "\n\tinitializeSLiMModelType(\"nonWF\");" #****
+        if (self.model_type == False): 
+            initialize_string += "\n\tinitializeSLiMModelType(\"nonWF\");" 
 
         initialize_string += ("\n\tsetSeed(" + str(random.randint(0,1000000000)) + ");" + "\n\tinitializeSLiMOptions(nucleotideBased=T);")
 
@@ -93,8 +93,16 @@ class writeSLiM:
             initialize_string += ("\n\tinitializeAncestralNucleotides(\"" +
                                   population_parameters["parent_pop_name"] + ".fasta\");")
 
-        initialize_string += ("\n\tmm = mmJukesCantor(" + str(population_parameters ["mutation_rate"]/3) + ");" +
-                        "\n\tinitializeMutationTypeNuc(\"m1\", 0.5, \"f\", 0.0);" +
+        #If Jukes-Cantor model set mutation rate to Jukes-Cantor model, otherwise set to the mutational matrix
+        initialize_string += "\n\tmm = "
+        
+        if(population_parameters["jukes_cantor"]):
+            initialize_string += "mmJukesCantor(" + str(population_parameters ["mutation_rate"]/3) + ");"
+        else:
+            initialize_string += population_parameters["mutation_matrix"] +";"
+            
+        
+        initialize_string += ("\n\tinitializeMutationTypeNuc(\"m1\", 0.5, \"f\", 0.0);" +
                         "\n\tm1.convertToSubstitution = F;" +
                         "\n\tinitializeGenomicElementType(\"g1\", m1, 1.0, mm);" +
                         "\n\tinitializeGenomicElementType(\"g2\", m1, 1.0, mm);" +
@@ -526,7 +534,7 @@ class writeSLiM:
                             "\n\t\t\tpolymorph_str = c(polymorph_str, p, \": \", length(which(diffs == p)) / length(diffs), \" \");\n\t\t}\n\tpolymorph_str = c(polymorph_str, \"\\n\");\n\t}" +
                             "}\n\twriteFile(\"" + os.getcwd() + "/" + population_parameters["pop_name"] + "_polymorphisms.txt\", paste(polymorph_str, sep = \"\"));")
 
-        if(population_parameters["terminal_clade"]):
+        if(population_parameters["terminal_clade"] and not self.model_type):
             end_population_string += "\n\t" + population_parameters["pop_name"] + ".removeSubpopulation();"
 
         end_population_string += "\n}\n\n\n"

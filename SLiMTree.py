@@ -122,6 +122,15 @@ class SLiMTree:
                 'Default = pdbfiles/chain_ids. This is a file in SLiM-Tree based off the work by Goldstein and Pollock (2017).')
         parser.add_argument('-ct', '--contact_threshold', type = float, default = 7.0, help = 'Maximum distance two proteins may be apart ' +
                 'to be in contact in protein structure based fitness effects')
+        parser.add_argument('-jc', '--jukes_cantor', type = self.str2bool, default = True, const = True, nargs='?',
+                help = 'boolean specifying whether a Jukes-Cantor mutation matrix should be used, this mutation matrix ' +
+                'has a constant mutation rate across nucleotides equal to the supplied mutation rate divided by 3. ' +
+                'If false, a mutation matrix specifying mutation rates must be provided in a csv file and mutation rate will ' +
+                'be ignored. Default = True')
+        parser.add_argument('-m', '--mutation_matrix',  type = self.make_mutation_matrix, help = 'CSV file specifying a mutation rate matrix ' +
+                'Matrix should be either 4 by 4 or 4 by 64 specifying rates from nucleotide to nucleotide and tri-nucleotide' +
+                ' to nucleotide respectfully. Nucleotides and tri-nucleotides should be in alphabetical order with no headers.' +
+                ' If mutation rate matrix is supplied, mutation rate will be ignored')
 
 
         #Get arguments from user
@@ -164,6 +173,13 @@ class SLiMTree:
         if(arguments.fitness_profile_calc == False and 
                 (arguments.coding_ratio != 1.0 or arguments.gene_count != 1)):
             print("When calculating protein-based fitness only one gene (ie. the protein) with a coding ratio of 1 may be used.")
+            sys.exit(0)
+        
+        #If mutation matrix is not a Jukes-Cantor matrix, mutation matrix must be supplied
+        if(not arguments.jukes_cantor and arguments.mutation_matrix == None):
+            print("When not using a Jukes-Cantor mutation matrix, a mutation matrix must be supplied")
+            sys.exit(0)
+        
            
         #Set up the filenames for file io
         input_file_start = os.getcwd() + '/' + self.input_file.split('.')[0]
@@ -197,7 +213,10 @@ class SLiMTree:
 
 
         #Set up the starting parameters
-        self.starting_parameters["mutation_rate"] = arguments.mutation_rate
+        if(arguments.jukes_cantor):
+            self.starting_parameters["mutation_rate"] = arguments.mutation_rate
+        else:
+            self.starting_parameters["mutation_matrix"] = arguments.mutation_matrix
         self.starting_parameters["population_size"] = arguments.population_size
         self.starting_parameters["recombination_rate"] = arguments.recombination_rate
         self.starting_parameters["burn_in"] = arguments.burn_in_multiplier * arguments.population_size
@@ -231,6 +250,8 @@ class SLiMTree:
         self.starting_parameters["genbank_file"] = arguments.genbank_file
 
         self.starting_parameters["wf_model"] = arguments.wright_fisher_model
+        self.starting_parameters["jukes_cantor"] = arguments.jukes_cantor
+
 
         #Set up coding sequences if no user defined sequence is specified
         if (not arguments.user_provided_sequence):
@@ -240,9 +261,7 @@ class SLiMTree:
             self.starting_parameters["coding_seqs"] = self.get_coding_seqs()
 
 
-        #Save starting parameters and value of theta to a file for later reference
-        theta = 4*arguments.mutation_rate*arguments.population_size
-
+        #Save starting parameterslater reference
         parameter_file = open(input_file_start + "_parameters.txt", 'w')
         parameter_file.write("Simulation parameters\n\n")
 
@@ -253,7 +272,12 @@ class SLiMTree:
 
             parameter_file.write('%s:%s\n' % (key, value))
 
-        parameter_file.write("theta: " + str(theta))
+        #If this is a jukes cantor model write out theta
+        if (arguments.jukes_cantor):
+            theta = 4*arguments.mutation_rate*arguments.population_size
+            parameter_file.write("theta: " + str(theta))
+            
+            
         parameter_file.close()
 
 
@@ -269,6 +293,47 @@ class SLiMTree:
             return False
         else:
             raise argparse.ArgumentTypeError('Boolean value expected.')
+            
+            
+    
+    
+    #Command to make string version of mutation matrix from csv file
+    def make_mutation_matrix(self, mutation_matrix):
+        mut_mat = pandas.read_csv(mutation_matrix, names = ["A","C","G","T"])
+        
+        nrow = mut_mat.shape[0]
+        
+        #Check that mutational matrices are either 4 by 4 or 4 by 64
+        if ((nrow != 4 and nrow !=64) or (mut_mat.shape[1] != 4)):
+            print("Mutational matrices must be either 4 by 4 or 4 by 64. Representing mutations from " +
+                "nucleotide to nucleotide or tri-nucleotide to nucleotide, respectfully.")
+            sys.exit(0)
+                
+        mut_mat = mut_mat.to_numpy()
+        
+        #Check to make sure that mutations from nucleotide to itself are 0
+        if(nrow == 4):
+            diag_sum = sum(np.diag(mut_mat))
+        else:
+            col_1 = mut_mat[:,0]
+            col_2 = mut_mat[:,1]
+            col_3 = mut_mat[:,2]
+            col_4 = mut_mat[:,3]
+            diag_sum = sum(col_1[0:4] + col_1[16:20] + col_1[32:36] + col_1[48:52] +
+                            col_2[4:8] + col_2[20:24] + col_2[36:40] + col_2[52:56] +
+                            col_3[8:12] + col_3[24:28] + col_3[40:44] + col_3[56:60] +
+                            col_4[12:16] + col_4[28:32] + col_4[44:48] + col_4[60:64])
+        
+        if(diag_sum != 0):
+            print("All mutations from a nucleotide to itself must be 0. ie. in 4 by 4 " +
+                "mutation matrices, all diagonals must be 0 and in 4 by 64 mutation matrices, " +
+                "the first 4 rows in column 1 must be 0, the second 4 rows in column 2 must be 0, etc.")
+            sys.exit(0)
+            
+       
+        #Make and return string of the mutational matrix
+        mut_mat_str = "matrix(c(" + str(list(mut_mat.flatten()))[1:-1] + "), ncol = 4, byrow = T)"
+        return mut_mat_str
 
 
 
@@ -594,6 +659,8 @@ class SLiMTree:
             'o': 'output_gens',
             'B': 'backup',
             'P': 'polymorphisms',
+            'jc': 'jukes_cantor',
+            'm': 'mutation_matrix',
             'mutation_rate': 'mutation_rate',
             'population_size': 'population_size',
             'recombination_rate': 'recombination_rate',
@@ -604,7 +671,9 @@ class SLiMTree:
             'count_subs': 'count_subs',
             'output_gens': 'output_gens',
             'backup': 'backup',
-            'polymorphisms': 'polymorphisms'
+            'polymorphisms': 'polymorphisms',
+            'jc': 'jukes_cantor',
+            'mutation_matrix': 'mutation_matrix'
 
         }
 
@@ -647,7 +716,6 @@ class SLiMTree:
         starting_parameter_dict = {
             "pop_name": None,
             "child_clades" : None,
-            "mutation_rate" : self.starting_parameters["mutation_rate"],
             "population_size" : self.starting_parameters["population_size"],
             "recombination_rate" : self.starting_parameters["recombination_rate"],
             "sample_size": self.starting_parameters["sample_size"],
@@ -657,8 +725,14 @@ class SLiMTree:
             "count_subs" : self.starting_parameters["count_subs"],
             "output_gens" : self.starting_parameters["output_gens"],
             "backup" : self.starting_parameters["backup"],
-            "polymorphisms": self.starting_parameters["polymorphisms"]
+            "polymorphisms": self.starting_parameters["polymorphisms"],
+            "jukes_cantor": self.starting_parameters["jukes_cantor"]
         }
+        
+        if(self.starting_parameters["jukes_cantor"]):
+            starting_parameter_dict["mutation_rate"] = self.starting_parameters["mutation_rate"]
+        else:
+            starting_parameter_dict["mutation_matrix"] = self.starting_parameters["mutation_matrix"]
 
         try:
             clade_dict_list = self.recurse_through_clades(phylogeny.get_nonterminals()[0],
@@ -703,7 +777,6 @@ class SLiMTree:
     def get_clade_data (self, clade, parent_clade_dict, clade_data, phylogeny):
 
         #Set up the default parameters based on the parent
-        mut_rate = parent_clade_dict["mutation_rate"]
         pop_size = parent_clade_dict["population_size"]
         rec_rate = parent_clade_dict["recombination_rate"]
         samp_size = parent_clade_dict["sample_size"]
@@ -714,6 +787,14 @@ class SLiMTree:
         gens = parent_clade_dict["output_gens"]
         backup = parent_clade_dict["backup"]
         polymorphisms = parent_clade_dict["polymorphisms"]
+        jukes_cantor = parent_clade_dict["jukes_cantor"]
+        
+        if(jukes_cantor):
+            mut_rate = parent_clade_dict["mutation_rate"]
+            mutation_matrix = None
+        else:
+            mutation_matrix = parent_clade_dict["mutation_matrix"]
+            mut_rate = None
 
         #Change parameters if specified by user
         if(clade_data != None):
@@ -743,6 +824,16 @@ class SLiMTree:
                     backup = self.str2bool(current_clade_data['backup'])
                 if ('polymorphisms' in current_clade_data.keys()):
                     polymorphisms = self.str2bool(current_clade_data['polymorphisms'])
+                if ('jukes_cantor' in current_clade_data.keys()):
+                    jukes_cantor = self.str2bool(current_clade_data['jukes_cantor'])
+                    if((not jukes_cantor and mutation_matrix == None) and 
+                            'mutation_matrix' not in current_clade_data.keys()):
+                        print("It appears that in your clade data file, you turned off the Jukes-Cantor " +
+                            "model and did not provide a mutation matrix, please provide a mutation matrix " +
+                            "for this clade.")
+                        sys.exit(0)
+                if ('mutation_matrix' in current_clade_data.keys()):
+                    mutation_matrix = self.make_mutation_matrix(current_clade_data['mutation_matrix'])
 
 
         #Figure out what population name is for self and assign clade name appropriately
@@ -789,7 +880,9 @@ class SLiMTree:
             "count_subs" : subs,
             "output_gens" : gens,
             "backup" : backup,
-            "polymorphisms" : polymorphisms
+            "polymorphisms" : polymorphisms,
+            "jukes_cantor" : jukes_cantor,
+            "mutation_matrix" : mutation_matrix
         }
 
         return [clade_dict]
