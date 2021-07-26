@@ -81,7 +81,7 @@ class SLiMTree:
         parser.add_argument('-b','--burn_in_multiplier', help = 'value to multiply population size by for burn in, default = 10', type=float, default = 10)
         parser.add_argument('-k','--sample_size', help = 'size of sample obtained from each population at output. Input \'all\' for whole sample and consensus for consensus sequence. default = all', type=str, default = "all")
 
-        parser.add_argument('-sr', '--split_ratio', help = "proportion of the population that goes into the [left?] branch upon splitting in non-wright fisher models. must be ratio between 0 and 1.0. default = 0.5", type = float, default = 0.5)
+        parser.add_argument('-sr', '--split_ratio', help = "proportion of the population that goes into the left branch upon splitting in non-wright fisher models. must be ratio between 0 and 1.0. default = 0.5", type = float, default = 0.5)
 
         parser.add_argument('-c','--count_subs', type = self.str2bool, default = True, const=True, nargs='?',
                 help = 'boolean specifying whether to count substitutions, turning off will speed up sims. default = True')
@@ -90,13 +90,15 @@ class SLiMTree:
         parser.add_argument('-B','--backup', type = self.str2bool, default = True, const=True, nargs='?',
                 help = 'boolean specifying whether to backup simulations, turning off will save space. default = True')
         parser.add_argument('-P', '--polymorphisms', type = self.str2bool, default = True, const = True, nargs = '?',
-                help = "boolean specifying whether to output all polymorphisms at the end of each population. default = True")
+                help = "boolean specifying whether to specify all polymorphisms and fixed states at the end of each population. default = True")
 
         parser.add_argument('-w', '--wright_fisher_model', type = self.str2bool, default=True, const=True, nargs='?',
                 help = 'boolean specifying whether this is a wright-fisher model or non-wright-fisher model. default = True')
 
         parser.add_argument('-G', '--gene_count', type = int, default = 1, help = "Number of genes in the model. Default = 1.")
         parser.add_argument('-C', '--coding_ratio', type = float, default = 1.0, help = "Ratio of the genome which are coding regions as a ratio coding/noncoding. Default = 1.0")
+
+        parser.add_argument('-hp', '--haploidy', type = self.str2bool, default = False, help = "boolean specifying whether to model haploidy. Default = False")
 
         parser.add_argument('-s', '--user_provided_sequence', type = self.str2bool, default = False, const = True, nargs = '?',
                 help = 'boolean specifying whether user provides ancestral sequence and coding regions, Default = False')
@@ -252,6 +254,8 @@ class SLiMTree:
         self.starting_parameters["wf_model"] = arguments.wright_fisher_model
         self.starting_parameters["jukes_cantor"] = arguments.jukes_cantor
 
+
+        self.starting_parameters["haploidy"] = arguments.haploidy
 
         #Set up coding sequences if no user defined sequence is specified
         if (not arguments.user_provided_sequence):
@@ -584,8 +588,11 @@ class SLiMTree:
         #Find the expected value for each site in the genome based on it's respective fitness profile
         for fitness_profile in self.starting_parameters["fitness_profile_nums"]:
             expected_fitnesses.append(expected_fitness_profiles[fitness_profile])
-        #Find the expected value of all sites by multiplying expected values - squared because there are 2 xsomes
-        self.starting_parameters["scaling_value"] = np.prod(expected_fitnesses)**2
+        #Find the expected value of all sites by multiplying expected values - squared because there are 2 xsomes in diploid models
+        if (self.starting_parameters["haploidy"]):
+            self.starting_parameters["scaling_value"] = np.prod(expected_fitnesses)
+        else:
+            self.starting_parameters["scaling_value"] = np.prod(expected_fitnesses)**2
 
 
 
