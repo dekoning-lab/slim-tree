@@ -320,7 +320,7 @@ class writeSLiM:
             "\n\tto_write = codonsToAminoAcids(nucleotidesToCodons(sim.getValue(\"fixations_\" + sub_pop_name)))" +
             "+ codonsToAminoAcids(sub_pop.genomes.nucleotides(format = \"codon\"));" + 
             "\n\tfilename = writeTempFile(sub_pop_name, \".txt\", to_write);" + 
-            "\n\tto_call = \"" + sys.path[0]+"GetEnergy " +
+            "\n\tto_call = \"" + sys.path[0]+"/GetEnergy " +
             str(self.genome_length) + " " + str(self.dist_pdb_count) + " " +  self.distribution_pdbs + " " +
             self.main_pdb + " \" + filename + \" " + str(self.max_contacts) + " " + str(self.max_contact_string) + 
             "\";"

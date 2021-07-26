@@ -101,7 +101,7 @@ int ** read_dat(char* filename, int num_prots)
 	int count = 0;
 
 
-	long toAllocate = num_prots*sizeof(int)*max_contacts;
+	long toAllocate = num_prots*sizeof(int)*max_contacts*2;
 	int** protein_contact_maps = malloc(toAllocate);
 
 
@@ -177,6 +177,9 @@ double find_G_NS_not_first(int * mutations, int * contact_matrix, int protein_nu
 		//Check to see if contact one has changed
 		while ((new_contact_1 < contact_one)){
 			dif_contact_pointer_1 += 2;
+			if(dif_contact_pointer_1 >= (2*sequence_length)){
+				break;
+			}
 			new_contact_1 = mutations[dif_contact_pointer_1];
 			if((new_contact_2 == 0) & (dif_contact_pointer_2 != 0)){
 					break;
@@ -311,6 +314,7 @@ int* find_dif_poses(char* sequence){
 	}
 	
 	if(dif_seqs_pos == 0){
+		free(dif_seqs);
 		return NULL;
 	}
 	
@@ -443,10 +447,13 @@ int main(int argc, char *argv[])
 	free(energies);
 	free(main_energies);
 
-
-	free(*diverse_contacts);
+	for(int i = 0; i < num_diverse_prots; i++){
+		free(diverse_contacts[i]);
+	}
 	free(diverse_contacts);
-	free(*main_contact_mat);
+	
+	
+	free(main_contact_mat[0]);
 	free(main_contact_mat); 
 
 	free(sequence_int);
