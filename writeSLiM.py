@@ -5,8 +5,9 @@
 #numpy
 #os
 #pandas
+#sys
 
-import random, csv, os, pandas
+import random, csv, os, pandas, sys
 import numpy as np
 
 #Base class from which other classes inherit
@@ -20,19 +21,27 @@ class writeSLiM:
         self.genome_length = start_para_dict["genome_length"]
         self.fasta_filename = start_para_dict["fasta_filename"]
         self.user_provided_sequence = start_para_dict["user_provided_sequence"]
-        if(self.user_provided_sequence):
+        self.fitness_profile_calc = start_para_dict["fitness_profile_calc"]
+        if(self.user_provided_sequence or (not self.fitness_profile_calc)):
             self.ancestral_sequence = start_para_dict["ancestral_sequence"]
 
         #Set up the fitness profile and starting distribution of amino acids
-        self.fitness_profile_nums = start_para_dict["fitness_profile_nums"]
-        self.fitness_profiles = start_para_dict["fitness_profiles"]
-        self.starting_allele_dist = start_para_dict["stationary_distributions"]
-        self.amino_acids = start_para_dict["amino_acids"]
-        self.min_fitness = str(start_para_dict["min_fitness"])
+        if(self.fitness_profile_calc):
+            self.fitness_profile_nums = start_para_dict["fitness_profile_nums"]
+            self.fitness_profiles = start_para_dict["fitness_profiles"]
+            self.starting_allele_dist = start_para_dict["stationary_distributions"]
+            self.amino_acids = start_para_dict["amino_acids"]
+            self.min_fitness = str(start_para_dict["min_fitness"])
+        else:
+            self.dist_pdb_count = start_para_dict["dist_pdb_count"]
+            self.main_pdb = os.getcwd() + "/cmaps/main_contact_mat.csv" 
+            self.distribution_pdbs = os.getcwd() + "/cmaps/distribution_contacts.csv"
+            self.max_contacts = start_para_dict["max_contacts"]
+            self.max_contact_string = start_para_dict["max_contact_string"]
 
         #Set up type of model
         self.model_type = start_para_dict["wf_model"]
-        if(self.model_type == False):
+        if(self.model_type == False and self.fitness_profile_calc):
             self.scaling_factor = start_para_dict["scaling_value"]
 
         self.coding_regions = start_para_dict["coding_seqs"]
@@ -40,21 +49,22 @@ class writeSLiM:
         self.haploidy = start_para_dict["haploidy"]
 
         #Set up conversion from amino acid to codon
-        with open(os.path.dirname(os.path.realpath(__file__)) + '/fitnessDataFiles/slim_codon_nums.csv', newline='') as slim_codon_nums:
-            reader = csv.reader(slim_codon_nums)
-            slim_codons = list(reader)[1:]
+        if(self.fitness_profile_calc):
+            with open(os.path.dirname(os.path.realpath(__file__)) + '/fitnessDataFiles/slim_codon_nums.csv', newline='') as slim_codon_nums:
+                reader = csv.reader(slim_codon_nums)
+                slim_codons = list(reader)[1:]
 
-        slim_codon_nums.close()
+            slim_codon_nums.close()
 
-        self.slim_codon_dict = {}
+            self.slim_codon_dict = {}
 
-        for codons in slim_codons :
-            amino_acid = codons[2]
-            slim_codon_number = int(codons[0])
+            for codons in slim_codons :
+                amino_acid = codons[2]
+                slim_codon_number = int(codons[0])
 
-            if(amino_acid in self.slim_codon_dict.keys()):
+                if(amino_acid in self.slim_codon_dict.keys()):
                     self.slim_codon_dict[amino_acid].append(slim_codon_number)
-            else:
+                else:
                     self.slim_codon_dict[amino_acid] = [slim_codon_number]
 
 
@@ -64,8 +74,8 @@ class writeSLiM:
 
         initialize_string = ("initialize() {")
 
-        if (self.model_type == False): #***
-            initialize_string += "\n\tinitializeSLiMModelType(\"nonWF\");" #****
+        if (self.model_type == False): 
+            initialize_string += "\n\tinitializeSLiMModelType(\"nonWF\");" 
 
         initialize_string += ("\n\tsetSeed(" + str(random.randint(0,1000000000)) + ");" + "\n\tinitializeSLiMOptions(nucleotideBased=T);")
 
@@ -73,7 +83,7 @@ class writeSLiM:
         if(population_parameters["parent_pop_name"] == None):
 
             #Initialize with codons if random, otherwise initialize with sequence given by the user
-            if (self.user_provided_sequence):
+            if (self.user_provided_sequence or (not self.fitness_profile_calc)):
                 initialize_string += "\n\tinitializeAncestralNucleotides(\"" + self.ancestral_sequence + "\");"
             else:
                 aa_codon_sequence = str(self.create_codon_seq())
@@ -85,8 +95,16 @@ class writeSLiM:
             initialize_string += ("\n\tinitializeAncestralNucleotides(\"" +
                                   population_parameters["parent_pop_name"] + ".fasta\");")
 
-        initialize_string += ("\n\tmm = mmJukesCantor(" + str(population_parameters ["mutation_rate"]/3) + ");" +
-                        "\n\tinitializeMutationTypeNuc(\"m1\", 0.5, \"f\", 0.0);" +
+        #If Jukes-Cantor model set mutation rate to Jukes-Cantor model, otherwise set to the mutational matrix
+        initialize_string += "\n\tmm = "
+        
+        if(population_parameters["jukes_cantor"]):
+            initialize_string += "mmJukesCantor(" + str(population_parameters ["mutation_rate"]/3) + ");"
+        else:
+            initialize_string += population_parameters["mutation_matrix"] +";"
+            
+        
+        initialize_string += ("\n\tinitializeMutationTypeNuc(\"m1\", 0.5, \"f\", 0.0);" +
                         "\n\tm1.convertToSubstitution = F;" +
                         "\n\tinitializeGenomicElementType(\"g1\", m1, 1.0, mm);" +
                         "\n\tinitializeGenomicElementType(\"g2\", m1, 1.0, mm);")
@@ -299,6 +317,32 @@ class writeSLiM:
         self.output_file.write(fitness_callback_string)
 
 
+    #Writes the fitness functions for protein based contact maps
+    def write_fitness_protein_contact(self):
+        #Write a void set up fitness function to satisfy existing pipelines for site-heterogeneous
+        setup_fitness = "function (void) setup_fitness(void){}\n\n\n"
+        self.output_file.write(setup_fitness)
+    
+        #Write function to get the fitness of all individuals
+        fitness_calc_function = ("function (void) get_fitnesses (No sub_pop, string sub_pop_name) {" +
+            "\n\tto_write = codonsToAminoAcids(nucleotidesToCodons(sim.getValue(\"fixations_\" + sub_pop_name)))" +
+            "+ codonsToAminoAcids(sub_pop.genomes.nucleotides(format = \"codon\"));" + 
+            "\n\tfilename = writeTempFile(sub_pop_name, \".txt\", to_write);" + 
+            "\n\tto_call = \"" + sys.path[0]+"/GetEnergy " +
+            str(self.genome_length) + " " + str(self.dist_pdb_count) + " " +  self.distribution_pdbs + " " +
+            self.main_pdb + " \" + filename + \" " + str(self.max_contacts) + " " + str(self.max_contact_string) + 
+            "\";"
+            "\n\tfitnesses = asFloat(strsplit(system(to_call), sep = \",\"));" +  
+            "\n\tsim.setValue(sub_pop_name + \"_fitnesses\", fitnesses);\n}\n\n\n")
+            
+        self.output_file.write(fitness_calc_function)
+        
+        #Write fitness function to be run for each individual
+        fitness_function = ("fitness(NULL){\n\tind = genome2.individual;" +
+            "\n\tindex = ind.index * 2;" +
+            "\n\tsubpop_id = \"p\" + ind.subpopulation.id;" +
+            "\n\treturn product(sim.getValue(subpop_id + \"_fitnesses\")[index :(index + 1)]);\n}\n\n\n")
+        self.output_file.write(fitness_function)
 
 
     #Write the reproduction callback for non-Wright-Fisher models
@@ -312,6 +356,7 @@ class writeSLiM:
             reproduction_string = ("reproduction(){\n\tsubpop.addRecombinant(genome1, NULL, NULL, NULL, NULL, NULL);\n}\n\n\n")
 
         self.output_file.write(reproduction_string)
+
 
     #Write code to count substitutions, make a backup and count generations
     def write_repeated_commands(self, population_parameters):
@@ -399,12 +444,14 @@ class writeSLiM:
 
     #Write code to add first population, subpopulation or completely remove population and replace with another with non-Wright-Fisher models
     def write_subpop_nonwf(self, population_parameters):
+        pop_name = population_parameters["pop_name"]
         if(population_parameters["parent_pop_name"] == None):
                 self.set_up_sim(population_parameters)
         else:
             #Not the starting population, break off from existing population
             define_population_string = (str(int(population_parameters["dist_from_start"])) + " late() { \n" +
-                                    "\tsim.addSubpop(\"" + population_parameters["pop_name"] + "\", 0);")
+                                    "\tsim.addSubpop(\"" + pop_name + "\", 0);")
+                                  
             #If this is the last population broken off, take the remainder of the parent population
             if (population_parameters["last_child_clade"] == True):
                 define_population_string += str("\n\tcatn(" + population_parameters["parent_pop_name"] + ".individualCount);"+
@@ -414,23 +461,30 @@ class writeSLiM:
                 #Take proportion of the parent population
                 define_population_string += str("\n\tmigrants = sample(" + population_parameters["parent_pop_name"] + ".individuals, asInteger("
                                     + population_parameters["parent_pop_name"] + ".individualCount * " + str(population_parameters["split_ratio"]) + "));\n\t"
-                                    + population_parameters["pop_name"] + ".takeMigrants(migrants);" +
-                                    "\n\tcatn(" + population_parameters["parent_pop_name"] + ".individualCount);")
+                                    + pop_name + ".takeMigrants(migrants);" )
 
-            define_population_string += str("\n\n\tsim.setValue(\"fixations_" + population_parameters["pop_name"] + "\", sim.getValue(\"fixations_"+
+            define_population_string += str("\n\n\tsim.setValue(\"fixations_" + pop_name + "\", sim.getValue(\"fixations_"+
                                     population_parameters["parent_pop_name"] +"\"));" +
-                                    "\n\tsim.setValue(\"fixations_counted_"+ population_parameters["pop_name"]+"\", 0);")
+                                    "\n\tsim.setValue(\"fixations_counted_"+ pop_name+"\", 0);")
 
-
+            if(population_parameters["last_child_clade"] == True):
+                define_population_string += "\n\t" + population_parameters["parent_pop_name"]+".removeSubpopulation();"
+                
             define_population_string += "\n}\n\n\n"
 
             self.output_file.write(define_population_string)
 
         #Write the early commands - this may need tweaking w/ the fitness algorithm
-
         early_event = (str(int(population_parameters["dist_from_start"]) + 1) + ":" + str(int(population_parameters["end_dist"])) +
-                        " early(){\n\t" + population_parameters["pop_name"] + ".fitnessScaling = " + str(int(population_parameters["population_size"])) +
-                        "/ (" + population_parameters["pop_name"] + ".individualCount * " + str(self.scaling_factor) + ");" + "\n}\n\n\n")
+                        " early(){\n\t" + pop_name + ".fitnessScaling = " +  
+                        str(int(population_parameters["population_size"])) + "/ (" + pop_name + 
+                        ".individualCount")
+        if(self.fitness_profile_calc):
+            early_event += ( " * " + str(self.scaling_factor) + ");" )
+        else:
+            early_event += (");" + "\n\tget_fitnesses(" + pop_name + ", \"" + pop_name + "\");")
+            
+        early_event+= "\n}\n\n\n"
 
         self.output_file.write(early_event)
 
@@ -448,7 +502,10 @@ class writeSLiM:
 
         #Set up the initialize and fitness functions for the new script
         self.write_initialize(population_parameters)
-        self.write_fitness()
+        if(self.fitness_profile_calc):
+            self.write_fitness()
+        else:
+            self.write_fitness_protein_contact()
 
         #Write reproduction callback if this is a non-WF model
         if (self.model_type == False):
@@ -503,6 +560,8 @@ class writeSLiM:
                             "\n\t}\n\twriteFile(\"" + os.getcwd() + "/" + population_parameters["pop_name"] + "_polymorphisms.txt\", paste(polymorph_str, sep = \"\"));" +
                             "\n\twriteFile(\"" + os.getcwd() + "/" + population_parameters["pop_name"] + "_fixed_sites.txt\", paste(fixed_str, sep = \"\"));")
 
+        if(population_parameters["terminal_clade"] and not self.model_type):
+            end_population_string += "\n\t" + population_parameters["pop_name"] + ".removeSubpopulation();"
 
         end_population_string += "\n}\n\n\n"
 
@@ -562,6 +621,10 @@ class writeSLiM:
             else:
                 terminal_output_string += ("\n\t\tfasta_string_prot = paste0(\">\", g.individual, \", " + pop_name + ": \\n\", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));" +
                                         "\n\t\twriteFile(\"" + aa_filename + "\", fasta_string_prot,append = T);}" )
+                                        
+                                        
+        
+        
         return terminal_output_string
 
 

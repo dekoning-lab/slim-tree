@@ -124,9 +124,19 @@ class writeSLiMHPC(writeSLiM):
 
     #Write code for early functions in nonWF models.
     def write_early_function(self, start_dist, end_dist, population_parameters):
-            early_event = str(int(population_parameters["dist_from_start"]) + 2) + ":" + str(int(population_parameters["end_dist"]) + 1) + " early(){"
-            early_event += "\n\tp1.fitnessScaling = " + str(int(population_parameters["population_size"])) + "/ (p1.individualCount *" +str(self.scaling_factor) + ");" + "\n}\n\n\n"
-            self.output_file.write(early_event)
+        #Write the early commands - this may need tweaking w/ the fitness algorithm
+        early_event = (str(int(population_parameters["dist_from_start"]) + 2) + ":" + str(int(population_parameters["end_dist"]) + 1) +
+                        " early(){\n\t" + "p1.fitnessScaling = " +  
+                        str(int(population_parameters["population_size"])) + "/ (" + 
+                        "p1.individualCount")
+        if(fitness_profile_calc):
+            early_event += ( " * " + str(self.scaling_factor) + ");" )
+        else:
+            early_event += (");" + "\n\tget_fitnesses(" + pop_name + ", \"" + pop_name + "\");")
+            
+        early_event+= "\n}\n\n\n"
+
+        self.output_file.write(early_event)
 
 
     #Write code to count substitutions, make a backup and count generations

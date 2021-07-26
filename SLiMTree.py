@@ -7,28 +7,44 @@
 #matplotlib
 #random
 #pandas
+#re
 #numpy
 #os
 #json
 #string
 #math
 
-import sys, argparse, random, os, json, string, math, pandas
+import sys, argparse, random, os, json, string, math, pandas, re
 import numpy as np
+
 from Bio import Phylo
 from matplotlib.pyplot import show, savefig
 from writeSLiM import writeSLiM
 from writeSLiMHPC import writeSLiMHPC
 from getUserDefinedSequence import getUserDefinedSequence
 
+from contactmaps import ContactMap
+from contactmaps import utils
+
 class SLiMTree:
 
     #Main script to run other commands
     def __init__(self):
         self.read_user_input()
-        self.find_fitness_profile()
-
+        
+        if (self.starting_parameters["fitness_profile_calc"]):
+            self.find_fitness_profile()
+        else:
+            chain_ids = self.set_up_pdbs(self.starting_parameters["pdb_file"], 
+                    self.starting_parameters["distribution_pdb_files"], 
+                    self.starting_parameters["pdb_chain_id"],
+                    self.starting_parameters["distribution_chain_ids"], 
+                    self.starting_parameters["cmap_files_directory"])
+            
+            self.run_goldstein(chain_ids)
+            
         clade_data = self.read_clade_data()
+        
         if (self.data_file != None):
             self.data_file.close()
 
@@ -60,7 +76,7 @@ class SLiMTree:
         #Default parameters are somewhat arbitrary and should be changed for each sim
         parser.add_argument('-n','--population_size', help = 'starting population size for the simulation, default = 100', type = int, default = 100)
         parser.add_argument('-v','--mutation_rate', help = 'starting mutation rate for the simulation, default = 2.5e-6', type=float, default = 2.5e-6)
-        parser.add_argument('-g','--genome_length', help = 'length of the genome - amino acids, default = 500', type=int, default = 500)
+        parser.add_argument('-g','--genome_length', help = 'length of the genome - amino acids, default = 300', type=int, default = 300)
         parser.add_argument('-r','--recombination_rate', help = 'recombination rate, default = 2.5e-8', type=float, default = 2.5e-8)
         parser.add_argument('-b','--burn_in_multiplier', help = 'value to multiply population size by for burn in, default = 10', type=float, default = 10)
         parser.add_argument('-k','--sample_size', help = 'size of sample obtained from each population at output. Input \'all\' for whole sample and consensus for consensus sequence. default = all', type=str, default = "all")
@@ -90,7 +106,34 @@ class SLiMTree:
         parser.add_argument('-gb', '--genbank_file', type = str, default = None, help = 'genbank file containing information about ancestral genome - please provide data for only 1 genome')
         parser.add_argument('-R', '--randomize_fitness_profiles', type = self.str2bool, default = True, const = True, nargs = '?',
                 help = ('boolean specifying whether to randomize fitness profiles provided in the fitness data files folder. Default = True. If false, there' +
-                                ' must be equal fitness profiles to protein sequence length'))
+                        ' must be equal fitness profiles to protein sequence length'))
+        
+        parser.add_argument('-fc', '--fitness_profile_calc', type = self.str2bool, default = True, const = True, nargs='?',
+                help = 'boolean specifying whether fitness profiles should be used to calculate fitness. ' +
+                    'If false, protein structure fitness will be calculated, and a pdb files must be provided. ' +
+                    'If protein structure fitness calculated, a non-Wright-Fisher model must be used. Default = True.')
+        parser.add_argument('-pdb', '--pdb_file', type = str, help = 'Path to file containing a PDB file with a valid ' +
+                'protein structure to model protein structure fitness off of.')
+        parser.add_argument('-pdbs', '--distribution_pdb_files', type = str, default = sys.path[0] + "/" + 'pdbfiles', 
+                help = 'Path to folder containing a PDB files with a valid protein structures to act as distributions ' +
+                'of proteins for protein structure fitness effects. Default = pdbfiles this is a folder in SLiM-Tree based off ' +
+                'the work by Goldstein and Pollock (2017).')
+        parser.add_argument('-cid', '--pdb_chain_id', type = str, default = 'A', help = 'Chain id for the main pdb file.')
+        parser.add_argument('-cids', '--distribution_chain_ids', type = str, default = sys.path[0] + "/" + 'pdbfiles/chain_ids.txt',
+                help = 'File specifying chain ids for the pdbs used in the distribution of fitness effects. In file specify <pdb_name>:<chain_id>. ' +
+                'Default = pdbfiles/chain_ids. This is a file in SLiM-Tree based off the work by Goldstein and Pollock (2017).')
+        parser.add_argument('-ct', '--contact_threshold', type = float, default = 7.0, help = 'Maximum distance two proteins may be apart ' +
+                'to be in contact in protein structure based fitness effects')
+        parser.add_argument('-jc', '--jukes_cantor', type = self.str2bool, default = True, const = True, nargs='?',
+                help = 'boolean specifying whether a Jukes-Cantor mutation matrix should be used, this mutation matrix ' +
+                'has a constant mutation rate across nucleotides equal to the supplied mutation rate divided by 3. ' +
+                'If false, a mutation matrix specifying mutation rates must be provided in a csv file and mutation rate will ' +
+                'be ignored. Default = True')
+        parser.add_argument('-m', '--mutation_matrix',  type = self.make_mutation_matrix, help = 'CSV file specifying a mutation rate matrix ' +
+                'Matrix should be either 4 by 4 or 4 by 64 specifying rates from nucleotide to nucleotide and tri-nucleotide' +
+                ' to nucleotide respectfully. Nucleotides and tri-nucleotides should be in alphabetical order with no headers.' +
+                ' If mutation rate matrix is supplied, mutation rate will be ignored')
+
 
         #Get arguments from user
         arguments = parser.parse_args()
@@ -121,13 +164,75 @@ class SLiMTree:
             sys.exit(0);
 
 
+        #If using protein-based fitness, make sure pdb files are provided and non-WF model is selected. Make sure
+        #user does not give a coding ratio
+        if (arguments.fitness_profile_calc == False and arguments.pdb_file == None):
+            print("When calculating protein-based fitness, PDB file and folder of distribution proteins must be provided. Closing program.")
+            sys.exit(0)
+        if (arguments.fitness_profile_calc == False and arguments.wright_fisher_model):
+            print("When calculating protein-based fitness, a non-Wright-Fisher model must be used to ensure population survives.")
+            sys.exit(0)
+        if(arguments.fitness_profile_calc == False and 
+                (arguments.coding_ratio != 1.0 or arguments.gene_count != 1)):
+            print("When calculating protein-based fitness only one gene (ie. the protein) with a coding ratio of 1 may be used.")
+            sys.exit(0)
+        
+        #If mutation matrix is not a Jukes-Cantor matrix, mutation matrix must be supplied
+        if(not arguments.jukes_cantor and arguments.mutation_matrix == None):
+            print("When not using a Jukes-Cantor mutation matrix, a mutation matrix must be supplied")
+            sys.exit(0)
+        
+           
+        #Set up the filenames for file io
+        input_file_start = os.getcwd() + '/' + self.input_file.split('.')[0]
+        self.starting_parameters["tree_filename"] = input_file_start + "_phylogeny.png"
+        self.starting_parameters["fasta_filename"] = input_file_start
+
+        if(arguments.tree_data_file != None):
+            self.data_file = arguments.tree_data_file[0]
+        else:
+            self.data_file = None
+            
+       
+        #Set up the output of scripts to a single folder
+        split_starting_file = input_file_start.split('/')
+        output_files_directory = "/".join(split_starting_file[0:(len(split_starting_file)-1)]) + "/slimScripts"
+        backup_files_directory = "/".join(split_starting_file[0:(len(split_starting_file)-1)]) + "/backupFiles"
+        if(not arguments.fitness_profile_calc):
+            cmap_files_directory = "/".join(split_starting_file[0:(len(split_starting_file)-1)]) + "/cmaps"
+
+
+        try:
+            os.mkdir(output_files_directory)
+            os.mkdir(backup_files_directory)
+            if(not arguments.fitness_profile_calc):            
+                os.mkdir(cmap_files_directory)
+                
+        except OSError:
+            print ("The directory %s already exits, program files will be overwritten" % output_files_directory)
+
+        self.starting_parameters["output_file"] = output_files_directory + "/" + split_starting_file[-1]
+
 
         #Set up the starting parameters
-        self.starting_parameters["mutation_rate"] = arguments.mutation_rate
+        if(arguments.jukes_cantor):
+            self.starting_parameters["mutation_rate"] = arguments.mutation_rate
+        else:
+            self.starting_parameters["mutation_matrix"] = arguments.mutation_matrix
         self.starting_parameters["population_size"] = arguments.population_size
         self.starting_parameters["recombination_rate"] = arguments.recombination_rate
         self.starting_parameters["burn_in"] = arguments.burn_in_multiplier * arguments.population_size
         self.starting_parameters["sample_size"] = arguments.sample_size
+        self.starting_parameters["fitness_profile_calc"] = arguments.fitness_profile_calc
+        
+        if(not arguments.fitness_profile_calc):
+            self.starting_parameters["contact_threshold"] = arguments.contact_threshold
+            self.starting_parameters["pdb_file"] = arguments.pdb_file
+            self.starting_parameters["distribution_pdb_files"] = arguments.distribution_pdb_files
+            self.starting_parameters["pdb_chain_id"] = arguments.pdb_chain_id
+            self.starting_parameters["distribution_chain_ids"] = arguments.distribution_chain_ids
+            self.starting_parameters["cmap_files_directory"] = cmap_files_directory
+        
 
         self.starting_parameters["split_ratio"] = arguments.split_ratio
 
@@ -147,6 +252,8 @@ class SLiMTree:
         self.starting_parameters["genbank_file"] = arguments.genbank_file
 
         self.starting_parameters["wf_model"] = arguments.wright_fisher_model
+        self.starting_parameters["jukes_cantor"] = arguments.jukes_cantor
+
 
         self.starting_parameters["haploidy"] = arguments.haploidy
 
@@ -157,36 +264,8 @@ class SLiMTree:
             self.starting_parameters["coding_ratio"] = arguments.coding_ratio
             self.starting_parameters["coding_seqs"] = self.get_coding_seqs()
 
-        #Set up the filenames for file io
-        input_file_start = os.getcwd() + '/' + self.input_file.split('.')[0]
-        self.starting_parameters["tree_filename"] = input_file_start + "_phylogeny.png"
-        self.starting_parameters["fasta_filename"] = input_file_start
 
-        if(arguments.tree_data_file != None):
-            self.data_file = arguments.tree_data_file[0]
-        else:
-            self.data_file = None
-
-
-        #Set up the output of scripts to a single folder
-        split_starting_file = input_file_start.split('/')
-        output_files_directory = "/".join(split_starting_file[0:(len(split_starting_file)-1)]) + "/slimScripts"
-        backup_files_directory = "/".join(split_starting_file[0:(len(split_starting_file)-1)]) + "/backupFiles"
-
-
-        try:
-            os.mkdir(output_files_directory)
-            os.mkdir(backup_files_directory)
-        except OSError:
-            print ("The directory %s already exits, program files will be overwritten" % output_files_directory)
-
-        self.starting_parameters["output_file"] = output_files_directory + "/" + split_starting_file[-1]
-
-
-
-        #Save starting parameters and value of theta to a file for later reference
-        theta = 4*arguments.mutation_rate*arguments.population_size
-
+        #Save starting parameterslater reference
         parameter_file = open(input_file_start + "_parameters.txt", 'w')
         parameter_file.write("Simulation parameters\n\n")
 
@@ -197,8 +276,14 @@ class SLiMTree:
 
             parameter_file.write('%s:%s\n' % (key, value))
 
-        parameter_file.write("theta: " + str(theta))
+        #If this is a jukes cantor model write out theta
+        if (arguments.jukes_cantor):
+            theta = 4*arguments.mutation_rate*arguments.population_size
+            parameter_file.write("theta: " + str(theta))
+            
+            
         parameter_file.close()
+
 
 
     #Command to take input from user and convert to bool
@@ -212,6 +297,142 @@ class SLiMTree:
             return False
         else:
             raise argparse.ArgumentTypeError('Boolean value expected.')
+            
+            
+    
+    
+    #Command to make string version of mutation matrix from csv file
+    def make_mutation_matrix(self, mutation_matrix):
+        mut_mat = pandas.read_csv(mutation_matrix, names = ["A","C","G","T"])
+        
+        nrow = mut_mat.shape[0]
+        
+        #Check that mutational matrices are either 4 by 4 or 4 by 64
+        if ((nrow != 4 and nrow !=64) or (mut_mat.shape[1] != 4)):
+            print("Mutational matrices must be either 4 by 4 or 4 by 64. Representing mutations from " +
+                "nucleotide to nucleotide or tri-nucleotide to nucleotide, respectfully.")
+            sys.exit(0)
+                
+        mut_mat = mut_mat.to_numpy()
+        
+        #Check to make sure that mutations from nucleotide to itself are 0
+        if(nrow == 4):
+            diag_sum = sum(np.diag(mut_mat))
+        else:
+            col_1 = mut_mat[:,0]
+            col_2 = mut_mat[:,1]
+            col_3 = mut_mat[:,2]
+            col_4 = mut_mat[:,3]
+            diag_sum = sum(col_1[0:4] + col_1[16:20] + col_1[32:36] + col_1[48:52] +
+                            col_2[4:8] + col_2[20:24] + col_2[36:40] + col_2[52:56] +
+                            col_3[8:12] + col_3[24:28] + col_3[40:44] + col_3[56:60] +
+                            col_4[12:16] + col_4[28:32] + col_4[44:48] + col_4[60:64])
+        
+        if(diag_sum != 0):
+            print("All mutations from a nucleotide to itself must be 0. ie. in 4 by 4 " +
+                "mutation matrices, all diagonals must be 0 and in 4 by 64 mutation matrices, " +
+                "the first 4 rows in column 1 must be 0, the second 4 rows in column 2 must be 0, etc.")
+            sys.exit(0)
+            
+       
+        #Make and return string of the mutational matrix
+        mut_mat_str = "matrix(c(" + str(list(mut_mat.flatten()))[1:-1] + "), ncol = 4, byrow = T)"
+        return mut_mat_str
+
+
+
+    #Sets up contact maps for main pdb file and pdb files for distribution by iterating through each pdb
+    def set_up_pdbs(self, pdb_file, distribution_pdbs, main_chain_id, distribution_chain_ids, 
+                contact_maps_dir):
+                
+        print("Making contact matrices")
+        
+        #Read chain ids of distribution of pdbs into dictionary
+        dist_ids_data = open(distribution_chain_ids)
+        chain_ids = {}
+        line = dist_ids_data.readline()
+        
+        while (line != ''):
+            line = line.split(':')
+           
+            pdb_name = line[0]
+            chain_id = line[1].split('\n')[0]
+            
+            chain_ids[pdb_name] = chain_id
+
+            line = dist_ids_data.readline()
+        
+        
+        #Find the contact map for the main pdb file
+        contact_map = self.get_contact_map(pdb_file, pdb_file[0:-4], main_chain_id)
+        np.savetxt(contact_maps_dir + "/main_contact_mat.csv",contact_map, fmt = "%d", delimiter= ',', 
+                newline = ",")
+        
+        
+        #Find the contact map for each of the pdb files in the distribution
+        
+        with open(contact_maps_dir + "/distribution_contacts.csv", "w") as dist_contact_file:
+            pdb_count = 0
+            max_contacts = 0
+            
+            for file in os.listdir(distribution_pdbs):
+                if file.endswith(".pdb"):
+                    protein_name = file[0:-4] #Remove '.pdb'
+                    
+                    if(protein_name in chain_ids.keys()):
+                        chain_id = chain_ids[protein_name]
+                    else:
+                        chain_id = 'A'
+                        chain_ids[protein_name] = chain_id
+                        
+                    contact_map = self.get_contact_map(distribution_pdbs + "/" + file, protein_name, chain_id)
+                    if((len(contact_map)*2)> max_contacts):
+                        max_contacts = len(contact_map)*2
+                        max_contact_string = (len(str(contact_map))-(max_contacts*2) + 2)
+                    
+                    np.savetxt(dist_contact_file,contact_map, fmt = "%d", delimiter= ',', newline = ",")
+                    dist_contact_file.write("\n")
+                    
+                    pdb_count += 1
+                    
+        self.starting_parameters["max_contacts"] = max_contacts
+        self.starting_parameters["max_contact_string"] = max_contact_string
+        
+        dist_contact_file.close()
+        self.starting_parameters["dist_pdb_count"] = pdb_count
+        
+        list_chain_ids = []
+        
+        for key, val in chain_ids.items():
+            list_chain_ids.append(key)
+            list_chain_ids.append(val)
+            
+        return list_chain_ids
+        
+
+        
+    
+    #Writes a file containing the contact map of a specific protein given a pdb and chain id
+    def get_contact_map(self, pdb_file, pdb_name, chain_id):
+        pdbstructure = utils.get_structure(pdb_file)
+        model = pdbstructure[0]
+
+            
+        contactMap = ContactMap.ContactMap(model, threshold=self.starting_parameters["contact_threshold"],
+                chain_id = chain_id)
+        
+        contact_dat = np.where(contactMap.get_data())
+        contact_dat = list(zip(contact_dat[0], contact_dat[1]))
+        
+        #Little function for helping to sort data
+        def getkey(item):
+            return item[0]
+        
+        contact_dat = sorted(contact_dat, key = getkey)
+        
+        return contact_dat
+        
+
 
 
 
@@ -245,6 +466,7 @@ class SLiMTree:
 
         coding_regions = np.stack(np.array_split(coding_regions, gene_count))
         return coding_regions
+
 
 
     #Read fitness profile and stationary distribution data from psi_c50 file, make fitness profiles
@@ -374,6 +596,61 @@ class SLiMTree:
 
 
 
+    #Runs the Goldstein-Pollock (2017) scripts to get the ancestral protein
+    def run_goldstein(self, chain_ids):
+        print("\nMaking viable ancestral sequence from protein contacts")
+        
+        # Update parameter list for correct protein size
+        with open(sys.path[0] + "/Goldstein-Pollock-2017-master/ParameterList", "r+") as param_list:
+            string_param_list = ""
+            
+            line = param_list.readline()
+            while(line != ""):
+                param = line.split(" ")[0]
+                if(param == "PROTEIN_SIZE"):
+                    string_param_list += ("PROTEIN_SIZE = " + 
+                        str(self.starting_parameters["genome_length"]) + "\n")
+                elif (param == "CUTOFF"):
+                    string_param_list += ("CUTOFF = " + 
+                        str(self.starting_parameters["contact_threshold"]) + "\n")
+                elif (param == "LOG_UNFOLDED_STATES"):
+                    string_param_list += ("LOG_UNFOLDED_STATES = " + str(math.log(3.4 ** 
+                        self.starting_parameters["genome_length"])) + "\n")
+                else:
+                    string_param_list += line
+                
+                line = param_list.readline()
+            
+            param_list.seek(0)
+            param_list.write(string_param_list)
+        param_list.close()
+            
+        
+            
+        initial_working_dir = os.getcwd()
+        chain_ids = ",".join(chain_ids)
+            
+        
+        os.chdir(sys.path[0] + "/Goldstein-Pollock-2017-master/simulate/")
+        os.system("javac *.java")
+        os.chdir("..")
+        # self.starting_parameters["ancestral_sequence"] = os.popen("java simulate.Simulate " + 
+            # initial_working_dir + "/" + self.starting_parameters["pdb_file"] + " " + 
+            # initial_working_dir + "/" + self.starting_parameters["distribution_pdb_files"] +
+            # " \"" + self.starting_parameters["pdb_file"][0:-4] + "," + self.starting_parameters["pdb_chain_id"] +
+            # "\" \"" + chain_ids + "\"").read()
+        self.starting_parameters["ancestral_sequence"] = "TGCGACGAAACGCCCTGGGAACAACAAACCCCCTCGTCGCTCCTTCTTCCCGGATCACCAGAGTTGACGGAGTGGGCCTACCCGTGGATCAATCCCATGTTCGAGCCCATTTTGGCCCATAGATTCCGTATGTATTACTACCTCGACGACATTATTATCTCGAAAAAGCGCCGTTGTGAGAAGTCTGAGATGGGTTCCCACAAGCTGCGCTGTTGTATGAAGCGCAAGGATCGCGAGCTTGTATTTCGCCATATGATGTTTGCAAAATTTCTTGCTACTTTCCGTGAGGAGACTTGGAGACATCTGGAACCCATTAGGGAATTTGACTGCATAATGTTACTTGATCATCGCGAACTGAGATCAGCTCCGCTACCAAAGAGACCGACGCGTTTCATGTGGCAATTTCCGCCGCCCCAGTGTATCTTCCATGCCCTTATAGCCCTGCCATGTCCGCGTTGTCTTCAAATCCAATATGCCCTATGGGACATTACGCCATGCCTGAGGGGCTTTATGGATCTGGAAGAACGCAGGGGCCCGCTACCCTTTAGGAGAGCCGAGCCAACTACTACCACAGGGCAAATGCTTTACCCCATCCTCCGCGCCGCCTGCTGCCGGGAGTTTTGTCCCACACCCGGAGATCAGGAGCCAGATGATGACGACCCTCGCAGAAGGCGTTCCATCAAGCTCAGGACCACTCGGCGTCGGCGCAGGAGAAAAAAGCGCCGGTGTCGTAAGCGTCGCGATTTATTACGACTACTCCTTGATAGGCCTCTACAGAGGACGGATCTGAGCCGAGGCGACCACCCAGATATGAAACGGGACCGTATGATGGATACGGAAGAATTTTGGTTCACCGCACCGCTCCGAATGCCCCTCCTGCGCAAGGGGCGTCCACAGATA"
+            
+            
+        #Additional little command to make sure that protein calculation can occur
+        os.chdir("..")
+        os.system ("gcc GetEnergy.c -o GetEnergy -lm");
+        
+        os.chdir(initial_working_dir)
+               
+        
+
+
     #Read individaul data from the file - to add more parameters modify data_translation_dict
     def read_clade_data(self):
 
@@ -389,6 +666,8 @@ class SLiMTree:
             'o': 'output_gens',
             'B': 'backup',
             'P': 'polymorphisms',
+            'jc': 'jukes_cantor',
+            'm': 'mutation_matrix',
             'mutation_rate': 'mutation_rate',
             'population_size': 'population_size',
             'recombination_rate': 'recombination_rate',
@@ -399,7 +678,9 @@ class SLiMTree:
             'count_subs': 'count_subs',
             'output_gens': 'output_gens',
             'backup': 'backup',
-            'polymorphisms': 'polymorphisms'
+            'polymorphisms': 'polymorphisms',
+            'jc': 'jukes_cantor',
+            'mutation_matrix': 'mutation_matrix'
 
         }
 
@@ -442,7 +723,6 @@ class SLiMTree:
         starting_parameter_dict = {
             "pop_name": None,
             "child_clades" : None,
-            "mutation_rate" : self.starting_parameters["mutation_rate"],
             "population_size" : self.starting_parameters["population_size"],
             "recombination_rate" : self.starting_parameters["recombination_rate"],
             "sample_size": self.starting_parameters["sample_size"],
@@ -452,8 +732,14 @@ class SLiMTree:
             "count_subs" : self.starting_parameters["count_subs"],
             "output_gens" : self.starting_parameters["output_gens"],
             "backup" : self.starting_parameters["backup"],
-            "polymorphisms": self.starting_parameters["polymorphisms"]
+            "polymorphisms": self.starting_parameters["polymorphisms"],
+            "jukes_cantor": self.starting_parameters["jukes_cantor"]
         }
+        
+        if(self.starting_parameters["jukes_cantor"]):
+            starting_parameter_dict["mutation_rate"] = self.starting_parameters["mutation_rate"]
+        else:
+            starting_parameter_dict["mutation_matrix"] = self.starting_parameters["mutation_matrix"]
 
         try:
             clade_dict_list = self.recurse_through_clades(phylogeny.get_nonterminals()[0],
@@ -498,7 +784,6 @@ class SLiMTree:
     def get_clade_data (self, clade, parent_clade_dict, clade_data, phylogeny):
 
         #Set up the default parameters based on the parent
-        mut_rate = parent_clade_dict["mutation_rate"]
         pop_size = parent_clade_dict["population_size"]
         rec_rate = parent_clade_dict["recombination_rate"]
         samp_size = parent_clade_dict["sample_size"]
@@ -509,6 +794,14 @@ class SLiMTree:
         gens = parent_clade_dict["output_gens"]
         backup = parent_clade_dict["backup"]
         polymorphisms = parent_clade_dict["polymorphisms"]
+        jukes_cantor = parent_clade_dict["jukes_cantor"]
+        
+        if(jukes_cantor):
+            mut_rate = parent_clade_dict["mutation_rate"]
+            mutation_matrix = None
+        else:
+            mutation_matrix = parent_clade_dict["mutation_matrix"]
+            mut_rate = None
 
         #Change parameters if specified by user
         if(clade_data != None):
@@ -538,6 +831,16 @@ class SLiMTree:
                     backup = self.str2bool(current_clade_data['backup'])
                 if ('polymorphisms' in current_clade_data.keys()):
                     polymorphisms = self.str2bool(current_clade_data['polymorphisms'])
+                if ('jukes_cantor' in current_clade_data.keys()):
+                    jukes_cantor = self.str2bool(current_clade_data['jukes_cantor'])
+                    if((not jukes_cantor and mutation_matrix == None) and 
+                            'mutation_matrix' not in current_clade_data.keys()):
+                        print("It appears that in your clade data file, you turned off the Jukes-Cantor " +
+                            "model and did not provide a mutation matrix, please provide a mutation matrix " +
+                            "for this clade.")
+                        sys.exit(0)
+                if ('mutation_matrix' in current_clade_data.keys()):
+                    mutation_matrix = self.make_mutation_matrix(current_clade_data['mutation_matrix'])
 
 
         #Figure out what population name is for self and assign clade name appropriately
@@ -584,7 +887,9 @@ class SLiMTree:
             "count_subs" : subs,
             "output_gens" : gens,
             "backup" : backup,
-            "polymorphisms" : polymorphisms
+            "polymorphisms" : polymorphisms,
+            "jukes_cantor" : jukes_cantor,
+            "mutation_matrix" : mutation_matrix
         }
 
         return [clade_dict]
