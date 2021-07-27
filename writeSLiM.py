@@ -34,7 +34,7 @@ class writeSLiM:
             self.min_fitness = str(start_para_dict["min_fitness"])
         else:
             self.dist_pdb_count = start_para_dict["dist_pdb_count"]
-            self.main_pdb = os.getcwd() + "/cmaps/main_contact_mat.csv" 
+            self.main_pdb = os.getcwd() + "/cmaps/main_contact_mat.csv"
             self.distribution_pdbs = os.getcwd() + "/cmaps/distribution_contacts.csv"
             self.max_contacts = start_para_dict["max_contacts"]
             self.max_contact_string = start_para_dict["max_contact_string"]
@@ -74,8 +74,8 @@ class writeSLiM:
 
         initialize_string = ("initialize() {")
 
-        if (self.model_type == False): 
-            initialize_string += "\n\tinitializeSLiMModelType(\"nonWF\");" 
+        if (self.model_type == False):
+            initialize_string += "\n\tinitializeSLiMModelType(\"nonWF\");"
 
         initialize_string += ("\n\tsetSeed(" + str(random.randint(0,1000000000)) + ");" + "\n\tinitializeSLiMOptions(nucleotideBased=T);")
 
@@ -97,13 +97,13 @@ class writeSLiM:
 
         #If Jukes-Cantor model set mutation rate to Jukes-Cantor model, otherwise set to the mutational matrix
         initialize_string += "\n\tmm = "
-        
+
         if(population_parameters["jukes_cantor"]):
             initialize_string += "mmJukesCantor(" + str(population_parameters ["mutation_rate"]/3) + ");"
         else:
             initialize_string += population_parameters["mutation_matrix"] +";"
-            
-        
+
+
         initialize_string += ("\n\tinitializeMutationTypeNuc(\"m1\", 0.5, \"f\", 0.0);" +
                         "\n\tm1.convertToSubstitution = F;" +
                         "\n\tinitializeGenomicElementType(\"g1\", m1, 1.0, mm);" +
@@ -322,21 +322,21 @@ class writeSLiM:
         #Write a void set up fitness function to satisfy existing pipelines for site-heterogeneous
         setup_fitness = "function (void) setup_fitness(void){}\n\n\n"
         self.output_file.write(setup_fitness)
-    
+
         #Write function to get the fitness of all individuals
         fitness_calc_function = ("function (void) get_fitnesses (No sub_pop, string sub_pop_name) {" +
             "\n\tto_write = codonsToAminoAcids(nucleotidesToCodons(sim.getValue(\"fixations_\" + sub_pop_name)))" +
-            "+ codonsToAminoAcids(sub_pop.genomes.nucleotides(format = \"codon\"));" + 
-            "\n\tfilename = writeTempFile(sub_pop_name, \".txt\", to_write);" + 
+            "+ codonsToAminoAcids(sub_pop.genomes.nucleotides(format = \"codon\"));" +
+            "\n\tfilename = writeTempFile(sub_pop_name, \".txt\", to_write);" +
             "\n\tto_call = \"" + sys.path[0]+"/GetEnergy " +
             str(self.genome_length) + " " + str(self.dist_pdb_count) + " " +  self.distribution_pdbs + " " +
-            self.main_pdb + " \" + filename + \" " + str(self.max_contacts) + " " + str(self.max_contact_string) + 
+            self.main_pdb + " \" + filename + \" " + str(self.max_contacts) + " " + str(self.max_contact_string) +
             "\";"
-            "\n\tfitnesses = asFloat(strsplit(system(to_call), sep = \",\"));" +  
+            "\n\tfitnesses = asFloat(strsplit(system(to_call), sep = \",\"));" +
             "\n\tsim.setValue(sub_pop_name + \"_fitnesses\", fitnesses);\n}\n\n\n")
-            
+
         self.output_file.write(fitness_calc_function)
-        
+
         #Write fitness function to be run for each individual
         fitness_function = ("fitness(NULL){\n\tind = genome2.individual;" +
             "\n\tindex = ind.index * 2;" +
@@ -451,7 +451,7 @@ class writeSLiM:
             #Not the starting population, break off from existing population
             define_population_string = (str(int(population_parameters["dist_from_start"])) + " late() { \n" +
                                     "\tsim.addSubpop(\"" + pop_name + "\", 0);")
-                                  
+
             #If this is the last population broken off, take the remainder of the parent population
             if (population_parameters["last_child_clade"] == True):
                 define_population_string += str("\n\tcatn(" + population_parameters["parent_pop_name"] + ".individualCount);"+
@@ -461,29 +461,27 @@ class writeSLiM:
                 #Take proportion of the parent population
                 define_population_string += str("\n\tmigrants = sample(" + population_parameters["parent_pop_name"] + ".individuals, asInteger("
                                     + population_parameters["parent_pop_name"] + ".individualCount * " + str(population_parameters["split_ratio"]) + "));\n\t"
-                                    + pop_name + ".takeMigrants(migrants);" )
+                                    + pop_name + ".takeMigrants(migrants);\n\tcatn(" + pop_name + ".individualCount);")
 
             define_population_string += str("\n\n\tsim.setValue(\"fixations_" + pop_name + "\", sim.getValue(\"fixations_"+
                                     population_parameters["parent_pop_name"] +"\"));" +
                                     "\n\tsim.setValue(\"fixations_counted_"+ pop_name+"\", 0);")
 
-            if(population_parameters["last_child_clade"] == True):
-                define_population_string += "\n\t" + population_parameters["parent_pop_name"]+".removeSubpopulation();"
-                
+
             define_population_string += "\n}\n\n\n"
 
             self.output_file.write(define_population_string)
 
         #Write the early commands - this may need tweaking w/ the fitness algorithm
         early_event = (str(int(population_parameters["dist_from_start"]) + 1) + ":" + str(int(population_parameters["end_dist"])) +
-                        " early(){\n\t" + pop_name + ".fitnessScaling = " +  
-                        str(int(population_parameters["population_size"])) + "/ (" + pop_name + 
+                        " early(){\n\t" + pop_name + ".fitnessScaling = " +
+                        str(int(population_parameters["population_size"])) + "/ (" + pop_name +
                         ".individualCount")
         if(self.fitness_profile_calc):
             early_event += ( " * " + str(self.scaling_factor) + ");" )
         else:
             early_event += (");" + "\n\tget_fitnesses(" + pop_name + ", \"" + pop_name + "\");")
-            
+
         early_event+= "\n}\n\n\n"
 
         self.output_file.write(early_event)
@@ -621,10 +619,10 @@ class writeSLiM:
             else:
                 terminal_output_string += ("\n\t\tfasta_string_prot = paste0(\">\", g.individual, \", " + pop_name + ": \\n\", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));" +
                                         "\n\t\twriteFile(\"" + aa_filename + "\", fasta_string_prot,append = T);}" )
-                                        
-                                        
-        
-        
+
+
+
+
         return terminal_output_string
 
 
