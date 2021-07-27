@@ -634,13 +634,11 @@ class SLiMTree:
         os.chdir(sys.path[0] + "/Goldstein-Pollock-2017-master/simulate/")
         os.system("javac *.java")
         os.chdir("..")
-        # self.starting_parameters["ancestral_sequence"] = os.popen("java simulate.Simulate " + 
-            # initial_working_dir + "/" + self.starting_parameters["pdb_file"] + " " + 
-            # initial_working_dir + "/" + self.starting_parameters["distribution_pdb_files"] +
-            # " \"" + self.starting_parameters["pdb_file"][0:-4] + "," + self.starting_parameters["pdb_chain_id"] +
-            # "\" \"" + chain_ids + "\"").read()
-        self.starting_parameters["ancestral_sequence"] = "TGCGACGAAACGCCCTGGGAACAACAAACCCCCTCGTCGCTCCTTCTTCCCGGATCACCAGAGTTGACGGAGTGGGCCTACCCGTGGATCAATCCCATGTTCGAGCCCATTTTGGCCCATAGATTCCGTATGTATTACTACCTCGACGACATTATTATCTCGAAAAAGCGCCGTTGTGAGAAGTCTGAGATGGGTTCCCACAAGCTGCGCTGTTGTATGAAGCGCAAGGATCGCGAGCTTGTATTTCGCCATATGATGTTTGCAAAATTTCTTGCTACTTTCCGTGAGGAGACTTGGAGACATCTGGAACCCATTAGGGAATTTGACTGCATAATGTTACTTGATCATCGCGAACTGAGATCAGCTCCGCTACCAAAGAGACCGACGCGTTTCATGTGGCAATTTCCGCCGCCCCAGTGTATCTTCCATGCCCTTATAGCCCTGCCATGTCCGCGTTGTCTTCAAATCCAATATGCCCTATGGGACATTACGCCATGCCTGAGGGGCTTTATGGATCTGGAAGAACGCAGGGGCCCGCTACCCTTTAGGAGAGCCGAGCCAACTACTACCACAGGGCAAATGCTTTACCCCATCCTCCGCGCCGCCTGCTGCCGGGAGTTTTGTCCCACACCCGGAGATCAGGAGCCAGATGATGACGACCCTCGCAGAAGGCGTTCCATCAAGCTCAGGACCACTCGGCGTCGGCGCAGGAGAAAAAAGCGCCGGTGTCGTAAGCGTCGCGATTTATTACGACTACTCCTTGATAGGCCTCTACAGAGGACGGATCTGAGCCGAGGCGACCACCCAGATATGAAACGGGACCGTATGATGGATACGGAAGAATTTTGGTTCACCGCACCGCTCCGAATGCCCCTCCTGCGCAAGGGGCGTCCACAGATA"
-            
+        self.starting_parameters["ancestral_sequence"] = os.popen("java simulate.Simulate " + 
+            initial_working_dir + "/" + self.starting_parameters["pdb_file"] + " " + 
+            initial_working_dir + "/" + self.starting_parameters["distribution_pdb_files"] +
+            " \"" + self.starting_parameters["pdb_file"][0:-4] + "," + self.starting_parameters["pdb_chain_id"] +
+            "\" \"" + chain_ids + "\"").read()            
             
         #Additional little command to make sure that protein calculation can occur
         os.chdir("..")
