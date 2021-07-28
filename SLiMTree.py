@@ -472,8 +472,8 @@ class SLiMTree:
     #Read fitness profile and stationary distribution data from psi_c50 file, make fitness profiles
     def find_fitness_profile(self):
         #Open stationary and fitness effects csv
-        fitness_dist = pandas.io.parsers.read_csv (os.path.dirname(os.path.realpath(__file__)) + '/fitnessDataFiles/table_fitness_profiles.csv')
-        stationary_distributions = pandas.io.parsers.read_csv (os.path.dirname(os.path.realpath(__file__)) + '/fitnessDataFiles/table_stationary_distributions.csv')
+        fitness_dist = pandas.io.parsers.read_csv (os.path.dirname(os.path.realpath(__file__)) + '/fitnessDataFiles/table_fitness_profiles.csv', header = None)
+        stationary_distributions = pandas.io.parsers.read_csv (os.path.dirname(os.path.realpath(__file__)) + '/fitnessDataFiles/table_stationary_distributions.csv', header = None)
 
         #Add an extra distribution for non-coding neutral alleles - neutral, 20 AA + stop codon
         stationary_distributions["neutral"] = 1
