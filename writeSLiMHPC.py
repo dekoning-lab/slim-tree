@@ -55,7 +55,7 @@ class writeSLiMHPC(writeSLiM):
 
         #Set up the initialize and fitness functions for the new script
         super().write_initialize(population_parameters)
-        if(super.fitness_profile_calc):
+        if(self.fitness_profile_calc):
             super().write_fitness()
         else:
             super().write_fitness_protein_contact()
