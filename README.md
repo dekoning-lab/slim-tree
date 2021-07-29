@@ -2,7 +2,7 @@
 
 SLiM-Tree is a simulation tool which automates pure population genetics simulations over phylogenetic timescales under realistic models of sequence-fitness relationships. For a full description of SLiM-Tree usage please refer to the user manual. 
 
-SLiMTree requires installation of Python3 and slim (https://messerlab.org/slim/). Required python packages are sys, argparse, BioPython, matplotlib, random, pandas, numpy, os, json, string and math
+SLiMTree requires installation of Python3 and slim (https://messerlab.org/slim/). Required python packages are sys, argparse, BioPython, matplotlib, random, pandas, numpy, os, json, string and math. If using protein based fitness effects - java and c are also required.
 
 To run SLiMTree run the command python3 SLiMTree -i <your input tree - in newick format>.
 
