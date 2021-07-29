@@ -71,7 +71,7 @@ Additional arguments include:
 	
 	-m: csv file containing mutational matrix defining the mutation rate from one nucleotide to another in alphabetical order (ie. A, C, G, T)
 	
-                                            [-jc [JUKES_CANTOR]] [-m MUTATION_MATRIX]      
+
 
 Users may also specify another file under -d with changes to parameters for different branches. 
 
