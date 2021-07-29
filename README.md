@@ -26,8 +26,8 @@ Additional arguments include:
 	-r: recombination rate
 	  
 	-b: burn in multiplier - a value which will be multiplied by the population size to determine the length of the burn-in period to establish mutations
-
-        -k: sample size - the size of the sample of genomes to be output at the end of the simulation, users can specify number, 'all' for all genomes or 'consensus' for the consensus sequence
+	
+	-k: sample size - the size of the sample of genomes to be output at the end of the simulation, users can specify number, 'all' for all genomes or 'consensus' for the consensus sequence
 	
 	-sr: the ratio of the population that is split into each subpopulation in non-WF models of evolution
 	  
