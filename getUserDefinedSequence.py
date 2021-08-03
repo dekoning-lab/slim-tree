@@ -10,7 +10,7 @@ from Bio.Seq import Seq
 class getUserDefinedSequence:
     
     #Initialize a gb file and fasta file given by the user to find the ancestral sequence and coding regions from. Also initialize stationary distributions
-    def __init__(self, gb_file, fasta_file, stationary_dists = None, fitness_dists = None):
+    def __init__(self, fasta_file, stationary_dists = None, fitness_dists = None):
         self.gb_file = gb_file
         self.fasta_file = fasta_file
         self.stationary_dists = stationary_dists
@@ -19,51 +19,6 @@ class getUserDefinedSequence:
         if (self.stationary_dists != None):
             self.stationary_dists = self.stationary_dists.transpose()
             self.stationary_dists = self.stationary_dists.drop("neutral")
-
-    #Get the coding ranges of sequences from the gb file
-    def get_coding_features(self):
-        #Find the sequence to be taken
-        for record in SeqIO.parse(self.gb_file, "gb"):
-            features = record.features
-            
-
-    
-        #Get the coding sequence numbers from the sequences
-        cds = []
-
-        try:    
-            for feature in features:
-                if(feature.type=="CDS"):
-                    cds.append(str(feature.location))
-        except:
-            print("Please provide gb file in genbank format. Program closing.")
-            sys.exit(0)
-            
-        #Find the coding numbers as ints and format according to SLiM-Tree requirements
-        orfs = []
-        for seq in cds:
-            if(seq.find("+") != -1):
-                 
-                
-                if(seq.find("join") != -1):
-                    for seq_part in seq.split(","):
-                        digits = []
-                        for num in seq_part.split(":"):
-                            digits.append(int(''.join(s for s in list(num) if s.isdigit())))
-                        if(((digits[1] - digits[0]) ) % 3 != 0): #If connected sequences - may not be exactly the correct codon count - add sequences to the end
-                            digits[1] = digits[1] + 3 - (((digits[1] - digits[0]) ) % 3)
-                        orfs.append(digits)
-                
-                else:
-                    digits = []
-                    for num in seq.split(":"):
-                        digits.append(int(''.join(s for s in list(num) if s.isdigit())))
-                
-                    orfs.append(digits)
-
-        orfs = np.stack(np.sort(np.array(orfs), axis = 0))
-
-        return orfs
     
 
     #Find the ancestral sequence from the fasta file given by the user
