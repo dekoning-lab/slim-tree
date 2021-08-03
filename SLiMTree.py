@@ -18,6 +18,8 @@ import sys, argparse, random, os, json, string, math, pandas, re
 import numpy as np
 
 from Bio import Phylo
+from Bio import SeqIO
+from Bio.Seq import Seq
 from matplotlib.pyplot import show, savefig
 from writeSLiM import writeSLiM
 from writeSLiMHPC import writeSLiMHPC
@@ -103,7 +105,6 @@ class SLiMTree:
         parser.add_argument('-s', '--user_provided_sequence', type = self.str2bool, default = False, const = True, nargs = '?',
                 help = 'boolean specifying whether user provides ancestral sequence and coding regions, Default = False')
         parser.add_argument('-f', '--fasta_file', type = str, default = None, help = 'fasta file containing ancestral sequence - please provide only 1 sequence')
-        parser.add_argument('-gb', '--genbank_file', type = str, default = None, help = 'genbank file containing information about ancestral genome - please provide data for only 1 genome')
         parser.add_argument('-R', '--randomize_fitness_profiles', type = self.str2bool, default = True, const = True, nargs = '?',
                 help = ('boolean specifying whether to randomize fitness profiles provided in the fitness data files folder. Default = True. If false, there' +
                         ' must be equal fitness profiles to protein sequence length'))
@@ -158,9 +159,14 @@ class SLiMTree:
 
 
         #Ensure that if users specify a user provided sequence they include fasta file and gb file
-        if (arguments.user_provided_sequence and (arguments.fasta_file == None or arguments.genbank_file == None )):
-            print("When specifying an ancestral sequence, a fasta file containing the sequence and a genbank file containing coding regions must " +
-                    "be provided. Closing program.")
+        if (arguments.user_provided_sequence and (arguments.fasta_file == None or arguments.randomize_fitness_profiles)):
+            print("When specifying an ancestral sequence, a fasta file containing the sequence must be provided " +
+            "and fitness profiles cannot be randomized as a specific fitness profile specific to the amino acid " +
+            "in the protein being profiled must be provided for each amino acid position. Closing program.")
+            sys.exit(0);
+            
+        if (arguments.user_provided_sequence and (arguments.coding_ratio != 1.0 or arguments.gene_count != 1)):
+            print("When specifying an ancestral sequence, the sequence of only one gene should be provided. Closing program.")
             sys.exit(0);
 
 
@@ -249,7 +255,6 @@ class SLiMTree:
 
         self.starting_parameters["user_provided_sequence"] = arguments.user_provided_sequence
         self.starting_parameters["fasta_file"] = arguments.fasta_file
-        self.starting_parameters["genbank_file"] = arguments.genbank_file
 
         self.starting_parameters["wf_model"] = arguments.wright_fisher_model
         self.starting_parameters["jukes_cantor"] = arguments.jukes_cantor
@@ -258,10 +263,11 @@ class SLiMTree:
         self.starting_parameters["haploidy"] = arguments.haploidy
 
         #Set up coding sequences if no user defined sequence is specified
+        self.starting_parameters["gene_count"] = arguments.gene_count
+        self.starting_parameters["coding_ratio"] = arguments.coding_ratio
+        
         if (not arguments.user_provided_sequence):
             self.starting_parameters["genome_length"] = int(arguments.genome_length)
-            self.starting_parameters["gene_count"] = arguments.gene_count
-            self.starting_parameters["coding_ratio"] = arguments.coding_ratio
             self.starting_parameters["coding_seqs"] = self.get_coding_seqs()
 
 
@@ -445,12 +451,13 @@ class SLiMTree:
 
         if(gene_count == 0 or coding_ratio == 0):
             return None
+        elif(gene_count == 1):
+            return np.stack(np.array_split([int(0), int(genome_length)], 1))
 
         percent_coding = math.ceil(int(genome_length) * coding_ratio) #Gives approximate number of coding amino acids
         avg_coding_length = math.ceil(percent_coding / gene_count) #Gives avg length of coding region
         avg_noncoding_length = 0
-        if (gene_count != 1):
-            avg_noncoding_length = math.floor((genome_length - percent_coding) / (gene_count - 1)) #Average length of non-coding regions by subtracting number of coding aa from total aa
+        avg_noncoding_length = math.floor((genome_length - percent_coding) / (gene_count - 1)) #Average length of non-coding regions by subtracting number of coding aa from total aa
 
         coding_regions = []
         current_aa = 0
@@ -508,10 +515,19 @@ class SLiMTree:
         if(not self.starting_parameters["randomize_fitness_profiles"]): #Use user provided fitness profiles
 
             if(self.starting_parameters["user_provided_sequence"]):
-                get_seq = getUserDefinedSequence(self.starting_parameters["genbank_file"],
-                        self.starting_parameters["fasta_file"])
+            
+               #Find the ancestral sequence from the fasta file given by the user
+                try: 
+                    for record in SeqIO.parse(self.starting_parameters["fasta_file"], "fasta"):
+                        ans_seq = str(record.seq).upper()
+       
+                except:
+                    print("Please provide fasta file in fasta format. Program closing.")
+                    sys.exit(0)
                 self.starting_parameters["ancestral_sequence"] = ans_seq
-                self.starting_parameters["genome_length"] = len(ans_seq)
+                self.starting_parameters["genome_length"] = len(ans_seq)/3
+                self.starting_parameters["coding_seqs"] = np.stack(np.array_split(
+                [int(0), int(self.starting_parameters["genome_length"])], 1))
 
             if(fitness_length != self.starting_parameters["genome_length"]):
                 print("Please ensure that when fitness profiles are not randomized, the " +
@@ -520,19 +536,6 @@ class SLiMTree:
 
             #A fitness profile is given for every position in genome
             fitness_profile_nums = list(range(0,fitness_length))
-
-        #Use user provided sequence to sudo-randomly select fitness profiles for each position
-        elif (self.starting_parameters["user_provided_sequence"]):
-            get_seq = getUserDefinedSequence(self.starting_parameters["genbank_file"],
-                        self.starting_parameters["fasta_file"], stationary_distributions, fitness_profiles)
-
-            coding_feats = get_seq.get_coding_features()
-            ans_seq = get_seq.get_ancestral_sequence()
-            fitness_profile_nums = get_seq.find_fitness_profiles(ans_seq, coding_feats)
-
-            self.starting_parameters["coding_seqs"] = coding_feats
-            self.starting_parameters["ancestral_sequence"] = ans_seq
-            self.starting_parameters["genome_length"] = len(ans_seq)
 
         else: #Randomly set up fitness profiles if not provided by user
             fitness_profile_nums = []
@@ -558,9 +561,6 @@ class SLiMTree:
 
         #Find scaling for non-wright-fisher models
         if(self.starting_parameters["wf_model"] == False):
-            if(self.starting_parameters["user_provided_sequence"]): #Different fitness scaling for user defined sequence because expected value based on AA rather then seq
-                self.starting_parameters["scaling_value"] = get_seq.get_fitness_scaling()
-            else:
                 self.find_fitness_scaling(fitness_distributions)
 
 
