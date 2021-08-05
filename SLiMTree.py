@@ -23,8 +23,6 @@ from Bio.Seq import Seq
 from matplotlib.pyplot import show, savefig
 from writeSLiM import writeSLiM
 from writeSLiMHPC import writeSLiMHPC
-from getUserDefinedSequence import getUserDefinedSequence
-
 from contactmaps import ContactMap
 from contactmaps import utils
 
@@ -561,6 +559,10 @@ class SLiMTree:
 
         #Find scaling for non-wright-fisher models
         if(self.starting_parameters["wf_model"] == False):
+            if(self.starting_parameters["user_provided_sequence"]):
+                self.find_scaling_factor_user_defined(fitness_distributions, 
+                    self.starting_parameters["ancestral_sequence"])
+            else:
                 self.find_fitness_scaling(fitness_distributions)
 
 
@@ -593,7 +595,37 @@ class SLiMTree:
             self.starting_parameters["scaling_value"] = np.prod(expected_fitnesses)
         else:
             self.starting_parameters["scaling_value"] = np.prod(expected_fitnesses)**2
-
+            
+            
+    
+    #Finds the expected fitness for non-WF scaling when a user provided sequence is given
+    def find_scaling_factor_user_defined(self, fitness_profiles, ancestral_seq):
+        fitness_profiles = np.transpose(fitness_profiles)
+        
+        row_names = {'A' : 0 , 'C' : 1, 'D' : 2, 'E' : 3, 'F' : 4, 'G' : 5,'H' : 6, 'I' : 7, 
+                        'K' : 8, 'L' : 9, 'M' : 10, 'N' : 11, 'P' : 12, 'Q' : 13,'R' : 14, 
+                        'S' : 15, 'T' : 16, 'V' : 17, 'W' : 18, 'Y' : 19, 'X' : 20}
+        ancestral_seq = Seq(ancestral_seq)
+        ancestral_aas = ancestral_seq.translate()
+        ancestral_aas = list(ancestral_aas)
+        print(len(ancestral_aas))
+        ancestral_fitnesses = []
+        
+        #Find the value of the ancestral sequence for each fitness profile
+        for num_dist in range(len(ancestral_aas)):
+            row_num = row_names[ancestral_aas[num_dist]]
+            fitness = fitness_profiles[num_dist][row_num]
+            ancestral_fitnesses.append(fitness)
+            
+        #Find the expected value of all sites by multiplying expected values - squared because there are 2 xsomes in diploid models
+        if (self.starting_parameters["haploidy"]):
+            self.starting_parameters["scaling_value"] = np.prod(ancestral_fitnesses)
+        else:
+            self.starting_parameters["scaling_value"] = np.prod(ancestral_fitnesses)**2
+        
+        
+        
+        
 
 
     #Runs the Goldstein-Pollock (2017) scripts to get the ancestral protein
