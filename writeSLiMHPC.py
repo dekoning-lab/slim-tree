@@ -156,19 +156,23 @@ class writeSLiMHPC(writeSLiM):
         #Write a command to count the substitutions (identity by state)
         if (population_parameters["count_subs"]):
             repeated_commands_string += ("\n\tif(length(sim.mutations)!= 0){"
-                        "\n\t\tancestral_genome = sim.getValue(\"fixations_p1\");" +
-                        "\n\t\tmuts_mat = p1.genomes;"
-                        "\n\t\tmuts_mat = muts_mat.nucleotides(format = \"integer\");" +
-                        "\n\t\tmuts_mat = matrix(muts_mat, nrow = " + num_genomes + ", byrow = T);" +
-                        "\n\t\tcompare_seq = c(muts_mat[0,]);"+
-                        "\n\n\t\tfixed_nucs = c(matrixMult(matrix(rep(1, " + num_genomes + "), ncol = " +
-                        num_genomes + "), muts_mat)%" + num_genomes + "== 0);" +
-                        "\n\n\t\tdifferent_muts = (ancestral_genome != compare_seq);" +
-                        "\n\t\tnew_fixations = different_muts & fixed_nucs;" +
-                        "\n\t\tsim.setValue(\"fixations_counted_p1" +
-                        "\", sim.getValue(\"fixations_counted_p1\") + sum(new_fixations));" +
-                        "\n\n\t\tancestral_genome[new_fixations] = compare_seq[new_fixations];" +
-                        "\n\t\tsim.setValue(\"fixations_p1\", ancestral_genome);\n\t};")
+                        "\n\t\tancestral_genome = sim.getValue(\"fixations_" + pop_name + "\");" +
+                        "\n\t\trow_num = " + pop_name + ".individualCount")
+            if (self.haploidy):
+                repeated_commands_string += ";\n\t\tmuts_mat = integer(row_num*1500);\n\t\tmuts_mat = " + pop_name + ".individuals.genome1.nucleotides(NULL, NULL, \"integer\");"
+            else:
+                repeated_commands_string += "* 2;\n\t\tmuts_mat = integer(row_num*1500);\n\t\tmuts_mat = " + pop_name + ".genomes.nucleotides(NULL, NULL, \"integer\");"
+
+            repeated_commands_string += ("\n\t\tmuts_mat = matrix(muts_mat, nrow = row_num, byrow = T);" +
+                            "\n\t\tcompare_seq = c(muts_mat[0,]);"+
+                            "\n\n\t\tfixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = " +
+                            "row_num), muts_mat)% row_num == 0);" +
+                            "\n\n\t\tdifferent_muts = (ancestral_genome != compare_seq);" +
+                            "\n\t\tnew_fixations = different_muts & fixed_nucs;" +
+                            "\n\t\tsim.setValue(\"fixations_counted_" + pop_name +
+                            "\", sim.getValue(\"fixations_counted_" + pop_name+ "\") + sum(new_fixations));" +
+                            "\n\n\t\tancestral_genome[new_fixations] = compare_seq[new_fixations];" +
+                            "\n\t\tsim.setValue(\"fixations_" + pop_name + "\", ancestral_genome);\n\t};")
 
         #Write a command to output when every 100th generation has passed
         if(population_parameters["output_gens"]):
@@ -182,8 +186,8 @@ class writeSLiMHPC(writeSLiM):
                         "(\">parent_ancestral_to_load\\n\" + sim.chromosome.ancestralNucleotides()));" +
                         "\n\t\tsim.outputFull(\"" + os.getcwd()+ "/backupFiles/" + pop_name + ".txt\");\n\t};")
 
-        repeated_commands_string += "\n}\n\n\n"
 
+        repeated_commands_string += "\n}\n\n\n"
         self.output_file.write(repeated_commands_string)
 
 
