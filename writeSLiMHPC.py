@@ -156,7 +156,7 @@ class writeSLiMHPC(writeSLiM):
         #Write a command to count the substitutions (identity by state)
         if (population_parameters["count_subs"]):
             repeated_commands_string += ("\n\tif(length(sim.mutations)!= 0){"
-                        "\n\t\tancestral_genome = sim.getValue(\"fixations_" + pop_name + "\");" +
+                        "\n\t\tancestral_genome = sim.getValue(\"fixations_p1\");" +
                         "\n\t\trow_num = p1.individualCount")
             if (self.haploidy):
                 repeated_commands_string += ";\n\t\tmuts_mat = integer(row_num*1500);\n\t\tmuts_mat = p1.individuals.genome1.nucleotides(NULL, NULL, \"integer\");"
