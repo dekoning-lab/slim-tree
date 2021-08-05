@@ -608,7 +608,6 @@ class SLiMTree:
         ancestral_seq = Seq(ancestral_seq)
         ancestral_aas = ancestral_seq.translate()
         ancestral_aas = list(ancestral_aas)
-        print(len(ancestral_aas))
         ancestral_fitnesses = []
         
         #Find the value of the ancestral sequence for each fitness profile
