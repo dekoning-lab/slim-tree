@@ -157,11 +157,11 @@ class writeSLiMHPC(writeSLiM):
         if (population_parameters["count_subs"]):
             repeated_commands_string += ("\n\tif(length(sim.mutations)!= 0){"
                         "\n\t\tancestral_genome = sim.getValue(\"fixations_" + pop_name + "\");" +
-                        "\n\t\trow_num = " + pop_name + ".individualCount")
+                        "\n\t\trow_num = p1.individualCount")
             if (self.haploidy):
-                repeated_commands_string += ";\n\t\tmuts_mat = integer(row_num*1500);\n\t\tmuts_mat = " + pop_name + ".individuals.genome1.nucleotides(NULL, NULL, \"integer\");"
+                repeated_commands_string += ";\n\t\tmuts_mat = integer(row_num*1500);\n\t\tmuts_mat = p1.individuals.genome1.nucleotides(NULL, NULL, \"integer\");"
             else:
-                repeated_commands_string += "* 2;\n\t\tmuts_mat = integer(row_num*1500);\n\t\tmuts_mat = " + pop_name + ".genomes.nucleotides(NULL, NULL, \"integer\");"
+                repeated_commands_string += "* 2;\n\t\tmuts_mat = integer(row_num*1500);\n\t\tmuts_mat = p1.genomes.nucleotides(NULL, NULL, \"integer\");"
 
             repeated_commands_string += ("\n\t\tmuts_mat = matrix(muts_mat, nrow = row_num, byrow = T);" +
                             "\n\t\tcompare_seq = c(muts_mat[0,]);"+
@@ -169,10 +169,10 @@ class writeSLiMHPC(writeSLiM):
                             "row_num), muts_mat)% row_num == 0);" +
                             "\n\n\t\tdifferent_muts = (ancestral_genome != compare_seq);" +
                             "\n\t\tnew_fixations = different_muts & fixed_nucs;" +
-                            "\n\t\tsim.setValue(\"fixations_counted_" + pop_name +
-                            "\", sim.getValue(\"fixations_counted_" + pop_name+ "\") + sum(new_fixations));" +
+                            "\n\t\tsim.setValue(\"fixations_counted_p1" +
+                            "\", sim.getValue(\"fixations_counted_p1\") + sum(new_fixations));" +
                             "\n\n\t\tancestral_genome[new_fixations] = compare_seq[new_fixations];" +
-                            "\n\t\tsim.setValue(\"fixations_" + pop_name + "\", ancestral_genome);\n\t};")
+                            "\n\t\tsim.setValue(\"fixations_p1\", ancestral_genome);\n\t};")
 
         #Write a command to output when every 100th generation has passed
         if(population_parameters["output_gens"]):
