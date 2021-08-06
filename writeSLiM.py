@@ -411,6 +411,7 @@ class writeSLiM:
             if (self.haploidy):
                 define_population_string += "\n\t" + population_parameters["pop_name"] + ".setCloningRate(1.0);"
 
+
             define_population_string += "\n}\n\n\n"
 
             self.output_file.write(define_population_string)
@@ -529,6 +530,17 @@ class writeSLiM:
                 "asString(sim.getValue(\"fixations_counted_" + population_parameters["pop_name"] + "\")));" +
                 "\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_fixed_mutations.txt\"," +
                 " paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue(\"fixations_" + population_parameters["pop_name"] + "\"))), sep = \"\"));")
+
+        #Calculate dN/dS for the population and write into parameters file
+        if (self.fitness_profile_calc):
+            end_population_string+= ("\n\tsystem(paste(\"Rscript " + os.getcwd() +"/dNdSCalculations.R\","+ str(population_parameters["population_size"]) +", "+ str(population_parameters["mutation_rate"]) +", \""+ population_parameters["pop_name"] +"\", \""+ os.getcwd()+ "\", sep = \" \"));" +
+                    "\n\tdNdSFile = readFile(\"" + os.getcwd() + "/"+population_parameters["pop_name"]+"_dNdSDistributions.csv\");\n\tdNdSValues = c();" +
+                    "for (i in 1:(length(sim.getValue(\"X\"))-1)){\n\t\tdNdSValues = c(dNdSValues, asFloat(strsplit(dNdSFile[i], \",\")[1]));}\n\tvalues = c(")
+
+            for i in range(len(self.coding_regions)):
+                end_population_string += "sim.getValue(\"fitness_profiles"+ str(i) +"\")[sim.getValue(\"fitness_profiles"+ str(i) +"\") < max(sim.getValue(\"fitness_profiles"+str(i)+"\"))],"
+            end_population_string = end_population_string[0:len(end_population_string)-1] #Remove comma at end
+            end_population_string += ");\n\twriteFile(\""+ self.fasta_filename +"_parameters.txt\", paste(\"\\n"+ population_parameters["pop_name"] +" estimated dNdS: \", sum(dNdSValues[values])/length(values), sep = \"\"), append = T);"
 
         #Write files containing polymorphisms in each population and relative proportions
         if(population_parameters["polymorphisms"]):
