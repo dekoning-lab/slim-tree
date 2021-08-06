@@ -15,6 +15,7 @@ colnames(codon)[c(1,2)]<-c("codon", "aa")
 
 #Load Fitness profile data
 Fitness_table<-as.matrix(read.delim(paste(outputdir, "/fitnessDataFiles/table_fitness_profiles.csv", sep = ""),sep = ",", header = TRUE))
+Fitness_table <- Fitness_table[1:20,] #Remove stop codons from consideration here
 fitness_initial<-matrix(data = 0,nrow = 20,ncol = 1)
 rownames(fitness_initial)<-c("A","C","D","E","F","G","H","I","K","L","M","N","P","Q","R","S","T","V","W","Y")
 
