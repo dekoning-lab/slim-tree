@@ -114,16 +114,17 @@ class writeSLiM:
             initialize_string += "\n\tinitializeRecombinationRate("+ str(population_parameters ["recombination_rate"])+");"
 
         #Initialize Genomic Elements according to number of genes for easy visualization in SLiMgui. g1 = coding region, g2 = non-coding region
-        if(len(self.coding_regions == 1)):
+        if(len(self.coding_regions) == 1):
             initialize_string += "\n\tinitializeGenomicElement(g1, " + str(self.coding_regions[0, 0] * 3) + ", " + str(self.coding_regions[0, 1] * 3 - 1) + ");"
         else:
             for region_num in range(len(self.coding_regions)):
-                initialize_string += "\n\tinitializeGenomicElement(g1, " + str(self.coding_regions[region_num, 0] * 3 + 2) + ", " + str(self.coding_regions[region_num, 1] * 3) + ");"
+
+                initialize_string += "\n\tinitializeGenomicElement(g1, " + str(self.coding_regions[region_num, 0] * 3) + ", " + str(self.coding_regions[region_num, 1] * 3 -1) + ");"
 
                 if(region_num == len(self.coding_regions)-1):
-                    initialize_string += "\n\tinitializeGenomicElement(g2, " + str((self.coding_regions[region_num, 1] * 3) + 3) + ", " + str(int(self.genome_length*3)-1) + ");"
+                    initialize_string += "\n\tinitializeGenomicElement(g2, " + str((self.coding_regions[region_num, 1] * 3) ) + ", " + str(int(self.genome_length*3)-1) + ");"
                 else:
-                    initialize_string += "\n\tinitializeGenomicElement(g2, " + str((self.coding_regions[region_num, 1] * 3) + 1) + ", " + str((self.coding_regions[region_num+1, 0] * 3) -1) + ");"
+                    initialize_string += "\n\tinitializeGenomicElement(g2, " + str((self.coding_regions[region_num, 1] * 3) ) + ", " + str((self.coding_regions[region_num+1, 0] * 3) -1) + ");"
 
 
         initialize_string +="\n}\n\n\n"
@@ -205,9 +206,15 @@ class writeSLiM:
 
         #List of start and stop codons, remove first and last parts of strings (the brackets) and add parentheses
         start_stop_codons = list(self.coding_regions.flatten()*3)
-        start_stop_codons[-1] = start_stop_codons[-1] -1
+        #start_stop_codons[-1] = start_stop_codons[-1] -1
         start_stop_codons = str(start_stop_codons)
-        set_up_fitness += ("\n\tdefineConstant(\"start_stop_codon_positions\",matrix(c(" +
+        print(start_stop_codons)
+        if (len(start_stop_codons.split(",")) == 2) :
+            value = start_stop_codons.split(",")[1]
+            value = value[1:len(value)-1]
+            set_up_fitness += ("\n\tdefineConstant(\"start_stop_codon_positions\",matrix(c(0, "+ str(int(value)-3) +"), ncol = 2, byrow = T));\n")
+        else:
+            set_up_fitness += ("\n\tdefineConstant(\"start_stop_codon_positions\",matrix(c(" +
                         start_stop_codons[1: len(start_stop_codons) -1] + "), ncol = 2, byrow = T));\n")
 
         #Set up the starting fitnesses
@@ -234,7 +241,7 @@ class writeSLiM:
                                 "\n\n\tfor (row_num in (0:(nrow(start_stop_codon_positions)-1))){" +
                                 "\n\t\tfitnesses = c();" +
                                 "\n\t\taas = codonsToAminoAcids(sim.chromosome.ancestralNucleotides(" +
-                                "drop(poses[row_num,0]), drop(poses[row_num, 1]), \"codon\"), " +
+                                "drop(poses[row_num,0]), drop(poses[row_num, 1])+2, \"codon\"), " +
                                 "paste = F);" +
                                 "\n\n\t\tsim.setValue(\"ancestral_aa_seq\" + asString(row_num),aas); " +
                                 "\n\n\t\tcount = 0;" +
@@ -255,7 +262,7 @@ class writeSLiM:
                                     "\n\tfitness_value = 1.0;" +
                                     "\n\tfor (row_num in (0:(nrow(start_stop_codon_positions) -1))){" +
                                     "\n\t\tstarting_pos = drop(start_stop_codon_positions[row_num,0]);" +
-                                    "\n\t\tending_pos = drop(start_stop_codon_positions[row_num,1]);" +
+                                    "\n\t\tending_pos = drop(start_stop_codon_positions[row_num,1])+2;" +
                                     "\n\t\taa_stop_pos = (ending_pos - starting_pos)/3;" +
                                     "\n\t\taa_seq = codonsToAminoAcids(nucs.nucleotides(start = starting_pos, " +
                                     "end = ending_pos, format = \"codon\"), paste = F);" +
@@ -265,8 +272,8 @@ class writeSLiM:
                                     "\n\t\t\t next;\n\t\t}" +
                                     "\n\n\t\tfitnesses = sim.getValue(\"ancestral_fitnesses\"+row_num);" +
                                     "\n\t\tfitnesses[poses] = sapply(which(poses), \"sim.getValue(aa_seq[applyValue]);\")" +
-                                    "[sim.getValue(\"fitness_profiles\" + row_num)[poses]];") 
-        if (not self.user_provided_sequence):                           
+                                    "[sim.getValue(\"fitness_profiles\" + row_num)[poses]];")
+        if (not self.user_provided_sequence):
             genome_fitness_function_string += ("\n\n\t\tif(any(poses[0] | poses[aa_stop_pos])){" +
                                     "\n\t\t\tfitness_value = fitness_value * product(" + self.min_fitness + "/fitnesses);" +
                                     "\n\t\t\tnext;\n\t\t}")
