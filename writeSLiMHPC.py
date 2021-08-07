@@ -221,10 +221,11 @@ class writeSLiMHPC(writeSLiM):
 
         #Calculate dN/dS for the population and write into parameters file
         if (self.fitness_profile_calc):
-            end_population_string+= ("\n\tsystem(paste(\"Rscript " + os.getcwd() +"/dNdSCalculations.R\","+ str(population_parameters["population_size"]) +", "+ str(population_parameters["mutation_rate"]) +", \""+ population_parameters["pop_name"] +"\", \""+ os.getcwd()+ "\", sep = \" \"));" +
+            end_population_string+= ("\n\tsystem(paste(\"Rscript " + sys.path[0] +"/dNdSCalculations.R\","+ str(population_parameters["population_size"]) +", "+ 
+                    str(population_parameters["mutation_rate"]) +", \""+ population_parameters["pop_name"] + "\", \""+ sys.path[0]+ "\", \""+ os.getcwd()+ "\", sep = \" \"));" +
                     "\n\tdNdSFile = readFile(\"" + os.getcwd() + "/"+population_parameters["pop_name"]+"_dNdSDistributions.csv\");\n\tdNdSValues = c();" +
                     "for (i in 1:(length(sim.getValue(\"X\"))-1)){\n\t\tdNdSValues = c(dNdSValues, asFloat(strsplit(dNdSFile[i], \",\")[1]));}\n\tvalues = c(")
-
+    
             for i in range(len(self.coding_regions)):
                 end_population_string += "sim.getValue(\"fitness_profiles"+ str(i) +"\")[sim.getValue(\"fitness_profiles"+ str(i) +"\") < max(sim.getValue(\"fitness_profiles"+str(i)+"\"))],"
             end_population_string = end_population_string[0:len(end_population_string)-1] #Remove comma at end
