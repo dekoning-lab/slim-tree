@@ -3,10 +3,9 @@
 #random
 #csv
 #os
-#sys
 
 
-import random, csv, os, sys
+import random, csv, os
 from writeSLiM import writeSLiM
 
 
@@ -131,14 +130,14 @@ class writeSLiMHPC(writeSLiM):
         #Write the early commands - this may need tweaking w/ the fitness algorithm
         pop_name = population_parameters["pop_name"]
         early_event = (str(int(population_parameters["dist_from_start"]) + 2) + ":" + str(int(population_parameters["end_dist"]) + 1) +
-                        " early(){\n\t" + "p1.fitnessScaling = " +  
-                        str(int(population_parameters["population_size"])) + "/ (" + 
+                        " early(){\n\t" + "p1.fitnessScaling = " +
+                        str(int(population_parameters["population_size"])) + "/ (" +
                         "p1.individualCount")
         if(self.fitness_profile_calc):
             early_event += ( " * " + str(self.scaling_factor) + ");" )
         else:
             early_event += (");" + "\n\tget_fitnesses(" + pop_name + ", \"" + pop_name + "\");")
-            
+
         early_event+= "\n}\n\n\n"
 
         self.output_file.write(early_event)
@@ -220,31 +219,22 @@ class writeSLiMHPC(writeSLiM):
 
         end_population_string += "\n\tsim.outputFixedMutations();"
 
-        #Calculate dN/dS for the population and write into parameters file
-        if (self.fitness_profile_calc):
-            end_population_string+= ("\n\tsystem(paste(\"Rscript " + sys.path[0] +"/dNdSCalculations.R\","+ str(population_parameters["population_size"]) +", "+ 
-                    str(population_parameters["mutation_rate"]) +", \""+ population_parameters["pop_name"] + "\", \""+ sys.path[0]+ "\", \""+ os.getcwd()+ "\", sep = \" \"));" +
-                    "\n\tdNdSFile = readFile(\"" + os.getcwd() + "/"+population_parameters["pop_name"]+"_dNdSDistributions.csv\");\n\tdNdSValues = c();" +
-                    "for (i in 1:(length(sim.getValue(\"X\"))-1)){\n\t\tdNdSValues = c(dNdSValues, asFloat(strsplit(dNdSFile[i], \",\")[1]));}\n\tvalues = c(")
-    
-            for i in range(len(self.coding_regions)):
-                end_population_string += "sim.getValue(\"fitness_profiles"+ str(i) +"\")[sim.getValue(\"fitness_profiles"+ str(i) +"\") < max(sim.getValue(\"fitness_profiles"+str(i)+"\"))],"
-            end_population_string = end_population_string[0:len(end_population_string)-1] #Remove comma at end
-            end_population_string += ");\n\twriteFile(\""+ self.fasta_filename +"_parameters.txt\", paste(\"\\n"+ population_parameters["pop_name"] +" estimated dNdS: \", sum(dNdSValues[values])/length(values), sep = \"\"), append = T);"
-
-
-
-
         #Write files containing polymorphisms in each population and relative proportions
         if(population_parameters["polymorphisms"]):
-            end_population_string += ("\n\tpop_seq = sample(p1.individuals.genomes, 1).nucleotides();\n\tpop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = \"\");" +
-                            "\n\tpolymorph_str = c();\n\tfixed_str=c();\n\tfor (a in 0:(length(pop_seq)-1)) {\n\t\tdiffs = c();\n\t\tfor (g in p1.individuals.genomes.nucleotides()){" +
-                            "\n\t\t\taa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = \"\");\n\t\t\tdiffs = c(diffs, aa_seq[a]);\n\t\t}" +
-                            "\n\t\tunique_diffs = unique(diffs);\n\t\tif (length(unique_diffs) > 1) {\n\t\t\tpolymorph_str = c(polymorph_str, a, \": \");\n\t\t\tfor (p in unique_diffs) {" +
-                            "\n\t\t\t\tpolymorph_str = c(polymorph_str, p, \": \", length(which(diffs == p)) / length(diffs), \" \");\n\t\t\t}\n\t\tpolymorph_str = c(polymorph_str, \"\\n\");\n\t\t}" +
-                            " else if (length(unique_diffs) == 1) {\n\t\t\tfixed_str = c(fixed_str, a, \": \", unique_diffs, \"\\n\");\n\t\t}" +
-                            "\n\t}\n\twriteFile(\"" + os.getcwd() + "/" + population_parameters["pop_name"] + "_polymorphisms.txt\", paste(polymorph_str, sep = \"\"));" +
-                            "\n\twriteFile(\"" + os.getcwd() + "/" + population_parameters["pop_name"] + "_fixed_sites.txt\", paste(fixed_str, sep = \"\"));")
+            if (self.haploidy):
+                end_population_string += ("\n\tpop_seq = sample("+ population_parameters["pop_name"] +".individuals.genome1, 1).nucleotides();\n\tpop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = \"\");" +
+                            "\n\tpolymorph_str = c();\n\tfixed_str=c();\n\tfor (a in 0:(length(pop_seq)-1)) {\n\t\tdiffs = c();\n\t\tfor (g in " + population_parameters["pop_name"] + ".individuals.genome1.nucleotides()){")
+
+            else:
+                end_population_string += ("\n\tpop_seq = sample("+ population_parameters["pop_name"] +".individuals.genomes, 1).nucleotides();\n\tpop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = \"\");" +
+                            "\n\tpolymorph_str = c();\n\tfixed_str=c();\n\tfor (a in 0:(length(pop_seq)-1)) {\n\t\tdiffs = c();\n\t\tfor (g in " + population_parameters["pop_name"] + ".individuals.genomes.nucleotides()){")
+
+            end_population_string += ("\n\t\t\taa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = \"\");\n\t\t\tdiffs = c(diffs, aa_seq[a]);\n\t\t}" +
+            "\n\t\tunique_diffs = unique(diffs);\n\t\tif (length(unique_diffs) > 1) {\n\t\t\tpolymorph_str = c(polymorph_str, a, \": \");\n\t\t\tfor (p in unique_diffs) {" +
+            "\n\t\t\t\tpolymorph_str = c(polymorph_str, p, \": \", length(which(diffs == p)) / length(diffs), \" \");\n\t\t\t}\n\t\tpolymorph_str = c(polymorph_str, \"\\n\");\n\t\t}" +
+            " else if (length(unique_diffs) == 1) {\n\t\t\tfixed_str = c(fixed_str, a, \": \", unique_diffs, \"\\n\");\n\t\t}" +
+            "\n\t}\n\twriteFile(\"" + os.getcwd() + "/" + population_parameters["pop_name"] + "_polymorphisms.txt\", paste(polymorph_str, sep = \"\"));" +
+            "\n\twriteFile(\"" + os.getcwd() + "/" + population_parameters["pop_name"] + "_fixed_sites.txt\", paste(fixed_str, sep = \"\"));")
 
 
         #If this is the last clade from a certain parent, write script to destroy that parent's temporary files

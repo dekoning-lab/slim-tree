@@ -533,11 +533,11 @@ class writeSLiM:
 
         #Calculate dN/dS for the population and write into parameters file
         if (self.fitness_profile_calc):
-            end_population_string+= ("\n\tsystem(paste(\"Rscript " + sys.path[0] +"/dNdSCalculations.R\","+ str(population_parameters["population_size"]) +", "+ 
+            end_population_string+= ("\n\tsystem(paste(\"Rscript " + sys.path[0] +"/dNdSCalculations.R\","+ str(population_parameters["population_size"]) +", "+
                     str(population_parameters["mutation_rate"]) +", \""+ population_parameters["pop_name"] + "\", \""+ sys.path[0]+ "\", \""+ os.getcwd()+ "\", sep = \" \"));" +
                     "\n\tdNdSFile = readFile(\"" + os.getcwd() + "/"+population_parameters["pop_name"]+"_dNdSDistributions.csv\");\n\tdNdSValues = c();" +
                     "for (i in 1:(length(sim.getValue(\"X\"))-1)){\n\t\tdNdSValues = c(dNdSValues, asFloat(strsplit(dNdSFile[i], \",\")[1]));}\n\tvalues = c(")
-    
+
             for i in range(len(self.coding_regions)):
                 end_population_string += "sim.getValue(\"fitness_profiles"+ str(i) +"\")[sim.getValue(\"fitness_profiles"+ str(i) +"\") < max(sim.getValue(\"fitness_profiles"+str(i)+"\"))],"
             end_population_string = end_population_string[0:len(end_population_string)-1] #Remove comma at end
@@ -545,14 +545,21 @@ class writeSLiM:
 
         #Write files containing polymorphisms in each population and relative proportions
         if(population_parameters["polymorphisms"]):
-            end_population_string += ("\n\tpop_seq = sample("+ population_parameters["pop_name"] +".individuals.genomes, 1).nucleotides();\n\tpop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = \"\");" +
-                            "\n\tpolymorph_str = c();\n\tfixed_str=c();\n\tfor (a in 0:(length(pop_seq)-1)) {\n\t\tdiffs = c();\n\t\tfor (g in " + population_parameters["pop_name"] + ".individuals.genomes.nucleotides()){" +
-                            "\n\t\t\taa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = \"\");\n\t\t\tdiffs = c(diffs, aa_seq[a]);\n\t\t}" +
-                            "\n\t\tunique_diffs = unique(diffs);\n\t\tif (length(unique_diffs) > 1) {\n\t\t\tpolymorph_str = c(polymorph_str, a, \": \");\n\t\t\tfor (p in unique_diffs) {" +
-                            "\n\t\t\t\tpolymorph_str = c(polymorph_str, p, \": \", length(which(diffs == p)) / length(diffs), \" \");\n\t\t\t}\n\t\tpolymorph_str = c(polymorph_str, \"\\n\");\n\t\t}" +
-                            " else if (length(unique_diffs) == 1) {\n\t\t\tfixed_str = c(fixed_str, a, \": \", unique_diffs, \"\\n\");\n\t\t}" +
-                            "\n\t}\n\twriteFile(\"" + os.getcwd() + "/" + population_parameters["pop_name"] + "_polymorphisms.txt\", paste(polymorph_str, sep = \"\"));" +
-                            "\n\twriteFile(\"" + os.getcwd() + "/" + population_parameters["pop_name"] + "_fixed_sites.txt\", paste(fixed_str, sep = \"\"));")
+            if (self.haploidy):
+                end_population_string += ("\n\tpop_seq = sample("+ population_parameters["pop_name"] +".individuals.genome1, 1).nucleotides();\n\tpop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = \"\");" +
+                            "\n\tpolymorph_str = c();\n\tfixed_str=c();\n\tfor (a in 0:(length(pop_seq)-1)) {\n\t\tdiffs = c();\n\t\tfor (g in " + population_parameters["pop_name"] + ".individuals.genome1.nucleotides()){")
+
+            else:
+                end_population_string += ("\n\tpop_seq = sample("+ population_parameters["pop_name"] +".individuals.genomes, 1).nucleotides();\n\tpop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = \"\");" +
+                            "\n\tpolymorph_str = c();\n\tfixed_str=c();\n\tfor (a in 0:(length(pop_seq)-1)) {\n\t\tdiffs = c();\n\t\tfor (g in " + population_parameters["pop_name"] + ".individuals.genomes.nucleotides()){")
+
+            end_population_string += ("\n\t\t\taa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = \"\");\n\t\t\tdiffs = c(diffs, aa_seq[a]);\n\t\t}" +
+            "\n\t\tunique_diffs = unique(diffs);\n\t\tif (length(unique_diffs) > 1) {\n\t\t\tpolymorph_str = c(polymorph_str, a, \": \");\n\t\t\tfor (p in unique_diffs) {" +
+            "\n\t\t\t\tpolymorph_str = c(polymorph_str, p, \": \", length(which(diffs == p)) / length(diffs), \" \");\n\t\t\t}\n\t\tpolymorph_str = c(polymorph_str, \"\\n\");\n\t\t}" +
+            " else if (length(unique_diffs) == 1) {\n\t\t\tfixed_str = c(fixed_str, a, \": \", unique_diffs, \"\\n\");\n\t\t}" +
+            "\n\t}\n\twriteFile(\"" + os.getcwd() + "/" + population_parameters["pop_name"] + "_polymorphisms.txt\", paste(polymorph_str, sep = \"\"));" +
+            "\n\twriteFile(\"" + os.getcwd() + "/" + population_parameters["pop_name"] + "_fixed_sites.txt\", paste(fixed_str, sep = \"\"));")
+
 
         if(population_parameters["terminal_clade"] and not self.model_type):
             end_population_string += "\n\t" + population_parameters["pop_name"] + ".removeSubpopulation();"
