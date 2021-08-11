@@ -1,0 +1,1 @@
+python3 ../../../slim-tree/ -i ex10_tree.txt -p apophis -t 12:00:00 -T SLiM-Tree-HPC
