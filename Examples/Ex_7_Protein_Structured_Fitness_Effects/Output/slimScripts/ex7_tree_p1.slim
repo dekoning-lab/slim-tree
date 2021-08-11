@@ -1,0 +1,763 @@
+initialize() {
+	initializeSLiMModelType("nonWF");
+	setSeed(959763355);
+	initializeSLiMOptions(nucleotideBased=T);
+	initializeAncestralNucleotides("ATTGCCGGCGAGCGTGAGGAGAGACGACGGAGAGGTTCAGCGATCTGTCTGATTATAGAGTGCCCCCACTCTCGTGTAGAACTACCGATGCGCGAGAGTTACGATATCAAGCGGGACCGTGTTGATGATCGTCCATGGGAGCCATCGGACGGACTCGACCGCGCGCTCCTCCCAAGAATTCTCCTGATAATGTTAAAAATGCCTATAATTATCAGAAAAATGTCCCGCTTCTGTAGGAAGCGTCAACATAGATTTCGTTTCAGGCACTTCCAAGATATTCACGAGATGTGTCTACGTTTTATGCAACGTTGCTGCGACTTTGAATTTATTATACGACAGTTGAAGCCTGAGTCGTCCGCTTTAGGCATTTTCCTTGAAGAAAAGATGGAATGCAGACCGATCATGGACCAGGCTCGCATGTTCCGACCTATCATTTTGTTTCTTTTCATTCTGGACCCACGCAAAGATGGTACCGAAAAACGAAGAGCGGAGGACGGGATACGGGATCTATGTGAGTTGAAAAAGGATGACAAAATCTTACCGTGGATACCACCCCGTCCATTTCAGAGGATGGAGGAATGTTGTTGTGCACGTATGCCTTCGCAGAGAAAACTGTGCGACCACTCCTTATCCTTATTAATGATGCAGATGAGGCATGAAGAGATGTTGTTCTTAGCAAGATCTTTGATCATAATGATCTGGCCTCCACGCGAAGGTTGTGAAGACGAACGTCTCGACCGCTTTATGAAACACGCACGTTGTATACATTTCAAACGGAAAAGGAAGAAGCTGCCATCTCCGCATCGTACTGAACGTAAAGGTATAATCTTCTTTACCGAGCTGCGGTCGCCTCGTTTCGATTTTCGTCAAACTGCGCGTTTCCGGATGTTCATGTCGAAA");
+	mm = mmJukesCantor(8.333333333333334e-07);
+	initializeMutationTypeNuc("m1", 0.5, "f", 0.0);
+	m1.convertToSubstitution = F;
+	initializeGenomicElementType("g1", m1, 1.0, mm);
+	initializeGenomicElementType("g2", m1, 1.0, mm);
+	initializeRecombinationRate(2.5e-08);
+	initializeGenomicElement(g1, 0, 899);
+}
+
+
+function (void) setup_fitness(void){}
+
+
+function (void) get_fitnesses (No sub_pop, string sub_pop_name) {
+	to_write = codonsToAminoAcids(nucleotidesToCodons(sim.getValue("fixations_" + sub_pop_name)))+ codonsToAminoAcids(sub_pop.genomes.nucleotides(format = "codon"));
+	filename = writeTempFile(sub_pop_name, ".txt", to_write);
+	to_call = "slim-tree/GetEnergy 300 55 /mnt/c/Users/ebrin/Documents/Summer_Research/cmaps/distribution_contacts.csv /mnt/c/Users/ebrin/Documents/Summer_Research/cmaps/main_contact_mat.csv " + filename + " 2382 8960";
+	fitnesses = asFloat(strsplit(system(to_call), sep = ","));
+	sim.setValue(sub_pop_name + "_fitnesses", fitnesses);
+}
+
+
+fitness(NULL){
+	ind = genome2.individual;
+	index = ind.index * 2;
+	subpop_id = "p" + ind.subpopulation.id;
+	return product(sim.getValue(subpop_id + "_fitnesses")[index :(index + 1)]);
+}
+
+
+reproduction() { 
+	subpop.addCrossed(individual, subpop.sampleIndividuals(1));
+ }
+
+
+1 early() {
+	setup_fitness();
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/test_tree_aa.fasta", "", append = F);
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/test_tree_nuc.fasta", "", append = F);
+	sim.addSubpop("p1", 100);
+	sim.setValue("fixations_p1", sim.chromosome.ancestralNucleotides(format = "integer"));
+	sim.setValue("fixations_counted_p1", 0);
+}
+
+
+1:1000 early(){
+	p1.fitnessScaling = 100/ (p1.individualCount);
+	get_fitnesses(p1, "p1");
+}
+
+
+1:1000late () {
+	if(length(sim.mutations)!= 0){
+		ancestral_genome = sim.getValue("fixations_p1");
+		row_num = p1.individualCount* 2;
+		muts_mat = integer(row_num*1500);
+		muts_mat = p1.genomes.nucleotides(NULL, NULL, "integer");
+		muts_mat = matrix(muts_mat, nrow = row_num, byrow = T);
+		compare_seq = c(muts_mat[0,]);
+
+		fixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = row_num), muts_mat)% row_num == 0);
+
+		different_muts = (ancestral_genome != compare_seq);
+		new_fixations = different_muts & fixed_nucs;
+		sim.setValue("fixations_counted_p1", sim.getValue("fixations_counted_p1") + sum(new_fixations));
+
+		ancestral_genome[new_fixations] = compare_seq[new_fixations];
+		sim.setValue("fixations_p1", ancestral_genome);
+	};
+
+	if (sim.generation%100 == 0) {
+		catn(sim.generation);
+	};
+
+	if (sim.generation%100 == 0) {
+		writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/backupFiles/p1.fasta",(">parent_ancestral_to_load\n" + sim.chromosome.ancestralNucleotides()));
+		sim.outputFull("/mnt/c/Users/ebrin/Documents/Summer_Research/backupFiles/p1.txt");
+	};
+}
+
+
+1000 late() {
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p1_fixed_mutation_counts.txt",asString(sim.getValue("fixations_counted_p1")));
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p1_fixed_mutations.txt", paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue("fixations_p1"))), sep = ""));
+	pop_seq = sample(p1.individuals.genomes, 1).nucleotides();
+	pop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = "");
+	polymorph_str = c();
+	fixed_str=c();
+	for (a in 0:(length(pop_seq)-1)) {
+		diffs = c();
+		for (g in p1.individuals.genomes.nucleotides()){
+			aa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = "");
+			diffs = c(diffs, aa_seq[a]);
+		}
+		unique_diffs = unique(diffs);
+		if (length(unique_diffs) > 1) {
+			polymorph_str = c(polymorph_str, a, ": ");
+			for (p in unique_diffs) {
+				polymorph_str = c(polymorph_str, p, ": ", length(which(diffs == p)) / length(diffs), " ");
+			}
+		polymorph_str = c(polymorph_str, "\n");
+		} else if (length(unique_diffs) == 1) {
+			fixed_str = c(fixed_str, a, ": ", unique_diffs, "\n");
+		}
+	}
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p1_polymorphisms.txt", paste(polymorph_str, sep = ""));
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p1_fixed_sites.txt", paste(fixed_str, sep = ""));
+}
+
+
+1000 late() { 
+	sim.addSubpop("p2", 0);
+	migrants = sample(p1.individuals, asInteger(p1.individualCount * 0.5));
+	p2.takeMigrants(migrants);
+	catn(p2.individualCount);
+
+	sim.setValue("fixations_p2", sim.getValue("fixations_p1"));
+	sim.setValue("fixations_counted_p2", 0);
+}
+
+
+1001:23800 early(){
+	p2.fitnessScaling = 100/ (p2.individualCount);
+	get_fitnesses(p2, "p2");
+}
+
+
+1001:23800late () {
+	if(length(sim.mutations)!= 0){
+		ancestral_genome = sim.getValue("fixations_p2");
+		row_num = p2.individualCount* 2;
+		muts_mat = integer(row_num*1500);
+		muts_mat = p2.genomes.nucleotides(NULL, NULL, "integer");
+		muts_mat = matrix(muts_mat, nrow = row_num, byrow = T);
+		compare_seq = c(muts_mat[0,]);
+
+		fixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = row_num), muts_mat)% row_num == 0);
+
+		different_muts = (ancestral_genome != compare_seq);
+		new_fixations = different_muts & fixed_nucs;
+		sim.setValue("fixations_counted_p2", sim.getValue("fixations_counted_p2") + sum(new_fixations));
+
+		ancestral_genome[new_fixations] = compare_seq[new_fixations];
+		sim.setValue("fixations_p2", ancestral_genome);
+	};
+
+	if (sim.generation%100 == 0) {
+		catn(sim.generation);
+	};
+
+	if (sim.generation%100 == 0) {
+		writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/backupFiles/p2.fasta",(">parent_ancestral_to_load\n" + sim.chromosome.ancestralNucleotides()));
+		sim.outputFull("/mnt/c/Users/ebrin/Documents/Summer_Research/backupFiles/p2.txt");
+	};
+}
+
+
+23800 late() {
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p2_fixed_mutation_counts.txt",asString(sim.getValue("fixations_counted_p2")));
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p2_fixed_mutations.txt", paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue("fixations_p2"))), sep = ""));
+	pop_seq = sample(p2.individuals.genomes, 1).nucleotides();
+	pop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = "");
+	polymorph_str = c();
+	fixed_str=c();
+	for (a in 0:(length(pop_seq)-1)) {
+		diffs = c();
+		for (g in p2.individuals.genomes.nucleotides()){
+			aa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = "");
+			diffs = c(diffs, aa_seq[a]);
+		}
+		unique_diffs = unique(diffs);
+		if (length(unique_diffs) > 1) {
+			polymorph_str = c(polymorph_str, a, ": ");
+			for (p in unique_diffs) {
+				polymorph_str = c(polymorph_str, p, ": ", length(which(diffs == p)) / length(diffs), " ");
+			}
+		polymorph_str = c(polymorph_str, "\n");
+		} else if (length(unique_diffs) == 1) {
+			fixed_str = c(fixed_str, a, ": ", unique_diffs, "\n");
+		}
+	}
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p2_polymorphisms.txt", paste(polymorph_str, sep = ""));
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p2_fixed_sites.txt", paste(fixed_str, sep = ""));
+}
+
+
+1000 late() { 
+	sim.addSubpop("p9", 0);
+	catn(p1.individualCount);
+	p9.takeMigrants(p1.individuals);
+	p1.removeSubpopulation();
+
+	sim.setValue("fixations_p9", sim.getValue("fixations_p1"));
+	sim.setValue("fixations_counted_p9", 0);
+}
+
+
+1001:30500 early(){
+	p9.fitnessScaling = 100/ (p9.individualCount);
+	get_fitnesses(p9, "p9");
+}
+
+
+1001:30500late () {
+	if(length(sim.mutations)!= 0){
+		ancestral_genome = sim.getValue("fixations_p9");
+		row_num = p9.individualCount* 2;
+		muts_mat = integer(row_num*1500);
+		muts_mat = p9.genomes.nucleotides(NULL, NULL, "integer");
+		muts_mat = matrix(muts_mat, nrow = row_num, byrow = T);
+		compare_seq = c(muts_mat[0,]);
+
+		fixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = row_num), muts_mat)% row_num == 0);
+
+		different_muts = (ancestral_genome != compare_seq);
+		new_fixations = different_muts & fixed_nucs;
+		sim.setValue("fixations_counted_p9", sim.getValue("fixations_counted_p9") + sum(new_fixations));
+
+		ancestral_genome[new_fixations] = compare_seq[new_fixations];
+		sim.setValue("fixations_p9", ancestral_genome);
+	};
+
+	if (sim.generation%100 == 0) {
+		catn(sim.generation);
+	};
+
+	if (sim.generation%100 == 0) {
+		writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/backupFiles/p9.fasta",(">parent_ancestral_to_load\n" + sim.chromosome.ancestralNucleotides()));
+		sim.outputFull("/mnt/c/Users/ebrin/Documents/Summer_Research/backupFiles/p9.txt");
+	};
+}
+
+
+30500 late() {
+	genomes = p9.genomes;
+
+	for (g in genomes){
+		fasta_string_nuc = paste0(">", g.individual, ", p9: \n", g.nucleotides());
+		writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/test_tree_nuc.fasta", fasta_string_nuc,append = T);
+		fasta_string_prot = paste0(">", g.individual, ", p9: \n", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));
+		writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/test_tree_aa.fasta", fasta_string_prot,append = T);}
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p9_fixed_mutation_counts.txt",asString(sim.getValue("fixations_counted_p9")));
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p9_fixed_mutations.txt", paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue("fixations_p9"))), sep = ""));
+	pop_seq = sample(p9.individuals.genomes, 1).nucleotides();
+	pop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = "");
+	polymorph_str = c();
+	fixed_str=c();
+	for (a in 0:(length(pop_seq)-1)) {
+		diffs = c();
+		for (g in p9.individuals.genomes.nucleotides()){
+			aa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = "");
+			diffs = c(diffs, aa_seq[a]);
+		}
+		unique_diffs = unique(diffs);
+		if (length(unique_diffs) > 1) {
+			polymorph_str = c(polymorph_str, a, ": ");
+			for (p in unique_diffs) {
+				polymorph_str = c(polymorph_str, p, ": ", length(which(diffs == p)) / length(diffs), " ");
+			}
+		polymorph_str = c(polymorph_str, "\n");
+		} else if (length(unique_diffs) == 1) {
+			fixed_str = c(fixed_str, a, ": ", unique_diffs, "\n");
+		}
+	}
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p9_polymorphisms.txt", paste(polymorph_str, sep = ""));
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p9_fixed_sites.txt", paste(fixed_str, sep = ""));
+	p9.removeSubpopulation();
+}
+
+
+23800 late() { 
+	sim.addSubpop("p3", 0);
+	migrants = sample(p2.individuals, asInteger(p2.individualCount * 0.5));
+	p3.takeMigrants(migrants);
+	catn(p3.individualCount);
+
+	sim.setValue("fixations_p3", sim.getValue("fixations_p2"));
+	sim.setValue("fixations_counted_p3", 0);
+}
+
+
+23801:46200 early(){
+	p3.fitnessScaling = 100/ (p3.individualCount);
+	get_fitnesses(p3, "p3");
+}
+
+
+23801:46200late () {
+	if(length(sim.mutations)!= 0){
+		ancestral_genome = sim.getValue("fixations_p3");
+		row_num = p3.individualCount* 2;
+		muts_mat = integer(row_num*1500);
+		muts_mat = p3.genomes.nucleotides(NULL, NULL, "integer");
+		muts_mat = matrix(muts_mat, nrow = row_num, byrow = T);
+		compare_seq = c(muts_mat[0,]);
+
+		fixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = row_num), muts_mat)% row_num == 0);
+
+		different_muts = (ancestral_genome != compare_seq);
+		new_fixations = different_muts & fixed_nucs;
+		sim.setValue("fixations_counted_p3", sim.getValue("fixations_counted_p3") + sum(new_fixations));
+
+		ancestral_genome[new_fixations] = compare_seq[new_fixations];
+		sim.setValue("fixations_p3", ancestral_genome);
+	};
+
+	if (sim.generation%100 == 0) {
+		catn(sim.generation);
+	};
+
+	if (sim.generation%100 == 0) {
+		writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/backupFiles/p3.fasta",(">parent_ancestral_to_load\n" + sim.chromosome.ancestralNucleotides()));
+		sim.outputFull("/mnt/c/Users/ebrin/Documents/Summer_Research/backupFiles/p3.txt");
+	};
+}
+
+
+46200 late() {
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p3_fixed_mutation_counts.txt",asString(sim.getValue("fixations_counted_p3")));
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p3_fixed_mutations.txt", paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue("fixations_p3"))), sep = ""));
+	pop_seq = sample(p3.individuals.genomes, 1).nucleotides();
+	pop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = "");
+	polymorph_str = c();
+	fixed_str=c();
+	for (a in 0:(length(pop_seq)-1)) {
+		diffs = c();
+		for (g in p3.individuals.genomes.nucleotides()){
+			aa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = "");
+			diffs = c(diffs, aa_seq[a]);
+		}
+		unique_diffs = unique(diffs);
+		if (length(unique_diffs) > 1) {
+			polymorph_str = c(polymorph_str, a, ": ");
+			for (p in unique_diffs) {
+				polymorph_str = c(polymorph_str, p, ": ", length(which(diffs == p)) / length(diffs), " ");
+			}
+		polymorph_str = c(polymorph_str, "\n");
+		} else if (length(unique_diffs) == 1) {
+			fixed_str = c(fixed_str, a, ": ", unique_diffs, "\n");
+		}
+	}
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p3_polymorphisms.txt", paste(polymorph_str, sep = ""));
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p3_fixed_sites.txt", paste(fixed_str, sep = ""));
+}
+
+
+23800 late() { 
+	sim.addSubpop("p8", 0);
+	catn(p2.individualCount);
+	p8.takeMigrants(p2.individuals);
+	p2.removeSubpopulation();
+
+	sim.setValue("fixations_p8", sim.getValue("fixations_p2"));
+	sim.setValue("fixations_counted_p8", 0);
+}
+
+
+23801:48700 early(){
+	p8.fitnessScaling = 100/ (p8.individualCount);
+	get_fitnesses(p8, "p8");
+}
+
+
+23801:48700late () {
+	if(length(sim.mutations)!= 0){
+		ancestral_genome = sim.getValue("fixations_p8");
+		row_num = p8.individualCount* 2;
+		muts_mat = integer(row_num*1500);
+		muts_mat = p8.genomes.nucleotides(NULL, NULL, "integer");
+		muts_mat = matrix(muts_mat, nrow = row_num, byrow = T);
+		compare_seq = c(muts_mat[0,]);
+
+		fixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = row_num), muts_mat)% row_num == 0);
+
+		different_muts = (ancestral_genome != compare_seq);
+		new_fixations = different_muts & fixed_nucs;
+		sim.setValue("fixations_counted_p8", sim.getValue("fixations_counted_p8") + sum(new_fixations));
+
+		ancestral_genome[new_fixations] = compare_seq[new_fixations];
+		sim.setValue("fixations_p8", ancestral_genome);
+	};
+
+	if (sim.generation%100 == 0) {
+		catn(sim.generation);
+	};
+
+	if (sim.generation%100 == 0) {
+		writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/backupFiles/p8.fasta",(">parent_ancestral_to_load\n" + sim.chromosome.ancestralNucleotides()));
+		sim.outputFull("/mnt/c/Users/ebrin/Documents/Summer_Research/backupFiles/p8.txt");
+	};
+}
+
+
+48700 late() {
+	genomes = p8.genomes;
+
+	for (g in genomes){
+		fasta_string_nuc = paste0(">", g.individual, ", p8: \n", g.nucleotides());
+		writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/test_tree_nuc.fasta", fasta_string_nuc,append = T);
+		fasta_string_prot = paste0(">", g.individual, ", p8: \n", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));
+		writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/test_tree_aa.fasta", fasta_string_prot,append = T);}
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p8_fixed_mutation_counts.txt",asString(sim.getValue("fixations_counted_p8")));
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p8_fixed_mutations.txt", paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue("fixations_p8"))), sep = ""));
+	pop_seq = sample(p8.individuals.genomes, 1).nucleotides();
+	pop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = "");
+	polymorph_str = c();
+	fixed_str=c();
+	for (a in 0:(length(pop_seq)-1)) {
+		diffs = c();
+		for (g in p8.individuals.genomes.nucleotides()){
+			aa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = "");
+			diffs = c(diffs, aa_seq[a]);
+		}
+		unique_diffs = unique(diffs);
+		if (length(unique_diffs) > 1) {
+			polymorph_str = c(polymorph_str, a, ": ");
+			for (p in unique_diffs) {
+				polymorph_str = c(polymorph_str, p, ": ", length(which(diffs == p)) / length(diffs), " ");
+			}
+		polymorph_str = c(polymorph_str, "\n");
+		} else if (length(unique_diffs) == 1) {
+			fixed_str = c(fixed_str, a, ": ", unique_diffs, "\n");
+		}
+	}
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p8_polymorphisms.txt", paste(polymorph_str, sep = ""));
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p8_fixed_sites.txt", paste(fixed_str, sep = ""));
+	p8.removeSubpopulation();
+}
+
+
+46200 late() { 
+	sim.addSubpop("p4", 0);
+	migrants = sample(p3.individuals, asInteger(p3.individualCount * 0.5));
+	p4.takeMigrants(migrants);
+	catn(p4.individualCount);
+
+	sim.setValue("fixations_p4", sim.getValue("fixations_p3"));
+	sim.setValue("fixations_counted_p4", 0);
+}
+
+
+46201:67200 early(){
+	p4.fitnessScaling = 100/ (p4.individualCount);
+	get_fitnesses(p4, "p4");
+}
+
+
+46201:67200late () {
+	if(length(sim.mutations)!= 0){
+		ancestral_genome = sim.getValue("fixations_p4");
+		row_num = p4.individualCount* 2;
+		muts_mat = integer(row_num*1500);
+		muts_mat = p4.genomes.nucleotides(NULL, NULL, "integer");
+		muts_mat = matrix(muts_mat, nrow = row_num, byrow = T);
+		compare_seq = c(muts_mat[0,]);
+
+		fixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = row_num), muts_mat)% row_num == 0);
+
+		different_muts = (ancestral_genome != compare_seq);
+		new_fixations = different_muts & fixed_nucs;
+		sim.setValue("fixations_counted_p4", sim.getValue("fixations_counted_p4") + sum(new_fixations));
+
+		ancestral_genome[new_fixations] = compare_seq[new_fixations];
+		sim.setValue("fixations_p4", ancestral_genome);
+	};
+
+	if (sim.generation%100 == 0) {
+		catn(sim.generation);
+	};
+
+	if (sim.generation%100 == 0) {
+		writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/backupFiles/p4.fasta",(">parent_ancestral_to_load\n" + sim.chromosome.ancestralNucleotides()));
+		sim.outputFull("/mnt/c/Users/ebrin/Documents/Summer_Research/backupFiles/p4.txt");
+	};
+}
+
+
+67200 late() {
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p4_fixed_mutation_counts.txt",asString(sim.getValue("fixations_counted_p4")));
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p4_fixed_mutations.txt", paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue("fixations_p4"))), sep = ""));
+	pop_seq = sample(p4.individuals.genomes, 1).nucleotides();
+	pop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = "");
+	polymorph_str = c();
+	fixed_str=c();
+	for (a in 0:(length(pop_seq)-1)) {
+		diffs = c();
+		for (g in p4.individuals.genomes.nucleotides()){
+			aa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = "");
+			diffs = c(diffs, aa_seq[a]);
+		}
+		unique_diffs = unique(diffs);
+		if (length(unique_diffs) > 1) {
+			polymorph_str = c(polymorph_str, a, ": ");
+			for (p in unique_diffs) {
+				polymorph_str = c(polymorph_str, p, ": ", length(which(diffs == p)) / length(diffs), " ");
+			}
+		polymorph_str = c(polymorph_str, "\n");
+		} else if (length(unique_diffs) == 1) {
+			fixed_str = c(fixed_str, a, ": ", unique_diffs, "\n");
+		}
+	}
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p4_polymorphisms.txt", paste(polymorph_str, sep = ""));
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p4_fixed_sites.txt", paste(fixed_str, sep = ""));
+}
+
+
+46200 late() { 
+	sim.addSubpop("p7", 0);
+	catn(p3.individualCount);
+	p7.takeMigrants(p3.individuals);
+	p3.removeSubpopulation();
+
+	sim.setValue("fixations_p7", sim.getValue("fixations_p3"));
+	sim.setValue("fixations_counted_p7", 0);
+}
+
+
+46201:68700 early(){
+	p7.fitnessScaling = 100/ (p7.individualCount);
+	get_fitnesses(p7, "p7");
+}
+
+
+46201:68700late () {
+	if(length(sim.mutations)!= 0){
+		ancestral_genome = sim.getValue("fixations_p7");
+		row_num = p7.individualCount* 2;
+		muts_mat = integer(row_num*1500);
+		muts_mat = p7.genomes.nucleotides(NULL, NULL, "integer");
+		muts_mat = matrix(muts_mat, nrow = row_num, byrow = T);
+		compare_seq = c(muts_mat[0,]);
+
+		fixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = row_num), muts_mat)% row_num == 0);
+
+		different_muts = (ancestral_genome != compare_seq);
+		new_fixations = different_muts & fixed_nucs;
+		sim.setValue("fixations_counted_p7", sim.getValue("fixations_counted_p7") + sum(new_fixations));
+
+		ancestral_genome[new_fixations] = compare_seq[new_fixations];
+		sim.setValue("fixations_p7", ancestral_genome);
+	};
+
+	if (sim.generation%100 == 0) {
+		catn(sim.generation);
+	};
+
+	if (sim.generation%100 == 0) {
+		writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/backupFiles/p7.fasta",(">parent_ancestral_to_load\n" + sim.chromosome.ancestralNucleotides()));
+		sim.outputFull("/mnt/c/Users/ebrin/Documents/Summer_Research/backupFiles/p7.txt");
+	};
+}
+
+
+68700 late() {
+	genomes = p7.genomes;
+
+	for (g in genomes){
+		fasta_string_nuc = paste0(">", g.individual, ", p7: \n", g.nucleotides());
+		writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/test_tree_nuc.fasta", fasta_string_nuc,append = T);
+		fasta_string_prot = paste0(">", g.individual, ", p7: \n", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));
+		writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/test_tree_aa.fasta", fasta_string_prot,append = T);}
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p7_fixed_mutation_counts.txt",asString(sim.getValue("fixations_counted_p7")));
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p7_fixed_mutations.txt", paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue("fixations_p7"))), sep = ""));
+	pop_seq = sample(p7.individuals.genomes, 1).nucleotides();
+	pop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = "");
+	polymorph_str = c();
+	fixed_str=c();
+	for (a in 0:(length(pop_seq)-1)) {
+		diffs = c();
+		for (g in p7.individuals.genomes.nucleotides()){
+			aa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = "");
+			diffs = c(diffs, aa_seq[a]);
+		}
+		unique_diffs = unique(diffs);
+		if (length(unique_diffs) > 1) {
+			polymorph_str = c(polymorph_str, a, ": ");
+			for (p in unique_diffs) {
+				polymorph_str = c(polymorph_str, p, ": ", length(which(diffs == p)) / length(diffs), " ");
+			}
+		polymorph_str = c(polymorph_str, "\n");
+		} else if (length(unique_diffs) == 1) {
+			fixed_str = c(fixed_str, a, ": ", unique_diffs, "\n");
+		}
+	}
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p7_polymorphisms.txt", paste(polymorph_str, sep = ""));
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p7_fixed_sites.txt", paste(fixed_str, sep = ""));
+	p7.removeSubpopulation();
+}
+
+
+67200 late() { 
+	sim.addSubpop("p5", 0);
+	migrants = sample(p4.individuals, asInteger(p4.individualCount * 0.5));
+	p5.takeMigrants(migrants);
+	catn(p5.individualCount);
+
+	sim.setValue("fixations_p5", sim.getValue("fixations_p4"));
+	sim.setValue("fixations_counted_p5", 0);
+}
+
+
+67201:88700 early(){
+	p5.fitnessScaling = 100/ (p5.individualCount);
+	get_fitnesses(p5, "p5");
+}
+
+
+67201:88700late () {
+	if(length(sim.mutations)!= 0){
+		ancestral_genome = sim.getValue("fixations_p5");
+		row_num = p5.individualCount* 2;
+		muts_mat = integer(row_num*1500);
+		muts_mat = p5.genomes.nucleotides(NULL, NULL, "integer");
+		muts_mat = matrix(muts_mat, nrow = row_num, byrow = T);
+		compare_seq = c(muts_mat[0,]);
+
+		fixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = row_num), muts_mat)% row_num == 0);
+
+		different_muts = (ancestral_genome != compare_seq);
+		new_fixations = different_muts & fixed_nucs;
+		sim.setValue("fixations_counted_p5", sim.getValue("fixations_counted_p5") + sum(new_fixations));
+
+		ancestral_genome[new_fixations] = compare_seq[new_fixations];
+		sim.setValue("fixations_p5", ancestral_genome);
+	};
+
+	if (sim.generation%100 == 0) {
+		catn(sim.generation);
+	};
+
+	if (sim.generation%100 == 0) {
+		writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/backupFiles/p5.fasta",(">parent_ancestral_to_load\n" + sim.chromosome.ancestralNucleotides()));
+		sim.outputFull("/mnt/c/Users/ebrin/Documents/Summer_Research/backupFiles/p5.txt");
+	};
+}
+
+
+88700 late() {
+	genomes = p5.genomes;
+
+	for (g in genomes){
+		fasta_string_nuc = paste0(">", g.individual, ", p5: \n", g.nucleotides());
+		writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/test_tree_nuc.fasta", fasta_string_nuc,append = T);
+		fasta_string_prot = paste0(">", g.individual, ", p5: \n", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));
+		writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/test_tree_aa.fasta", fasta_string_prot,append = T);}
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p5_fixed_mutation_counts.txt",asString(sim.getValue("fixations_counted_p5")));
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p5_fixed_mutations.txt", paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue("fixations_p5"))), sep = ""));
+	pop_seq = sample(p5.individuals.genomes, 1).nucleotides();
+	pop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = "");
+	polymorph_str = c();
+	fixed_str=c();
+	for (a in 0:(length(pop_seq)-1)) {
+		diffs = c();
+		for (g in p5.individuals.genomes.nucleotides()){
+			aa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = "");
+			diffs = c(diffs, aa_seq[a]);
+		}
+		unique_diffs = unique(diffs);
+		if (length(unique_diffs) > 1) {
+			polymorph_str = c(polymorph_str, a, ": ");
+			for (p in unique_diffs) {
+				polymorph_str = c(polymorph_str, p, ": ", length(which(diffs == p)) / length(diffs), " ");
+			}
+		polymorph_str = c(polymorph_str, "\n");
+		} else if (length(unique_diffs) == 1) {
+			fixed_str = c(fixed_str, a, ": ", unique_diffs, "\n");
+		}
+	}
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p5_polymorphisms.txt", paste(polymorph_str, sep = ""));
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p5_fixed_sites.txt", paste(fixed_str, sep = ""));
+	p5.removeSubpopulation();
+}
+
+
+67200 late() { 
+	sim.addSubpop("p6", 0);
+	catn(p4.individualCount);
+	p6.takeMigrants(p4.individuals);
+	p4.removeSubpopulation();
+
+	sim.setValue("fixations_p6", sim.getValue("fixations_p4"));
+	sim.setValue("fixations_counted_p6", 0);
+}
+
+
+67201:88700 early(){
+	p6.fitnessScaling = 100/ (p6.individualCount);
+	get_fitnesses(p6, "p6");
+}
+
+
+67201:88700late () {
+	if(length(sim.mutations)!= 0){
+		ancestral_genome = sim.getValue("fixations_p6");
+		row_num = p6.individualCount* 2;
+		muts_mat = integer(row_num*1500);
+		muts_mat = p6.genomes.nucleotides(NULL, NULL, "integer");
+		muts_mat = matrix(muts_mat, nrow = row_num, byrow = T);
+		compare_seq = c(muts_mat[0,]);
+
+		fixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = row_num), muts_mat)% row_num == 0);
+
+		different_muts = (ancestral_genome != compare_seq);
+		new_fixations = different_muts & fixed_nucs;
+		sim.setValue("fixations_counted_p6", sim.getValue("fixations_counted_p6") + sum(new_fixations));
+
+		ancestral_genome[new_fixations] = compare_seq[new_fixations];
+		sim.setValue("fixations_p6", ancestral_genome);
+	};
+
+	if (sim.generation%100 == 0) {
+		catn(sim.generation);
+	};
+
+	if (sim.generation%100 == 0) {
+		writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/backupFiles/p6.fasta",(">parent_ancestral_to_load\n" + sim.chromosome.ancestralNucleotides()));
+		sim.outputFull("/mnt/c/Users/ebrin/Documents/Summer_Research/backupFiles/p6.txt");
+	};
+}
+
+
+88700 late() {
+	genomes = p6.genomes;
+
+	for (g in genomes){
+		fasta_string_nuc = paste0(">", g.individual, ", p6: \n", g.nucleotides());
+		writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/test_tree_nuc.fasta", fasta_string_nuc,append = T);
+		fasta_string_prot = paste0(">", g.individual, ", p6: \n", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));
+		writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/test_tree_aa.fasta", fasta_string_prot,append = T);}
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p6_fixed_mutation_counts.txt",asString(sim.getValue("fixations_counted_p6")));
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p6_fixed_mutations.txt", paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue("fixations_p6"))), sep = ""));
+	pop_seq = sample(p6.individuals.genomes, 1).nucleotides();
+	pop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = "");
+	polymorph_str = c();
+	fixed_str=c();
+	for (a in 0:(length(pop_seq)-1)) {
+		diffs = c();
+		for (g in p6.individuals.genomes.nucleotides()){
+			aa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = "");
+			diffs = c(diffs, aa_seq[a]);
+		}
+		unique_diffs = unique(diffs);
+		if (length(unique_diffs) > 1) {
+			polymorph_str = c(polymorph_str, a, ": ");
+			for (p in unique_diffs) {
+				polymorph_str = c(polymorph_str, p, ": ", length(which(diffs == p)) / length(diffs), " ");
+			}
+		polymorph_str = c(polymorph_str, "\n");
+		} else if (length(unique_diffs) == 1) {
+			fixed_str = c(fixed_str, a, ": ", unique_diffs, "\n");
+		}
+	}
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p6_polymorphisms.txt", paste(polymorph_str, sep = ""));
+	writeFile("/mnt/c/Users/ebrin/Documents/Summer_Research/p6_fixed_sites.txt", paste(fixed_str, sep = ""));
+	p6.removeSubpopulation();
+}
+
+
