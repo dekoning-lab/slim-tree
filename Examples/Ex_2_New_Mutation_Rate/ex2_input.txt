@@ -1,0 +1,1 @@
+python3 ../../slim-tree/ -i ex2_tree.txt -T SLiM-Tree -v 2.5e-3

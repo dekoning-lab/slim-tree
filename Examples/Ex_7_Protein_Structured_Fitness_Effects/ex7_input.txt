@@ -1,0 +1,1 @@
+python3 ../../slim-tree/ -i ex7_tree.txt -T SLiM-Tree -fc False -pdb 1qhw.pdb -w False
