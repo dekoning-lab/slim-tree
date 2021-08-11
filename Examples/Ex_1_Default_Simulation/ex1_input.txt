@@ -1,1 +1,1 @@
-python3 ../slim-tree/ -i ex1_tree.txt -T SLiM-Tree
+python3 ../../slim-tree/ -i ex1_tree.txt -T SLiM-Tree
