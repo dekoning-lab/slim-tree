@@ -172,6 +172,24 @@ for (f in 1:(ncol(Fitness_table))){
   scaling_0 <- scaling_factor(Q_matrix,Pi)
   #divide the qmatrix to the scaling factor
   #Q_matrix<-Q_matrix/scaling_factor(Q_matrix,Pi)
+  
+  #scaling factors for non-synonymous vs synonymous substitutions
+  pns = 0
+  for (i in 1:nrow(codon)){
+    for (j in 1:length(Non_synonymous_codon_finder(rownames(Q_matrix)[i], Q_matrix))) {
+      pns = pns + (Pi[i,1]*mu)
+    }
+  }
+  
+  pss = 0
+  for (i in 1:nrow(codon)){
+    syn = codon$aa[which(codon$aa == codon$aa[i])]
+    for (j in 1:(length(syn)-1)){
+      pss = pss + (Pi[i,1]*mu)
+    }
+    
+  }
+  
   #initialize the a_final to zero to calculate the dN/dS equilibrium
   a_final<-0
   for (i in 1:nrow(Pi)) {
@@ -179,7 +197,7 @@ for (f in 1:(ncol(Fitness_table))){
     
   }
   dN_dS_equilibrium[f, 1] <- f
-  dN_dS_equilibrium[f, 2]<-a_final/scaling_0
+  dN_dS_equilibrium[f, 2]<-(a_final*pss)/(scaling_0*pns)
   
 }
 colnames(dN_dS_equilibrium) <- c("Profile", "Value")
