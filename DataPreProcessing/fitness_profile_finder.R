@@ -75,6 +75,7 @@ fitness_profile<-function (fitness){
       #If the two tri-nucleotide sequences differ by 1 difference calculate Q
       } else if (num_dif_nucs == 1){
         sij = fitness[AAs==codons_to_AAs[codons==j]] - fitness[AAs==codons_to_AAs[codons==i]]
+        print(sij)
         if(sij!=0){
           Q_matrix[i,j] = 2*N*v*((1-exp(-sij))/(1-exp(-2*N*sij)))
         } else {

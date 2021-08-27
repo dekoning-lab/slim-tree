@@ -5,7 +5,7 @@
 #os
 
 
-import random, csv, os
+import random, csv, os, sys
 from writeSLiM import writeSLiM
 
 

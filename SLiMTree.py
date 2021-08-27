@@ -764,7 +764,8 @@ class SLiMTree:
             "output_gens" : self.starting_parameters["output_gens"],
             "backup" : self.starting_parameters["backup"],
             "polymorphisms": self.starting_parameters["polymorphisms"],
-            "jukes_cantor": self.starting_parameters["jukes_cantor"]
+            "jukes_cantor": self.starting_parameters["jukes_cantor"],
+            "end_dist" : 0,
         }
 
         if(self.starting_parameters["jukes_cantor"]):
@@ -884,12 +885,13 @@ class SLiMTree:
             clade.name = pop_name
 
         #Figure out when the population needs to be formed
-        dist_from_parent = clade.branch_length
-        if(dist_from_parent == None):
-            dist_from_start = 0
-        else:
-            dist_from_start = parent_clade_dict["end_dist"]
-
+        dist_from_start = parent_clade_dict["end_dist"]
+        
+        #Determine when sim of pop ends - note must run for at least 1 gen
+        pop_end = self.starting_parameters["burn_in"]  + phylogeny.distance(clade)
+        if (dist_from_start >= pop_end):
+            pop_end = dist_from_start + 1
+            
 
         #Determine whether population belongs to the last child clade - allows for removal of extraneous data
         parents_children = parent_clade_dict["child_clades"]
@@ -909,7 +911,7 @@ class SLiMTree:
             "recombination_rate": rec_rate,
             "split_ratio": split_ratio,
             "dist_from_start" : dist_from_start,
-            "end_dist": self.starting_parameters["burn_in"]  + phylogeny.distance(clade),
+            "end_dist": pop_end,
             "terminal_clade" : clade.clades == [],
             "last_child_clade" : last_child_clade,
             "sample_size": samp_size,
@@ -920,7 +922,8 @@ class SLiMTree:
             "backup" : backup,
             "polymorphisms" : polymorphisms,
             "jukes_cantor" : jukes_cantor,
-            "mutation_matrix" : mutation_matrix
+            "mutation_matrix" : mutation_matrix,
+            "num_parents" : 0
         }
 
         return [clade_dict]
