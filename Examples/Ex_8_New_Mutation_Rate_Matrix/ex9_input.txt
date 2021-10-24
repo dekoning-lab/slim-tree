@@ -1,0 +1,1 @@
+python3 ../../../slim-tree/ -i ex9_tree.txt -T SLiM-Tree -d ex9_pop_parameters.txt
