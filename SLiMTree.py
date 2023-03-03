@@ -768,6 +768,7 @@ class SLiMTree:
             "backup" : self.starting_parameters["backup"],
             "polymorphisms": self.starting_parameters["polymorphisms"],
             "jukes_cantor": self.starting_parameters["jukes_cantor"],
+            "calculate_selection": self.starting_parameters["calculate_selection"],
             "end_dist" : 0,
         }
 
