@@ -229,8 +229,8 @@ class writeSLiM:
 
         #At the start of the sim there are no fixations counted and no non-synonymous or synonymous mutations
         set_up_fitness += "\n\tsim.setValue(\"fixations_counted_p1\", 0);"
-        set_up_fitness += "\n\tsim.setValue(\"dN\", 0);"
-        set_up_fitness += "\n\tsim.setValue(\"dS\", 0);"
+        set_up_fitness += "\n\tsim.setValue(\"dN_p1\", 0);"
+        set_up_fitness += "\n\tsim.setValue(\"dS_p1\", 0);"
         set_up_fitness += "\n}\n\n\n"
 
 
@@ -381,11 +381,11 @@ class writeSLiM:
                                 "\n\t\t\t\told_codon = nucleotidesToCodons(ancestral_genome[(fix-2):fix]);" +
                                 "\n\t\t\t\tnew_codon = nucleotidesToCodons(compare_seq[(fix-2):fix]);" +
                                 "\n\t\t\t\tif (old_codon == new_codon){" +
-                                "\n\t\t\t\t\tsim.setValue(\"dN\", sim.getValue(\"dN\") + 1);" +
+                                "\n\t\t\t\t\tsim.setValue(\"dN\", sim.getValue(\"dN" + population_parameters["pop_name"] + "\") + 1);" +
                                 "\n\t\t\t\t} else {" +
-                                "\n\t\t\t\t\tsim.setValue(\"dS\", sim.getValue(\"dS\") + 1);" +
+                                "\n\t\t\t\t\tsim.setValue(\"dS\", sim.getValue(\"dS" + population_parameters["pop_name"] + "\") + 1);" +
                                 "\n\t\t\t\t};\n\t\t\t} else {" +
-                                "\n\t\t\t\tsim.setValue(\"dN\", sim.getValue(\"dN\") + 1);" +
+                                "\n\t\t\t\tsim.setValue(\"dN\", sim.getValue(\"dN" + population_parameters["pop_name"] + "\") + 1);" +
                                 "\n\t\t\t};\n\t\t};")
             
             
@@ -423,7 +423,8 @@ class writeSLiM:
                     str(population_parameters["population_size"]) + ", " + population_parameters["parent_pop_name"]+ ");"+
                     "\n\n\tsim.setValue(\"fixations_" + population_parameters["pop_name"] + "\", sim.getValue(\"fixations_"+
                     population_parameters["parent_pop_name"] +"\"));" +
-                    "\n\tsim.setValue(\"fixations_counted_"+ population_parameters["pop_name"]+"\", 0);" )
+                    "\n\tsim.setValue(\"fixations_counted_"+ population_parameters["pop_name"]+"\", 0);" +
+                    "\n\tsim.setValue(\"dN_"+ population_parameters["parent_pop_name"]+ "\", 0);")
 
             if(population_parameters["last_child_clade"] == True):
                 define_population_string += "\n\t" + population_parameters["parent_pop_name"]+".setSubpopulationSize(0);"
@@ -470,6 +471,8 @@ class writeSLiM:
             define_population_string += str("\n\n\tsim.setValue(\"fixations_" + pop_name + "\", sim.getValue(\"fixations_"+
                                     population_parameters["parent_pop_name"] +"\"));" +
                                     "\n\tsim.setValue(\"fixations_counted_"+ pop_name+"\", 0);")
+                                    
+            define_population_string += "\n\tsim.setValue(\"dN_"+ population_parameters["parent_pop_name"] +"\", 0);"
 
 
             define_population_string += "\n}\n\n\n"
@@ -566,7 +569,8 @@ class writeSLiM:
         #Write out counted dN and dS if required
         if(population_parameters["calculate_selection"]):
             end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_dNdSCounted\"," +
-                "paste(\"dN: \", sim.getValue(\"dN\"), \" dS: \", sim.getValue(\"dS\"),  sep = \"\"));" )
+                "paste(\"dN: \", sim.getValue(\"dN" + population_parameters["pop_name"] + "\")," +
+                "\" dS: \", sim.getValue(\"dS " + population_parameters["pop_name"] + "\"),  sep = \"\"));" )
 
 
         #Write files containing polymorphisms in each population and relative proportions

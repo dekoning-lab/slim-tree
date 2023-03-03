@@ -828,6 +828,7 @@ class SLiMTree:
         time = parent_clade_dict["time"]
         subs = parent_clade_dict["count_subs"]
         gens = parent_clade_dict["output_gens"]
+        dnds = parent_clade_dict["calculate_selection"]
         backup = parent_clade_dict["backup"]
         polymorphisms = parent_clade_dict["polymorphisms"]
         jukes_cantor = parent_clade_dict["jukes_cantor"]
@@ -927,6 +928,7 @@ class SLiMTree:
             "polymorphisms" : polymorphisms,
             "jukes_cantor" : jukes_cantor,
             "mutation_matrix" : mutation_matrix,
+            "calculate_selection" : dnds,
             "num_parents" : 0
         }
 
