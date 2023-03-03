@@ -377,7 +377,7 @@ class writeSLiM:
                 repeated_commands_string += ("\n\t\tnew_fixations_space = which(new_fixations);" +
                                 "\n\t\tfor(fix in new_fixations_space){" +
                                 "\n\t\t\tfix_pos = fix % 3" +
-                                "\n\t\t\t if(fix_pos == 0)" +
+                                "\n\t\t\tif(fix_pos == 0){" +
                                 "\n\t\t\t\told_codon = nucleotidesToCodons(ancestral_genome[(fix-2):fix]);" +
                                 "\n\t\t\t\tnew_codon = nucleotidesToCodons(compare_seq[(fix-2):fix]);" +
                                 "\n\t\t\t\tif (old_codon == new_codon){" +
