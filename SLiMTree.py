@@ -132,6 +132,8 @@ class SLiMTree:
                 'Matrix should be either 4 by 4 or 4 by 64 specifying rates from nucleotide to nucleotide and tri-nucleotide' +
                 ' to nucleotide respectfully. Nucleotides and tri-nucleotides should be in alphabetical order with no headers.' +
                 ' If mutation rate matrix is supplied, mutation rate will be ignored')
+        parser.add_argument('-S', '--calculate_selection', action='store_true', default=False, help = 'boolean flag specifying that selection ' +
+                'should be calculated by counting non-synonymous and synonymous fixations.')
 
 
         #Get arguments from user
@@ -244,6 +246,7 @@ class SLiMTree:
         self.starting_parameters["time"] = arguments.time
 
         self.starting_parameters["count_subs"] = arguments.count_subs
+        self.starting_parameters["calculate_selection"] = arguments.calculate_selection
         self.starting_parameters["output_gens"] = arguments.output_gens
         self.starting_parameters["backup"] = arguments.backup
         self.starting_parameters["randomize_fitness_profiles"] = arguments.randomize_fitness_profiles

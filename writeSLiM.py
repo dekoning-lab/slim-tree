@@ -227,8 +227,10 @@ class writeSLiM:
         set_up_fitness += "\n\tsim.setValue(\"fixations_p1\", sim.chromosome.ancestralNucleotides(format = \"integer\"));"
 
 
-        #At the start of the sim there are no fixations counted
+        #At the start of the sim there are no fixations counted and no non-synonymous or synonymous mutations
         set_up_fitness += "\n\tsim.setValue(\"fixations_counted_p1\", 0);"
+        set_up_fitness += "\n\tsim.setValue(\"dN\", 0);"
+        set_up_fitness += "\n\tsim.setValue(\"dS\", 0);"
         set_up_fitness += "\n}\n\n\n"
 
 
@@ -350,8 +352,8 @@ class writeSLiM:
 
         repeated_commands_string = str(start_dist) +":" + str(end_dist) + "late () {"
 
-        #Write a command to count the substitutions (identity by state)
-        if (population_parameters["count_subs"]):
+        #Write a command to count the substitutions (identity by state) and calculate selection
+        if (population_parameters["count_subs"] | population_parameters["calculate_selection"]):
             repeated_commands_string += ("\n\tif(length(sim.mutations)!= 0){"
                         "\n\t\tancestral_genome = sim.getValue(\"fixations_" + pop_name + "\");" +
                         "\n\t\trow_num = " + pop_name + ".individualCount")
@@ -369,7 +371,25 @@ class writeSLiM:
                             "\n\t\tsim.setValue(\"fixations_counted_" + pop_name +
                             "\", sim.getValue(\"fixations_counted_" + pop_name+ "\") + sum(new_fixations));" +
                             "\n\n\t\tancestral_genome[new_fixations] = compare_seq[new_fixations];" +
-                            "\n\t\tsim.setValue(\"fixations_" + pop_name + "\", ancestral_genome);\n\t};")
+                            "\n\t\tsim.setValue(\"fixations_" + pop_name + "\", ancestral_genome);")
+            
+            if(population_parameters["calculate_selection"]):
+                repeated_commands_string += ("\n\t\tnew_fixations_space = which(new_fixations);" +
+                                "\n\t\tfor(fix in new_fixations_space){" +
+                                "\n\t\t\tfix_pos = fix % 3" +
+                                "\n\t\t\t if(fix_pos == 0)" +
+                                "\n\t\t\t\told_codon = nucleotidesToCodons(ancestral_genome[(fix-2):fix]);" +
+                                "\n\t\t\t\tnew_codon = nucleotidesToCodons(compare_seq[(fix-2):fix]);" +
+                                "\n\t\t\t\tif (old_codon == new_codon){" +
+                                "\n\t\t\t\t\tsim.setValue(\"dN\", sim.getValue(\"dN\") + 1);" +
+                                "\n\t\t\t\t} else {" +
+                                "\n\t\t\t\t\tsim.setValue(\"dS\", sim.getValue(\"dS\") + 1);" +
+                                "\n\t\t\t\t};\n\t\t\t} else {" +
+                                "\n\t\t\t\tsim.setValue(\"dN\", sim.getValue(\"dN\") + 1);" +
+                                "\n\t\t\t};\n\t\t};")
+            
+            
+            repeated_commands_string += "\n\t};"
 
         #Write a command to output when every 100th generation has passed
         if(population_parameters["output_gens"]):
@@ -382,7 +402,7 @@ class writeSLiM:
                         "\n\t\twriteFile(\"" + os.getcwd()+ "/backupFiles/" + pop_name + ".fasta\"," +
                         "(\">parent_ancestral_to_load\\n\" + sim.chromosome.ancestralNucleotides()));" +
                         "\n\t\tsim.outputFull(\"" + os.getcwd()+ "/backupFiles/" + pop_name + ".txt\");\n\t};")
-
+                        
 
         repeated_commands_string += "\n}\n\n\n"
 
@@ -542,6 +562,12 @@ class writeSLiM:
                 end_population_string += "sim.getValue(\"fitness_profiles"+ str(i) +"\")[sim.getValue(\"fitness_profiles"+ str(i) +"\") < max(sim.getValue(\"fitness_profiles"+str(i)+"\"))],"
             end_population_string = end_population_string[0:len(end_population_string)-1] #Remove comma at end
             end_population_string += ");\n\twriteFile(\""+ self.fasta_filename +"_parameters.txt\", paste(\"\\n"+ population_parameters["pop_name"] +" estimated dNdS: \", sum(dNdSValues[values])/length(values), sep = \"\"), append = T);"
+
+        #Write out counted dN and dS if required
+        if(population_parameters["calculate_selection"]):
+            end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_dNdSCounted\"," +
+                "paste(\"dN: \", sim.getValue(\"dN\"), \" dS: \", sim.getValue(\"dS\"),  sep = \"\"));" )
+
 
         #Write files containing polymorphisms in each population and relative proportions
         if(population_parameters["polymorphisms"]):
