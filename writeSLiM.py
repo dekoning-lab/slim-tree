@@ -424,7 +424,8 @@ class writeSLiM:
                     "\n\n\tsim.setValue(\"fixations_" + population_parameters["pop_name"] + "\", sim.getValue(\"fixations_"+
                     population_parameters["parent_pop_name"] +"\"));" +
                     "\n\tsim.setValue(\"fixations_counted_"+ population_parameters["pop_name"]+"\", 0);" +
-                    "\n\tsim.setValue(\"dN_"+ population_parameters["parent_pop_name"]+ "\", 0);")
+                    "\n\tsim.setValue(\"dN_"+ population_parameters["pop_name"]+"\", 0);" +
+                    "\n\tsim.setValue(\"dS_"+ population_parameters["pop_name"]+ "\", 0);")
 
             if(population_parameters["last_child_clade"] == True):
                 define_population_string += "\n\t" + population_parameters["parent_pop_name"]+".setSubpopulationSize(0);"
