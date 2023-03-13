@@ -381,11 +381,11 @@ class writeSLiM:
                                 "\n\t\t\t\told_codon = nucleotidesToCodons(ancestral_genome[(fix-2+2*fix_pos):(fix+2*fix_pos)]);" +
                                 "\n\t\t\t\tnew_codon = nucleotidesToCodons(compare_seq[(fix-2):fix]);" +
                                 "\n\t\t\t\tif (old_codon == new_codon){" +
-                                "\n\t\t\t\t\tsim.setValue(\"dN_" + pop_name +"\", sim.getValue(\"dN_" + population_parameters["pop_name"] + "\") + 1);" +
+                                "\n\t\t\t\t\tsim.setValue(\"dN_" + pop_name +"\", sim.getValue(\"dN_" + pop_name + "\") + 1);" +
                                 "\n\t\t\t\t} else {" +
-                                "\n\t\t\t\t\tsim.setValue(\"dS_" + pop_name +"\", sim.getValue(\"dS_" + population_parameters["pop_name"] + "\") + 1);" +
+                                "\n\t\t\t\t\tsim.setValue(\"dS_" + pop_name +"\", sim.getValue(\"dS_" + pop_name + "\") + 1);" +
                                 "\n\t\t\t\t};\n\t\t\t} else {" +
-                                "\n\t\t\t\tsim.setValue(\"dN_" + pop_name + "\", sim.getValue(\"dN_" + population_parameters["pop_name"] + "\") + 1);" +
+                                "\n\t\t\t\tsim.setValue(\"dN_" + pop_name + "\", sim.getValue(\"dN_" + pop_name + "\") + 1);" +
                                 "\n\t\t\t};\n\t\t};")
             
             

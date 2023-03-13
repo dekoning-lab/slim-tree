@@ -120,6 +120,8 @@ class writeSLiMHPC(writeSLiM):
 
         #At the start of the sim there are no fixations counted
         pop_string += "\n\tsim.setValue(\"fixations_counted\", 0);"
+        pop_string += "\n\tsim.setValue(\"dN_p1\", 0);" +
+        pop_string += "\n\tsim.setValue(\"dS_p1\", 0);"
         pop_string += "\n}\n\n\n"
 
         self.output_file.write(pop_string)
@@ -153,8 +155,8 @@ class writeSLiMHPC(writeSLiM):
 
         repeated_commands_string = str(start_dist) +":" + str(end_dist) + "late () {"
 
-        #Write a command to count the substitutions (identity by state)
-        if (population_parameters["count_subs"]):
+        #Write a command to count the substitutions (identity by state) and calculate_selection
+        if (population_parameters["count_subs"] | population_parameters["calculate_selection"]):
             repeated_commands_string += ("\n\tif(length(sim.mutations)!= 0){"
                         "\n\t\tancestral_genome = sim.getValue(\"fixations_p1\");" +
                         "\n\t\trow_num = p1.individualCount")
@@ -173,6 +175,21 @@ class writeSLiMHPC(writeSLiM):
                             "\", sim.getValue(\"fixations_counted_p1\") + sum(new_fixations));" +
                             "\n\n\t\tancestral_genome[new_fixations] = compare_seq[new_fixations];" +
                             "\n\t\tsim.setValue(\"fixations_p1\", ancestral_genome);\n\t};")
+                            
+            if(population_parameters["calculate_selection"]):
+                repeated_commands_string += ("\n\t\tnew_fixations_space = which(new_fixations);" +
+                                "\n\t\tfor(fix in new_fixations_space){" +
+                                "\n\t\t\tfix_pos = fix % 3;" +
+                                "\n\t\t\tif(fix_pos == 0 | fix_pos == 1){" +
+                                "\n\t\t\t\told_codon = nucleotidesToCodons(ancestral_genome[(fix-2+2*fix_pos):(fix+2*fix_pos)]);" +
+                                "\n\t\t\t\tnew_codon = nucleotidesToCodons(compare_seq[(fix-2):fix]);" +
+                                "\n\t\t\t\tif (old_codon == new_codon){" +
+                                "\n\t\t\t\t\tsim.setValue(\"dN_p1\", sim.getValue(\"dN_p1\") + 1);" +
+                                "\n\t\t\t\t} else {" +
+                                "\n\t\t\t\t\tsim.setValue(\"dS_p1\", sim.getValue(\"dS_p1\") + 1);" +
+                                "\n\t\t\t\t};\n\t\t\t} else {" +
+                                "\n\t\t\t\tsim.setValue(\"dN_p1\", sim.getValue(\"dN_p1\") + 1);" +
+                                "\n\t\t\t};\n\t\t};")
 
         #Write a command to output when every 100th generation has passed
         if(population_parameters["output_gens"]):
@@ -216,6 +233,10 @@ class writeSLiMHPC(writeSLiM):
                 "asString(sim.getValue(\"fixations_counted_p1\")));" +
                 "\n\twriteFile(\"" + population_parameters["pop_name"] + "_fixed_mutations.txt\"," +
                 "\n\tpaste(sim.getValue(\"fixations_p1\"), sep = \"\"));")
+                
+        end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_dNdSCounted\"," +
+                "paste(\"dN: \", sim.getValue(\"dN_" + population_parameters["pop_name"] + "\")," +
+                "\" dS: \", sim.getValue(\"dS_ " + population_parameters["pop_name"] + "\"),  sep = \"\"));" )
 
         end_population_string += "\n\tsim.outputFixedMutations();"
 
