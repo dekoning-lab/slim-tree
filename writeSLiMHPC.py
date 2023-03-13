@@ -120,7 +120,7 @@ class writeSLiMHPC(writeSLiM):
 
         #At the start of the sim there are no fixations counted
         pop_string += "\n\tsim.setValue(\"fixations_counted\", 0);"
-        pop_string += "\n\tsim.setValue(\"dN_p1\", 0);" +
+        pop_string += "\n\tsim.setValue(\"dN_p1\", 0);" 
         pop_string += "\n\tsim.setValue(\"dS_p1\", 0);"
         pop_string += "\n}\n\n\n"
 
