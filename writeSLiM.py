@@ -377,15 +377,15 @@ class writeSLiM:
                 repeated_commands_string += ("\n\t\tnew_fixations_space = which(new_fixations);" +
                                 "\n\t\tfor(fix in new_fixations_space){" +
                                 "\n\t\t\tfix_pos = fix % 3;" +
-                                "\n\t\t\tif(fix_pos == 0){" +
-                                "\n\t\t\t\told_codon = nucleotidesToCodons(ancestral_genome[(fix-2):fix]);" +
+                                "\n\t\t\tif(fix_pos == 0 | fix_pos == 1){" +
+                                "\n\t\t\t\told_codon = nucleotidesToCodons(ancestral_genome[(fix-2+2*fix_pos):(fix+2*fix_pos)]);" +
                                 "\n\t\t\t\tnew_codon = nucleotidesToCodons(compare_seq[(fix-2):fix]);" +
                                 "\n\t\t\t\tif (old_codon == new_codon){" +
-                                "\n\t\t\t\t\tsim.setValue(\"dN\", sim.getValue(\"dN" + population_parameters["pop_name"] + "\") + 1);" +
+                                "\n\t\t\t\t\tsim.setValue(\"dN_" + pop_name +"\", sim.getValue(\"dN" + population_parameters["pop_name"] + "\") + 1);" +
                                 "\n\t\t\t\t} else {" +
-                                "\n\t\t\t\t\tsim.setValue(\"dS\", sim.getValue(\"dS" + population_parameters["pop_name"] + "\") + 1);" +
+                                "\n\t\t\t\t\tsim.setValue(\"dS_" + pop_name +"\", sim.getValue(\"dS" + population_parameters["pop_name"] + "\") + 1);" +
                                 "\n\t\t\t\t};\n\t\t\t} else {" +
-                                "\n\t\t\t\tsim.setValue(\"dN\", sim.getValue(\"dN" + population_parameters["pop_name"] + "\") + 1);" +
+                                "\n\t\t\t\tsim.setValue(\"dN_" + pop_name + "\", sim.getValue(\"dN" + population_parameters["pop_name"] + "\") + 1);" +
                                 "\n\t\t\t};\n\t\t};")
             
             
@@ -569,8 +569,8 @@ class writeSLiM:
         #Write out counted dN and dS if required
         if(population_parameters["calculate_selection"]):
             end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_dNdSCounted\"," +
-                "paste(\"dN: \", sim.getValue(\"dN" + population_parameters["pop_name"] + "\")," +
-                "\" dS: \", sim.getValue(\"dS " + population_parameters["pop_name"] + "\"),  sep = \"\"));" )
+                "paste(\"dN: \", sim.getValue(\"dN_" + population_parameters["pop_name"] + "\")," +
+                "\" dS: \", sim.getValue(\"dS_ " + population_parameters["pop_name"] + "\"),  sep = \"\"));" )
 
 
         #Write files containing polymorphisms in each population and relative proportions
