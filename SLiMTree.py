@@ -62,8 +62,8 @@ class SLiMTree:
 
         #Parse for arguments given by the user
         parser = argparse.ArgumentParser(description='A program to make slim simulations from newick phylogeny files')
-        parser.add_argument('-i','--input_tree', nargs = 1, required = True, type = str,
-                help = 'tree file in newick format specifying the clades to simulate')
+        parser.add_argument('input_tree', nargs = 1, required = True, type = str,
+                help = 'newick formatted tree file with branch lengths in generations')
         parser.add_argument('-d','--tree_data_file', nargs = 1, type=argparse.FileType('r'),
                 help = 'file specifying population size, mutation rate, etc. for each node, see documentation')
         parser.add_argument('-T', '--tool', type = str, required = True,
