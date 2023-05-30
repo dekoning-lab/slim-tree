@@ -14,7 +14,7 @@
 #string
 #math
 
-import sys, argparse, random, os, json, string, math, pandas, re
+import sys, argparse, random, os, json, string, math, pandas, re, yaml
 import numpy as np
 
 from Bio import Phylo
@@ -30,7 +30,9 @@ class SLiMTree:
 
     #Main script to run other commands
     def __init__(self):
-        self.read_user_input()
+        arguments = self.read_user_input()
+        self.check_arguments(arguments)
+        self.process_user_input(arguments)
 
         if (self.starting_parameters["fitness_profile_calc"]):
             self.find_fitness_profile()
@@ -61,91 +63,85 @@ class SLiMTree:
         self.starting_parameters = {}
 
         #Parse for arguments given by the user
-        parser = argparse.ArgumentParser(description='A program to make slim simulations from newick phylogeny files')
-        parser.add_argument('input_tree', nargs = 1, required = True, type = str,
-                help = 'newick formatted tree file with branch lengths in generations')
-        parser.add_argument('-d','--tree_data_file', nargs = 1, type=argparse.FileType('r'),
-                help = 'file specifying population size, mutation rate, etc. for each node, see documentation')
-        parser.add_argument('-T', '--tool', type = str, required = True,
-                help = 'name of tool you would like to use. Options include SLiM-Tree, SLiM-Tree-HPC. Default = SLiM-Tree')
-        parser.add_argument('-p', '--partition', type = str, help = 'partition to run SLiM-Tree HPC on')
-        parser.add_argument('-t', '--time', type = str,
-                help = 'maximum time to run each simulation for - suggested time is the maximum time available for a partition')
+        parser = argparse.ArgumentParser(description='Wrapper program to make slim scripts from a newick formatted phylogeny with realistic fitness effects using either fitness profiles or structure-based fitness effects.')
+        
+        
+        #Main tree that is a required argument
+        parser.add_argument('input_tree', nargs = 1, type = str, help = 'newick formatted tree file with branch lengths in generations')
+                
+         #High performance computing parameters - allows for computation using Slurm
+        parser.add_argument('-hpc','--high_performance_computing', action='store_true', default=False, help = 'boolean flag to turn on slim-tree high performance computing. Slurm is required')
+        parser.add_argument('-p', '--partition', type = str, help = 'partition to run Slurm on - required if using high performance computing')
+        parser.add_argument('-t', '--time', type = str, help = 'maximum time to run each simulation for - suggested time is the maximum time available for a partition - required if using high performance computing')
 
-
-        #Default parameters are somewhat arbitrary and should be changed for each sim
+                
+        #Simulation parameters
+        parser.add_argument('-w', '--nonWF', action='store_true', default=False, help = 'boolean flag to specify that a non-wright-fisher model should be used in lieu of a wright-fisher model. Note: a non-wright-fisher model is used for all simulations using structure based calculations of protein fitness.')
+        parser.add_argument('-sf', '--structure_fitness_effects', action='store_true', default=False,
+                help = 'boolean flag specifying that fitness effects are to be calculated using protein structures rather than fitness profiles. A pdb file specifying the ancestral protein structure is required. A non-wright-fisher model will be used')
+        
+                
+        #Arguments for specifying population parameters
         parser.add_argument('-n','--population_size', help = 'starting population size for the simulation, default = 100', type = int, default = 100)
-        parser.add_argument('-v','--mutation_rate', help = 'starting mutation rate for the simulation, default = 2.5e-6', type=float, default = 2.5e-6)
-        parser.add_argument('-g','--genome_length', help = 'length of the genome - amino acids, default = 300', type=int, default = 300)
+        parser.add_argument('-b','--burn_in_multiplier', type=int, default = 10, help = 'value to multiply population size by for burn in, default = 10')
         parser.add_argument('-r','--recombination_rate', help = 'recombination rate, default = 2.5e-8', type=float, default = 2.5e-8)
-        parser.add_argument('-b','--burn_in_multiplier', help = 'value to multiply population size by for burn in, default = 10', type=float, default = 10)
-        parser.add_argument('-k','--sample_size', help = 'size of sample obtained from each population at output. Input \'all\' for whole sample and consensus for consensus sequence. default = all', type=str, default = "all")
+        parser.add_argument('-v','--mutation_rate', help = 'starting mutation rate for the simulation, default = 2.5e-6', type=float, default = 2.5e-6)
+        parser.add_argument('-m', '--mutation_matrix',  type = self.make_mutation_matrix, help = 'CSV file specifying a mutation rate matrix, matrix should be either 4 by 4 or 4 by 64 specifying rates from nucleotide to nucleotide and tri-nucleotide to nucleotide respectfully. Nucleotides and tri-nucleotides should be in alphabetical order with no headers. If mutation rate matrix is supplied, mutation rate will be ignored')
+        
+        
+        #Specify population parameters for specific branches
+        parser.add_argument('-d','--tree_data_file', nargs = 1, type=argparse.FileType('r'), help = 'file to change the population size and mutation rate for specific branches using yaml formatting.')
+                
+        
+        #Genome parameters
+        parser.add_argument('-g','--genome_length', help = 'length of the genome - amino acids, default = 300', type=int, default = 300)
+        parser.add_argument('-G', '--gene_count', type = int, default = 1, help = "number of genes to be simulated by the model, default = 1")
+        parser.add_argument('-C', '--coding_ratio', type = float, default = 1.0, help = "ratio of the genome which is coding, default = 1.0")
+        
+        
+        #Fitness profile calculations
+        parser.add_argument('-f', '--fasta_file', type = str, default = None, help = 'fasta file containing ancestral sequence (amino acids), replaces random creation of ancestral sequence. Fitness profiles for each amino acid are required')
+        parser.add_argument('-F', '--fitness_profiles',  type = str, default = None, help = 'csv file containing fitness profiles for each position in the genome if an ancestral sequence is given')    
+        
+        
+        #Structure parameters
+        parser.add_argument('-pdb', '--pdb_file', type = str, help = 'path to pdb file containing the anscestral protein for fitness effects based on protein structure')
+        parser.add_argument('-pdbs', '--distribution_pdb_files', type = str, default = sys.path[0] + "/" + 'pdbfiles', help = 'path to folder containing a set of PDB files suggesting possible protein configurations, default = pdbfiles in the SLiM-Tree package (a folder containing protein structures selected from the work of Goldstein and Pollock (2017))')
+        parser.add_argument('-cid', '--pdb_chain_id', type = str, default = 'A', help = 'chain id for the main pdb file.')
+        parser.add_argument('-cids', '--distribution_chain_ids', type = str, default = sys.path[0] + "/" + 'pdbfiles/chain_ids.txt', help = 'file specifying chain ids for the pdbs used in the possible protein configurations. In file specify <pdb_name>:<chain_id>, default = pdbfiles/chain_ids in the SLiM-Tree package.')
+        parser.add_argument('-ct', '--contact_threshold', type = float, default = 7.0, help = 'maximum distance two resideues may be apart for contact in protein structure based fitness effects')
+        
+        
+        #Tree parameters
+        parser.add_argument('-k','--sample_size', help = 'size of sample obtained from each population at a  tree tip at the end of the simulations. Input \'all\' for the every member of the tree tip samples and consensus for the consensus sequence of the population at each tip. default = all', type=str, default = 'all')
+        parser.add_argument('-sr', '--split_ratio', help = "proportion of a population that goes into the first daughter branch at a tree branching point in non-wright fisher models. must be ratio between 0 and 1.0. default = 0.5", type = float, default = 0.5)
 
-        parser.add_argument('-sr', '--split_ratio', help = "proportion of the population that goes into the left branch upon splitting in non-wright fisher models. must be ratio between 0 and 1.0. default = 0.5", type = float, default = 0.5)
 
-        parser.add_argument('-c','--count_subs', type = self.str2bool, default = True, const=True, nargs='?',
-                help = 'boolean specifying whether to count substitutions, turning off will speed up sims. default = True')
-        parser.add_argument('-o','--output_gens', type = self.str2bool, default = True, const=True, nargs='?',
-                help = 'boolean specifying whether to output the generation after every 100th generation. default = True')
-        parser.add_argument('-B','--backup', type = self.str2bool, default = True, const=True, nargs='?',
-                help = 'boolean specifying whether to backup simulations, turning off will save space. default = True')
-        parser.add_argument('-P', '--polymorphisms', type = self.str2bool, default = True, const = True, nargs = '?',
-                help = "boolean specifying whether to specify all polymorphisms and fixed states at the end of each population. default = True")
-
-        parser.add_argument('-w', '--wright_fisher_model', type = self.str2bool, default=True, const=True, nargs='?',
-                help = 'boolean specifying whether this is a wright-fisher model or non-wright-fisher model. default = True')
-
-        parser.add_argument('-G', '--gene_count', type = int, default = 1, help = "Number of genes in the model. Default = 1.")
-        parser.add_argument('-C', '--coding_ratio', type = float, default = 1.0, help = "Ratio of the genome which are coding regions as a ratio coding/noncoding. Default = 1.0")
-
-        parser.add_argument('-hp', '--haploidy', type = self.str2bool, default = False, help = "boolean specifying whether to model haploidy. Default = False")
-
-        parser.add_argument('-s', '--user_provided_sequence', type = self.str2bool, default = False, const = True, nargs = '?',
-                help = 'boolean specifying whether user provides ancestral sequence and coding regions, Default = False')
-        parser.add_argument('-f', '--fasta_file', type = str, default = None, help = 'fasta file containing ancestral sequence - please provide only 1 sequence')
-        parser.add_argument('-R', '--randomize_fitness_profiles', type = self.str2bool, default = True, const = True, nargs = '?',
-                help = ('boolean specifying whether to randomize fitness profiles provided in the fitness data files folder. Default = True. If false, there' +
-                        ' must be equal fitness profiles to protein sequence length'))
-
-        parser.add_argument('-fc', '--fitness_profile_calc', type = self.str2bool, default = True, const = True, nargs='?',
-                help = 'boolean specifying whether fitness profiles should be used to calculate fitness. ' +
-                    'If false, protein structure fitness will be calculated, and a pdb files must be provided. ' +
-                    'If protein structure fitness calculated, a non-Wright-Fisher model must be used. Default = True.')
-        parser.add_argument('-pdb', '--pdb_file', type = str, help = 'Path to file containing a PDB file with a valid ' +
-                'protein structure to model protein structure fitness off of.')
-        parser.add_argument('-pdbs', '--distribution_pdb_files', type = str, default = sys.path[0] + "/" + 'pdbfiles',
-                help = 'Path to folder containing a PDB files with a valid protein structures to act as distributions ' +
-                'of proteins for protein structure fitness effects. Default = pdbfiles this is a folder in SLiM-Tree based off ' +
-                'the work by Goldstein and Pollock (2017).')
-        parser.add_argument('-cid', '--pdb_chain_id', type = str, default = 'A', help = 'Chain id for the main pdb file.')
-        parser.add_argument('-cids', '--distribution_chain_ids', type = str, default = sys.path[0] + "/" + 'pdbfiles/chain_ids.txt',
-                help = 'File specifying chain ids for the pdbs used in the distribution of fitness effects. In file specify <pdb_name>:<chain_id>. ' +
-                'Default = pdbfiles/chain_ids. This is a file in SLiM-Tree based off the work by Goldstein and Pollock (2017).')
-        parser.add_argument('-ct', '--contact_threshold', type = float, default = 7.0, help = 'Maximum distance two proteins may be apart ' +
-                'to be in contact in protein structure based fitness effects')
-        parser.add_argument('-jc', '--jukes_cantor', type = self.str2bool, default = True, const = True, nargs='?',
-                help = 'boolean specifying whether a Jukes-Cantor mutation matrix should be used, this mutation matrix ' +
-                'has a constant mutation rate across nucleotides equal to the supplied mutation rate divided by 3. ' +
-                'If false, a mutation matrix specifying mutation rates must be provided in a csv file and mutation rate will ' +
-                'be ignored. Default = True')
-        parser.add_argument('-m', '--mutation_matrix',  type = self.make_mutation_matrix, help = 'CSV file specifying a mutation rate matrix ' +
-                'Matrix should be either 4 by 4 or 4 by 64 specifying rates from nucleotide to nucleotide and tri-nucleotide' +
-                ' to nucleotide respectfully. Nucleotides and tri-nucleotides should be in alphabetical order with no headers.' +
-                ' If mutation rate matrix is supplied, mutation rate will be ignored')
-        parser.add_argument('-S', '--calculate_selection', action='store_true', default=False, help = 'boolean flag specifying that selection ' +
-                'should be calculated by counting non-synonymous and synonymous fixations.')
+	#Flags to turn on and off simulation functions
+        parser.add_argument('-c','--count_subs', action='store_true', default=False, help = 'boolean flag to turn on substitution counting. This will slow down simulations')
+        parser.add_argument('-o','--output_gens', action='store_true', default=False, help = 'boolean flag to output every 100th generation. This can be helpful in tracking simulation progression')
+        parser.add_argument('-B','--backup', action='store_true', default=False, help = 'boolean flag to turn on backups of the simulations, allowing a restart of simulations if required. This will increase space and time complexity')
+        parser.add_argument('-P', '--polymorphisms', action='store_true', default=False, help = "boolean flag to turn on the creation of file specifying all polymorphic and fixed states at the end of a branch")
+        parser.add_argument('-hp', '--haploidy', action='store_true', default=False, help = "boolean flag to run simulations on a haploid organism")
+        parser.add_argument('-S', '--calculate_selection', action='store_true', default=False, 
+               help = 'boolean flag that turns on calculations of selection by counting synonymous and non-synonymous fixed substitutions')
 
 
         #Get arguments from user
         arguments = parser.parse_args()
-
-        #Set up tree
-        self.input_file = arguments.input_tree[0]
-
-        #Get simulation type and ensure that required arguments are given for simulation type
-        self.simulationType = arguments.tool.translate(str.maketrans('', '', string.punctuation)).lower()
-        if (self.simulationType == "slimtreehpc" and (arguments.partition == None or arguments.time == None)):
-            print("When using SLiM-Tree-HPC, partition and time data must be provided. Closing program.")
+        
+        return (arguments)
+        
+        
+        
+        
+        
+   #Go through arguments and make sure that the user hasn't provided any arguments that cannot be processed     
+    def check_arguments (self, arguments):     
+        #Check to see if user has selected high performance computing. If using ensure that time and partition are given
+        self.hpc = arguments.high_performance_computing
+        if (self.hpc and (arguments.partition == None or arguments.time == None)):
+            print("When using high performance computing, partition and time data must be provided. Closing program.")
             sys.exit(0)
 
         #Check to make sure gene count and coding ratio are valid
@@ -158,53 +154,40 @@ class SLiMTree:
             sys.exit(0);
 
 
-        #Ensure that if users specify a user provided sequence they include fasta file and gb file
-        if (arguments.user_provided_sequence and (arguments.fasta_file == None or arguments.randomize_fitness_profiles)):
-            print("When specifying an ancestral sequence, a fasta file containing the sequence must be provided " +
-            "and fitness profiles cannot be randomized as a specific fitness profile specific to the amino acid " +
-            "in the protein being profiled must be provided for each amino acid position. Closing program.")
+        #Ensure that if users specify a user provided sequence they include fasta file and associated fitness profiles
+        if (arguments.fasta_file != None and arguments.fitness_profiles == None):
+            print("When specifying an ancestral sequence with a fasta file, fitness profiles must be manually provided for each amino acid in the sequence.")
             sys.exit(0);
 
-        if (arguments.user_provided_sequence and (arguments.coding_ratio != 1.0 or arguments.gene_count != 1)):
-            print("When specifying an ancestral sequence, the sequence of only one gene should be provided. Closing program.")
+        if (arguments.fasta_file != None and (arguments.coding_ratio != 1.0 or arguments.gene_count != 1)):
+            print("When specifying an ancestral sequence with a fasta file, the sequence of only one fully coding gene should be provided. Closing program.")
             sys.exit(0);
 
 
-        #If using protein-based fitness, make sure pdb files are provided and non-WF model is selected. Make sure
-        #user does not give a coding ratio
-        if (arguments.fitness_profile_calc == False and arguments.pdb_file == None):
-            print("When calculating protein-based fitness, PDB file and folder of distribution proteins must be provided. Closing program.")
+        #If using protein-based fitness, make sure pdb files are provided. Make sure sure does not give a coding ratio
+        if (arguments.structure_fitness_effects and arguments.pdb_file == None):
+            print("When calculating protein structure based fitness, PDB file must be provided. Closing program.")
             sys.exit(0)
-        if (arguments.fitness_profile_calc == False and arguments.wright_fisher_model):
-            print("When calculating protein-based fitness, a non-Wright-Fisher model must be used to ensure population survives.")
-            sys.exit(0)
-        if(arguments.fitness_profile_calc == False and
-                (arguments.coding_ratio != 1.0 or arguments.gene_count != 1)):
-            print("When calculating protein-based fitness only one gene (ie. the protein) with a coding ratio of 1 may be used.")
-            sys.exit(0)
-
-        #If mutation matrix is not a Jukes-Cantor matrix, mutation matrix must be supplied
-        if(not arguments.jukes_cantor and arguments.mutation_matrix == None):
-            print("When not using a Jukes-Cantor mutation matrix, a mutation matrix must be supplied")
+        if(arguments.structure_fitness_effects and (arguments.coding_ratio != 1.0 or arguments.gene_count != 1)):
+            print("When calculating protein structure based fitness only one gene (ie. the protein) with a coding ratio of 1 may be used.")
             sys.exit(0)
 
 
-        #Set up the filenames for file io
+
+    #Read through user input and process arguments into dictionaries, etc.
+    def process_user_input(self, arguments):
+    
+        #Set up tree
+        self.input_file = arguments.input_tree[0]
+        print(self.input_file)
+
+        #Find where data needs to be output to, set up documents and folders accordingly accordingly
         input_file_start = os.getcwd() + '/' + self.input_file.split('.')[0]
-        self.starting_parameters["tree_filename"] = input_file_start + "_phylogeny.png"
-        self.starting_parameters["fasta_filename"] = input_file_start
-
-        if(arguments.tree_data_file != None):
-            self.data_file = arguments.tree_data_file[0]
-        else:
-            self.data_file = None
-
-
-        #Set up the output of scripts to a single folder
         split_starting_file = input_file_start.split('/')
+        
         output_files_directory = "/".join(split_starting_file[0:(len(split_starting_file)-1)]) + "/slimScripts"
         backup_files_directory = "/".join(split_starting_file[0:(len(split_starting_file)-1)]) + "/backupFiles"
-        if(not arguments.fitness_profile_calc):
+        if(arguments.structure_fitness_effects):
             cmap_files_directory = "/".join(split_starting_file[0:(len(split_starting_file)-1)]) + "/cmaps"
 
 
@@ -214,71 +197,85 @@ class SLiMTree:
             if(not arguments.fitness_profile_calc):
                 os.mkdir(cmap_files_directory)
 
+        #Catch recreation of folder, allow user to specify whether files should be overwritten
         except OSError:
-            print ("The directory %s already exits, program files will be overwritten" % output_files_directory)
+            cont = input ("The directory %s already exits, program files will be overwritten, continue (y/n)?")
+            while(cont != "y"):
+                if(cont == "n"):
+            	    sys.exit(0)
+                cont = input("Continue? Please enter y or n")	
 
         self.starting_parameters["output_file"] = output_files_directory + "/" + split_starting_file[-1]
+        self.starting_parameters["fasta_filename"] = input_file_start
+        
+        
+        #Specify whether a data file for changes for branch specific mutation rates/pop sizes exists 
+        if(arguments.tree_data_file != None):
+            self.data_file = arguments.tree_data_file[0]
+        else:
+            self.data_file = None
+
 
 
         #Set up the starting parameters
-        if(arguments.jukes_cantor):
-            self.starting_parameters["mutation_rate"] = arguments.mutation_rate
-        else:
-            self.starting_parameters["mutation_matrix"] = arguments.mutation_matrix
         self.starting_parameters["population_size"] = arguments.population_size
         self.starting_parameters["recombination_rate"] = arguments.recombination_rate
         self.starting_parameters["burn_in"] = arguments.burn_in_multiplier * arguments.population_size
         self.starting_parameters["sample_size"] = arguments.sample_size
-        self.starting_parameters["fitness_profile_calc"] = arguments.fitness_profile_calc
+        self.starting_parameters["split_ratio"] = arguments.split_ratio
+        self.starting_parameters["partition"] = arguments.partition
+        self.starting_parameters["time"] = arguments.time
+        self.starting_parameters["count_subs"] = arguments.count_subs
+        self.starting_parameters["calculate_selection"] = arguments.calculate_selection
+        self.starting_parameters["output_gens"] = arguments.output_gens
+        self.starting_parameters["backup"] = arguments.backup
+        self.starting_parameters["polymorphisms"] = arguments.polymorphisms
+        self.starting_parameters["haploidy"] = arguments.haploidy
+        self.starting_parameters["gene_count"] = arguments.gene_count
+        self.starting_parameters["coding_ratio"] = arguments.coding_ratio
+        
+        
+        #Adjust if matrix is provided or not
+        if(arguments.mutation_matrix == None):
+            self.starting_parameters["mutation_rate"] = arguments.mutation_rate
+            self.starting_parameters["jukes_cantor"] = True
+        else:
+            self.starting_parameters["mutation_matrix"] = arguments.mutation_matrix
+            self.starting_parameters["jukes_cantor"] = False
+            
+            
+        #Set up parameters for structure based fitness effects if given, otherwise for profile effects
+        self.starting_parameters["fitness_profile_calc"] = not arguments.structure_fitness_effects
 
-        if(not arguments.fitness_profile_calc):
+        if(arguments.structure_fitness_effects):
             self.starting_parameters["contact_threshold"] = arguments.contact_threshold
             self.starting_parameters["pdb_file"] = arguments.pdb_file
             self.starting_parameters["distribution_pdb_files"] = arguments.distribution_pdb_files
             self.starting_parameters["pdb_chain_id"] = arguments.pdb_chain_id
             self.starting_parameters["distribution_chain_ids"] = arguments.distribution_chain_ids
             self.starting_parameters["cmap_files_directory"] = cmap_files_directory
+            self.starting_parameters["wf_model"] = False
+        else:    
+            self.starting_parameters["wf_model"] = not arguments.nonWF
+            self.starting_parameters["randomize_fitness_profiles"] = not arguments.fitness_profiles == None
+            self.starting_parameters["fitness_profiles"] = arguments.fitness_profiles
+            self.starting_parameters["user_provided_sequence"] = not arguments.fasta_file == None
+            self.starting_parameters["fasta_file"] = arguments.fasta_file
 
-
-        self.starting_parameters["split_ratio"] = arguments.split_ratio
-
-        self.starting_parameters["partition"] = arguments.partition
-        self.starting_parameters["time"] = arguments.time
-
-        self.starting_parameters["count_subs"] = arguments.count_subs
-        self.starting_parameters["calculate_selection"] = arguments.calculate_selection
-        self.starting_parameters["output_gens"] = arguments.output_gens
-        self.starting_parameters["backup"] = arguments.backup
-        self.starting_parameters["randomize_fitness_profiles"] = arguments.randomize_fitness_profiles
-
-        self.starting_parameters["polymorphisms"] = arguments.polymorphisms
-
-
-        self.starting_parameters["user_provided_sequence"] = arguments.user_provided_sequence
-        self.starting_parameters["fasta_file"] = arguments.fasta_file
-
-        self.starting_parameters["wf_model"] = arguments.wright_fisher_model
-        self.starting_parameters["jukes_cantor"] = arguments.jukes_cantor
-
-
-        self.starting_parameters["haploidy"] = arguments.haploidy
 
         #Set up coding sequences if no user defined sequence is specified
-        self.starting_parameters["gene_count"] = arguments.gene_count
-        self.starting_parameters["coding_ratio"] = arguments.coding_ratio
-
-        if (not arguments.user_provided_sequence):
+        if (arguments.fasta_file == None):
             self.starting_parameters["genome_length"] = int(arguments.genome_length)
             self.starting_parameters["coding_seqs"] = self.get_coding_seqs()
 
 
-        #Save starting parameterslater reference
+        #Save starting parameters for later reference
         parameter_file = open(input_file_start + "_parameters.txt", 'w')
         parameter_file.write("Simulation parameters\n\n")
 
         for key, value in self.starting_parameters.items():
             #Don't need to record these filenames as they are not yet complete
-            if(key in ['fasta_filename', 'tree_filename', 'output_file']):
+            if(key in ['fasta_filename','output_file']):
                 continue
 
             parameter_file.write('%s:%s\n' % (key, value))
@@ -685,7 +682,7 @@ class SLiMTree:
 
 
 
-    #Read individaul data from the file - to add more parameters modify data_translation_dict
+    #Read individual data from the file - to add more parameters modify data_translation_dict
     def read_clade_data(self):
 
         data_translation_dict = {
@@ -937,9 +934,9 @@ class SLiMTree:
     def write_slim_code (self, clade_dict_list):
 
         #Open SLiM writer based on tool type and write the initialize statement
-        if(self.simulationType == "slimtree"):
+        if(self.hpc == "slimtree"):
             SLiM_Writer = writeSLiM(self.starting_parameters)
-        elif(self.simulationType == "slimtreehpc"):
+        elif(self.hpc == "slimtreehpc"):
             SLiM_Writer = writeSLiMHPC(self.starting_parameters)
         else:
             print ("Invalid tool type. Please specify a tool as SLiM-Tree or SLiM-Tree-HPC. Program closing")
@@ -954,10 +951,10 @@ class SLiMTree:
                 SLiM_Writer.write_subpop_nonwf(clade);
 
         #Start the SLiM code to run
-        if(self.simulationType == "slimtree"):
+        if(self.hpc == "slimtree"):
             SLiM_Writer.close_file()
             os.system("slim \"" + self.starting_parameters["output_file"] + "_p1.slim\"")
-        elif(self.simulationType == "slimtreehpc"):
+        elif(self.hpc == "slimtreehpc"):
             os.system("sbatch \"" + self.starting_parameters["output_file"] + "_p1.sh\"")
 
 
