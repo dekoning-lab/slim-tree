@@ -179,7 +179,6 @@ class SLiMTree:
     
         #Set up tree
         self.input_file = arguments.input_tree[0]
-        print(self.input_file)
 
         #Find where data needs to be output to, set up documents and folders accordingly accordingly
         input_file_start = os.getcwd() + '/' + self.input_file.split('.')[0]
@@ -257,7 +256,7 @@ class SLiMTree:
             self.starting_parameters["wf_model"] = False
         else:    
             self.starting_parameters["wf_model"] = not arguments.nonWF
-            self.starting_parameters["randomize_fitness_profiles"] = not arguments.fitness_profiles == None
+            self.starting_parameters["randomize_fitness_profiles"] = arguments.fitness_profiles == None
             self.starting_parameters["fitness_profiles"] = arguments.fitness_profiles
             self.starting_parameters["user_provided_sequence"] = not arguments.fasta_file == None
             self.starting_parameters["fasta_file"] = arguments.fasta_file
@@ -281,7 +280,7 @@ class SLiMTree:
             parameter_file.write('%s:%s\n' % (key, value))
 
         #If this is a jukes cantor model write out theta
-        if (arguments.jukes_cantor):
+        if (self.starting_parameters["jukes_cantor"]):
             theta = 4*arguments.mutation_rate*arguments.population_size
             parameter_file.write("theta: " + str(theta))
 
@@ -558,7 +557,7 @@ class SLiMTree:
         self.starting_parameters["amino_acids"] = amino_acids
 
         #Find scaling for non-wright-fisher models
-        if(self.starting_parameters["wf_model"] == False):
+        if(not self.starting_parameters["wf_model"]):
             if(self.starting_parameters["user_provided_sequence"]):
                 self.find_scaling_factor_user_defined(fitness_distributions,
                     self.starting_parameters["ancestral_sequence"])
@@ -828,6 +827,7 @@ class SLiMTree:
         backup = parent_clade_dict["backup"]
         polymorphisms = parent_clade_dict["polymorphisms"]
         jukes_cantor = parent_clade_dict["jukes_cantor"]
+        calculate_selection = parent_clade_dict["calculate_selection"]
 
         if(jukes_cantor):
             mut_rate = parent_clade_dict["mutation_rate"]
@@ -923,6 +923,7 @@ class SLiMTree:
             "backup" : backup,
             "polymorphisms" : polymorphisms,
             "jukes_cantor" : jukes_cantor,
+            "calculate_selection" : calculate_selection,
             "mutation_matrix" : mutation_matrix,
             "num_parents" : 0
         }
@@ -934,13 +935,10 @@ class SLiMTree:
     def write_slim_code (self, clade_dict_list):
 
         #Open SLiM writer based on tool type and write the initialize statement
-        if(self.hpc == "slimtree"):
-            SLiM_Writer = writeSLiM(self.starting_parameters)
-        elif(self.hpc == "slimtreehpc"):
+        if(self.hpc):
             SLiM_Writer = writeSLiMHPC(self.starting_parameters)
         else:
-            print ("Invalid tool type. Please specify a tool as SLiM-Tree or SLiM-Tree-HPC. Program closing")
-            sys.exit(0)
+            SLiM_Writer = writeSLiM(self.starting_parameters)
 
         #Write a script for each clade which will be run sequentially
         if (self.starting_parameters["wf_model"]): #If this is a Wright-Fisher model, use a different write_subpop function
@@ -951,11 +949,11 @@ class SLiMTree:
                 SLiM_Writer.write_subpop_nonwf(clade);
 
         #Start the SLiM code to run
-        if(self.hpc == "slimtree"):
+        if(self.hpc):
+            os.system("sbatch \"" + self.starting_parameters["output_file"] + "_p1.sh\"")
+        else:
             SLiM_Writer.close_file()
             os.system("slim \"" + self.starting_parameters["output_file"] + "_p1.slim\"")
-        elif(self.hpc == "slimtreehpc"):
-            os.system("sbatch \"" + self.starting_parameters["output_file"] + "_p1.sh\"")
 
 
 
