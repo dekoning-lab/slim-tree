@@ -29,7 +29,7 @@ class ContactMap(GenericMap):
         initialized.
         """
         residues = residue_array(model, chain_id)
-        matrix = numpy.zeros((len(residues), len(residues)), numpy.bool)
+        matrix = numpy.zeros((len(residues), len(residues)), numpy.bool_)
         for row, r1 in enumerate(residues):
             for col, r2 in enumerate(residues[:row]):
                 val = (calc_residue_dist(r1, r2) < threshold) & (abs(row-col)> 1)

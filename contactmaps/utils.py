@@ -90,7 +90,7 @@ def residue_array(model, chain_id):
     
     for i, chain in enumerate(model.get_chains()):
         if (chain.id == chain_id):
-            a = numpy.zeros(count_residues(chain), numpy.object)
+            a = numpy.zeros(count_residues(chain), numpy.object_)
             for i, res in enumerate(chain.get_residues()): a[i] = res
             break
     return a

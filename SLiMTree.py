@@ -192,17 +192,26 @@ class SLiMTree:
 
         try:
             os.mkdir(output_files_directory)
-            os.mkdir(backup_files_directory)
-            if(not arguments.fitness_profile_calc):
-                os.mkdir(cmap_files_directory)
-
+            
         #Catch recreation of folder, allow user to specify whether files should be overwritten
         except OSError:
-            cont = input ("The directory %s already exits, program files will be overwritten, continue (y/n)?")
+            cont = input ("The required directories already exits, program files will be overwritten, continue (y/n)?")
             while(cont != "y"):
                 if(cont == "n"):
             	    sys.exit(0)
-                cont = input("Continue? Please enter y or n")	
+                cont = input("Continue? Please enter y or n")
+
+        if(arguments.structure_fitness_effects):
+            try:
+                os.mkdir(cmap_files_directory)
+            except OSError:
+                print("using same cmap directory") 
+
+        if(arguments.backup):
+            try:
+                os.mkdir(backup_files_directory)
+            except OSError:
+                print("using same backup folder")
 
         self.starting_parameters["output_file"] = output_files_directory + "/" + split_starting_file[-1]
         self.starting_parameters["fasta_filename"] = input_file_start
@@ -254,6 +263,7 @@ class SLiMTree:
             self.starting_parameters["distribution_chain_ids"] = arguments.distribution_chain_ids
             self.starting_parameters["cmap_files_directory"] = cmap_files_directory
             self.starting_parameters["wf_model"] = False
+            self.starting_parameters["user_provided_sequence"] = True
         else:    
             self.starting_parameters["wf_model"] = not arguments.nonWF
             self.starting_parameters["randomize_fitness_profiles"] = arguments.fitness_profiles == None
@@ -286,20 +296,6 @@ class SLiMTree:
 
 
         parameter_file.close()
-
-
-
-    #Command to take input from user and convert to bool
-    #From: https://stackoverflow.com/questions/15008758/parsing-boolean-values-with-argparse
-    def str2bool(self, v):
-        if isinstance(v, bool):
-            return v
-        if v.lower() in ('yes', 'true', 't', 'y', '1'):
-            return True
-        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-            return False
-        else:
-            raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
 
@@ -669,6 +665,7 @@ class SLiMTree:
             initial_working_dir + "/" + self.starting_parameters["distribution_pdb_files"] +
             " \"" + self.starting_parameters["pdb_file"][0:-4] + "," + self.starting_parameters["pdb_chain_id"] +
             "\" \"" + chain_ids + "\"").read()
+        print(self.starting_parameters["ancestral_sequence"])
 
         # self.starting_parameters["ancestral_sequence"] = "TTGAAGGAGGAGCCTATTGAACCAGAAGAATTGTGGATCGTGTTTGCAGGGCCACCTGAGTTGCCCCTGCTATCGACCATAATCTCTCTCATGGAATCACTGTACAGAAGTATTAAACGTCGCCGTCGTCGTAGGCGCCGAAAGCGCCGGTTGTTTGATCGCCCTCTACTGAAGAGCGCGTGCTATTTCTTTAGACGCGCAATGATGGTTTTACCGGACTTGCCTAAGCTCCTCCCATGGACTCCGGACCCATGGAAGAAAGAAGATCAACATCGTATGCCAATCATTACCATTTATTTAGTACCAGAGATACATGCCATCCGGGCTGTTCTCATGGATGCTGCTGCCCTTGATTGTAAAATATTGTCGCGCTCTTTTAAAATATCATCCTCAGATCGACGTCCACCACCCAAAGACGACCTAGAACGCCTGTGTATTATTCTGAAAATCCGTGAGCGACTTTCGTTGAGACGGGCACTCAGAGACGCAGACACTCTTGCTGACGGTATTGCGTGCCTCATGTACCGTCTAGATAGTACCGAAATGGAACGCAAGGAACGTTGCCCTGAAGAAGATGAAGATTTGGAAACAAAGTTTCGGGACGAACTTGGCAAACTTATGGGAATGGACCACTCCGAACGTAGACCCTACCGACGGCGGCAGCAAATGGAATCGGTGATTATTCTGTCAAGTAAACCTGAGCGGGATGACATAATTAGGACTGAAATCAAGTGCTCTCATTTTCACTCCTCAGCAGTTATCTCCTTTTTCCCTCCTGACCGCATTCTGCTGGCGCGCGCCGCTTTACGCCTAAGAAATGAAGAAGCAGTCGATCATAAAGATCAGAGGATCATAATAGAGCTACTCCCAACTCCAGAATTCCCGTGCAGGCCACCACTA"
 

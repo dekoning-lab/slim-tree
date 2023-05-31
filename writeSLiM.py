@@ -208,7 +208,6 @@ class writeSLiM:
         start_stop_codons = list(self.coding_regions.flatten()*3)
         #start_stop_codons[-1] = start_stop_codons[-1] -1
         start_stop_codons = str(start_stop_codons)
-        print(start_stop_codons)
         if (len(start_stop_codons.split(",")) == 2) :
             value = start_stop_codons.split(",")[1]
             value = value[1:len(value)-1]
@@ -294,10 +293,10 @@ class writeSLiM:
 
        #Now write out the fitness callback based on the fitness distribution
         if (self.haploidy == False):
-            fitness_callback_string = ("fitness(NULL) {return(get_genome_fitness(genome1)" +
-                            "*get_genome_fitness(genome2));//If error says total fitness < 0.0, mutation rate is lethal\n}\n\n\n")
+            fitness_callback_string = ("fitnessEffect() {return(get_genome_fitness(individual.genome1)" +
+                            "*get_genome_fitness(individual.genome2));//If error says total fitness < 0.0, mutation rate is lethal\n}\n\n\n")
         else:
-            fitness_callback_string = ("fitness(NULL) {return(get_genome_fitness(genome1));//If error says total fitness < 0.0, mutation rate is lethal\n}\n\n\n")
+            fitness_callback_string = ("fitnessEffect() {return(get_genome_fitness(individual.genome1));//If error says total fitness < 0.0, mutation rate is lethal\n}\n\n\n")
 
         self.output_file.write(fitness_callback_string)
 
@@ -323,7 +322,7 @@ class writeSLiM:
         self.output_file.write(fitness_calc_function)
 
         #Write fitness function to be run for each individual
-        fitness_function = ("fitness(NULL){\n\tind = genome2.individual;" +
+        fitness_function = ("fitnessEffect(){\n\tind = individual.genome2.individual;" +
             "\n\tindex = ind.index * 2;" +
             "\n\tsubpop_id = \"p\" + ind.subpopulation.id;" +
             "\n\treturn product(sim.getValue(subpop_id + \"_fitnesses\")[index :(index + 1)]);\n}\n\n\n")
@@ -338,7 +337,7 @@ class writeSLiM:
                             "\n\tsubpop.addCrossed(individual, subpop.sampleIndividuals(1));" +
                             "\n }\n\n\n")
         else:
-            reproduction_string = ("reproduction(){\n\tsubpop.addRecombinant(genome1, NULL, NULL, NULL, NULL, NULL);\n}\n\n\n")
+            reproduction_string = ("reproduction(){\n\tsubpop.addRecombinant(individual.genome1, NULL, NULL, NULL, NULL, NULL);\n}\n\n\n")
 
         self.output_file.write(reproduction_string)
 
@@ -358,7 +357,7 @@ class writeSLiM:
                         "\n\t\tancestral_genome = sim.getValue(\"fixations_" + pop_name + "\");" +
                         "\n\t\trow_num = " + pop_name + ".individualCount")
             if (self.haploidy):
-                repeated_commands_string += ";\n\t\tmuts_mat = integer(row_num*1500);\n\t\tmuts_mat = " + pop_name + ".individuals.genome1.nucleotides(NULL, NULL, \"integer\");"
+                repeated_commands_string += ";\n\t\tmuts_mat = integer(row_num*1500);\n\t\tmuts_mat = " + pop_name + ".individuals.individual.genome1.nucleotides(NULL, NULL, \"integer\");"
             else:
                 repeated_commands_string += "* 2;\n\t\tmuts_mat = integer(row_num*1500);\n\t\tmuts_mat = " + pop_name + ".genomes.nucleotides(NULL, NULL, \"integer\");"
 
@@ -393,12 +392,12 @@ class writeSLiM:
 
         #Write a command to output when every 100th generation has passed
         if(population_parameters["output_gens"]):
-            repeated_commands_string += "\n\n\tif (sim.generation%100 == 0) {\n\t\tcatn(sim.generation);\n\t};"
+            repeated_commands_string += "\n\n\tif (sim.cycle%100 == 0) {\n\t\tcatn(sim.cycle);\n\t};"
 
 
         #Write a command to write a backup of all individuals after every 100 generations
         if (population_parameters["backup"]):
-             repeated_commands_string += ("\n\n\tif (sim.generation%100 == 0) {" +
+             repeated_commands_string += ("\n\n\tif (sim.cycle%100 == 0) {" +
                         "\n\t\twriteFile(\"" + os.getcwd()+ "/backupFiles/" + pop_name + ".fasta\"," +
                         "(\">parent_ancestral_to_load\\n\" + sim.chromosome.ancestralNucleotides()));" +
                         "\n\t\tsim.outputFull(\"" + os.getcwd()+ "/backupFiles/" + pop_name + ".txt\");\n\t};")
@@ -418,7 +417,7 @@ class writeSLiM:
                 self.set_up_sim(population_parameters)
         else:
             #Not the starting population, break off from existing population
-            define_population_string = (str(int(population_parameters["dist_from_start"])+1) + " { \n" +
+            define_population_string = (str(int(population_parameters["dist_from_start"])+1) + " early() { \n" +
                     "\tsim.addSubpopSplit(\""+ population_parameters["pop_name"] + "\"," +
                     str(population_parameters["population_size"]) + ", " + population_parameters["parent_pop_name"]+ ");"+
                     "\n\n\tsim.setValue(\"fixations_" + population_parameters["pop_name"] + "\", sim.getValue(\"fixations_"+
@@ -458,14 +457,13 @@ class writeSLiM:
 
             #If this is the last population broken off, take the remainder of the parent population
             if (population_parameters["last_child_clade"] == True):
-                define_population_string += str("\n\tcatn(" + population_parameters["parent_pop_name"] + ".individualCount);"+
-                "\n\t" + population_parameters["pop_name"] + ".takeMigrants(" + population_parameters["parent_pop_name"] + ".individuals);" +
+                define_population_string += str("\n\t" + population_parameters["pop_name"] + ".takeMigrants(" + population_parameters["parent_pop_name"] + ".individuals);" +
                 "\n\t" + population_parameters["parent_pop_name"] + ".removeSubpopulation();")
             else:
                 #Take proportion of the parent population
                 define_population_string += str("\n\tmigrants = sample(" + population_parameters["parent_pop_name"] + ".individuals, asInteger("
                                     + population_parameters["parent_pop_name"] + ".individualCount * " + str(population_parameters["split_ratio"]) + "));\n\t"
-                                    + pop_name + ".takeMigrants(migrants);\n\tcatn(" + pop_name + ".individualCount);")
+                                    + pop_name + ".takeMigrants(migrants);")
 
             define_population_string += str("\n\n\tsim.setValue(\"fixations_" + pop_name + "\", sim.getValue(\"fixations_"+
                                     population_parameters["parent_pop_name"] +"\"));" +
@@ -531,7 +529,7 @@ class writeSLiM:
         pop_string += "\n}\n\n\n"
 
         if (self.haploidy and self.model_type == True):
-            pop_string += "late(){\n\tsim.subpopulations.individuals.genome2.removeMutations();\n}\n\n\n\n\n"
+            pop_string += "late(){\n\tsim.subpopulations.individuals.individual.genome2.removeMutations();\n}\n\n\n\n\n"
 
         self.output_file.write(pop_string)
 
@@ -552,28 +550,30 @@ class writeSLiM:
                 " paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue(\"fixations_" + population_parameters["pop_name"] + "\"))), sep = \"\"));")
 
         #Calculate dN/dS for the population and write into parameters file
-        if (self.fitness_profile_calc):
-            end_population_string+= ("\n\tsystem(paste(\"Rscript " + sys.path[0] +"/dNdSCalculations.R\","+ str(population_parameters["population_size"]) +", "+
-                    str(population_parameters["mutation_rate"]) +", \""+ population_parameters["pop_name"] + "\", \""+ sys.path[0]+ "\", \""+ os.getcwd()+ "\", sep = \" \"));" +
-                    "\n\tdNdSFile = readFile(\"" + os.getcwd() + "/"+population_parameters["pop_name"]+"_dNdSDistributions.csv\");\n\tdNdSValues = c();" +
-                    "for (i in 1:(length(sim.getValue(\"X\"))-1)){\n\t\tdNdSValues = c(dNdSValues, asFloat(strsplit(dNdSFile[i], \",\")[1]));}\n\tvalues = c(")
+        # if (self.fitness_profile_calc):
+            # end_population_string+= ("\n\tsystem(paste(\"Rscript " + sys.path[0] +"/dNdSCalculations.R\","+ str(population_parameters["population_size"]) +", "+
+                    # str(population_parameters["mutation_rate"]) +", \""+ population_parameters["pop_name"] + "\", \""+ sys.path[0]+ "\", \""+ os.getcwd()+ "\", sep = \" \"));" +
+                    # "\n\tdNdSFile = readFile(\"" + os.getcwd() + "/"+population_parameters["pop_name"]+"_dNdSDistributions.csv\");\n\tdNdSValues = c();" +
+                    # "for (i in 1:(length(sim.getValue(\"X\"))-1)){\n\t\tdNdSValues = c(dNdSValues, asFloat(strsplit(dNdSFile[i], \",\")[1]));}\n\tvalues = c(")
 
             for i in range(len(self.coding_regions)):
                 end_population_string += "sim.getValue(\"fitness_profiles"+ str(i) +"\")[sim.getValue(\"fitness_profiles"+ str(i) +"\") < max(sim.getValue(\"fitness_profiles"+str(i)+"\"))],"
             end_population_string = end_population_string[0:len(end_population_string)-1] #Remove comma at end
-            end_population_string += ");\n\twriteFile(\""+ self.fasta_filename +"_parameters.txt\", paste(\"\\n"+ population_parameters["pop_name"] +" estimated dNdS: \", sum(dNdSValues[values])/length(values), sep = \"\"), append = T);"
+            end_population_string += ";"
+            #");\n\twriteFile(\""+ self.fasta_filename +"_parameters.txt\", paste(\"\\n"+ population_parameters["pop_name"] +", append = T);"
 
+            # estimated dNdS: \", sum(dNdSValues[values])/length(values), sep = \"\"),
         #Write out counted dN and dS if required
-        if(population_parameters["calculate_selection"]):
-            end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_dNdSCounted\"," +
-                "paste(\"dN: \", sim.getValue(\"dN\"), \" dS: \", sim.getValue(\"dS\"),  sep = \"\"));" )
+        #if(population_parameters["calculate_selection"]):
+         #   end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_dNdSCounted\"," +
+         #       "paste(\"dN: \", sim.getValue(\"dN\"), \" dS: \", sim.getValue(\"dS\"),  sep = \"\"));" )
 
 
         #Write files containing polymorphisms in each population and relative proportions
         if(population_parameters["polymorphisms"]):
             if (self.haploidy):
-                end_population_string += ("\n\tpop_seq = sample("+ population_parameters["pop_name"] +".individuals.genome1, 1).nucleotides();\n\tpop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = \"\");" +
-                            "\n\tpolymorph_str = c();\n\tfixed_str=c();\n\tfor (a in 0:(length(pop_seq)-1)) {\n\t\tdiffs = c();\n\t\tfor (g in " + population_parameters["pop_name"] + ".individuals.genome1.nucleotides()){")
+                end_population_string += ("\n\tpop_seq = sample("+ population_parameters["pop_name"] +".individuals.individual.genome1, 1).nucleotides();\n\tpop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = \"\");" +
+                            "\n\tpolymorph_str = c();\n\tfixed_str=c();\n\tfor (a in 0:(length(pop_seq)-1)) {\n\t\tdiffs = c();\n\t\tfor (g in " + population_parameters["pop_name"] + ".individuals.individual.genome1.nucleotides()){")
 
             else:
                 end_population_string += ("\n\tpop_seq = sample("+ population_parameters["pop_name"] +".individuals.genomes, 1).nucleotides();\n\tpop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = \"\");" +
