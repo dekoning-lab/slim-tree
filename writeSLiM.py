@@ -406,9 +406,9 @@ class writeSLiM:
             #If there is a flag to count substitutions, save fixed substitutions to file
             if(population_parameters["count_subs"]):
                 repeated_commands_string += ("\n\n\t\t\tsim.setValue(\"fixations_counted_" + pop_name +
-                                "\", sim.getValue(\"fixations_counted_" + backup_name+ "\") + sum(new_fixations));" +
+                                "\", sim.getValue(\"fixations_counted_" + pop_name+ "\") + sum(new_fixations));" +
                                 "\n\t\t\tancestral_genome = new_fixed;" +
-                                "\n\t\t\tsim.setValue(\"fixations_" + backup_name + "\", ancestral_genome);")
+                                "\n\t\t\tsim.setValue(\"fixations_" + pop_name + "\", ancestral_genome);")
             
             
             repeated_commands_string += "\n\t\t};\n\t};"
@@ -421,9 +421,9 @@ class writeSLiM:
         #Write a command to write a backup of all individuals after every 100 generations
         if (population_parameters["backup"]):
              repeated_commands_string += ("\n\n\tif (sim.cycle%100 == 0) {" +
-                        "\n\t\twriteFile(\"" + os.getcwd()+ "/backupFiles/" + pop_name + ".fasta\"," +
+                        "\n\t\twriteFile(\"" + os.getcwd()+ "/backupFiles/" + backup_name + ".fasta\"," +
                         "(\">parent_ancestral_to_load\\n\" + sim.chromosome.ancestralNucleotides()));" +
-                        "\n\t\tsim.outputFull(\"" + os.getcwd()+ "/backupFiles/" + pop_name + ".txt\");\n\t};")
+                        "\n\t\tsim.outputFull(\"" + os.getcwd()+ "/backupFiles/" + backup_name + ".txt\");\n\t};")
                         
 
         repeated_commands_string += "\n}\n\n\n"
