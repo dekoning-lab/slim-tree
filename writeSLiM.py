@@ -343,11 +343,17 @@ class writeSLiM:
 
 
     #Write code to count substitutions, make a backup and count generations
-    def write_repeated_commands(self, population_parameters):
+    def write_repeated_commands(self, population_parameters, pop_name = None, out = None):
         #Set up variables for repeated commands
         start_dist = int(population_parameters["dist_from_start"])+1
         end_dist = int(population_parameters["end_dist"])
-        pop_name =  population_parameters["pop_name"]
+        
+        if(pop_name == None):
+            pop_name = population_parameters["pop_name"]
+        backup_name =  population_parameters["pop_name"]
+        
+        if(out == None):
+            out = self.output_file
 
         repeated_commands_string = str(start_dist) +":" + str(end_dist) + "late () {"
 
@@ -400,9 +406,9 @@ class writeSLiM:
             #If there is a flag to count substitutions, save fixed substitutions to file
             if(population_parameters["count_subs"]):
                 repeated_commands_string += ("\n\n\t\t\tsim.setValue(\"fixations_counted_" + pop_name +
-                                "\", sim.getValue(\"fixations_counted_" + pop_name+ "\") + sum(new_fixations));" +
+                                "\", sim.getValue(\"fixations_counted_" + backup_name+ "\") + sum(new_fixations));" +
                                 "\n\t\t\tancestral_genome = new_fixed;" +
-                                "\n\t\t\tsim.setValue(\"fixations_" + pop_name + "\", ancestral_genome);")
+                                "\n\t\t\tsim.setValue(\"fixations_" + backup_name + "\", ancestral_genome);")
             
             
             repeated_commands_string += "\n\t\t};\n\t};"
@@ -422,7 +428,7 @@ class writeSLiM:
 
         repeated_commands_string += "\n}\n\n\n"
 
-        self.output_file.write(repeated_commands_string)
+        out.write(repeated_commands_string)
 
 
 
@@ -583,17 +589,11 @@ class writeSLiM:
                     # "\n\tdNdSFile = readFile(\"" + os.getcwd() + "/"+population_parameters["pop_name"]+"_dNdSDistributions.csv\");\n\tdNdSValues = c();" +
                     # "for (i in 1:(length(sim.getValue(\"X\"))-1)){\n\t\tdNdSValues = c(dNdSValues, asFloat(strsplit(dNdSFile[i], \",\")[1]));}\n\tvalues = c(")
 
-            for i in range(len(self.coding_regions)):
-                end_population_string += "sim.getValue(\"fitness_profiles"+ str(i) +"\")[sim.getValue(\"fitness_profiles"+ str(i) +"\") < max(sim.getValue(\"fitness_profiles"+str(i)+"\"))],"
-            end_population_string = end_population_string[0:len(end_population_string)-1] #Remove comma at end
-            end_population_string += ";"
+            # for i in range(len(self.coding_regions)):
+                # end_population_string += "sim.getValue(\"fitness_profiles"+ str(i) +"\")[sim.getValue(\"fitness_profiles"+ str(i) +"\") < max(sim.getValue(\"fitness_profiles"+str(i)+"\"))],"
+            # end_population_string = end_population_string[0:len(end_population_string)-1] #Remove comma at end
+            # end_population_string += ";"
             #");\n\twriteFile(\""+ self.fasta_filename +"_parameters.txt\", paste(\"\\n"+ population_parameters["pop_name"] +", append = T);"
-
-            # estimated dNdS: \", sum(dNdSValues[values])/length(values), sep = \"\"),
-        #Write out counted dN and dS if required
-        #if(population_parameters["calculate_selection"]):
-         #   end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_dNdSCounted\"," +
-         #       "paste(\"dN: \", sim.getValue(\"dN\"), \" dS: \", sim.getValue(\"dS\"),  sep = \"\"));" )
 
 
         #Write files containing polymorphisms in each population and relative proportions

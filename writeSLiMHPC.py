@@ -13,24 +13,14 @@ from writeSLiM import writeSLiM
 class writeSLiMHPC(writeSLiM):
     #Write code to add a new population to the simulation by writing a new script for that population
     def write_subpop(self, population_parameters):
-        pop_name = population_parameters["pop_name"]
-
-
-        #Create a new script and batch file for the population
-        batch_file = open(self.general_output_filename + "_" + pop_name + ".sh", "w")
-        batch_file.write("#!/bin/sh\n\n#SBATCH -J SLiM_Simulation_" + pop_name + "\n#SBATCH -t " + population_parameters["time"] +
-                "\n#SBATCH -p "  + population_parameters["partition"] + "\n#SBATCH -o " + pop_name + ".out\n#SBATCH -e " + pop_name +
-                ".err\n#SBATCH -n 1" + "\n\nslim " + self.general_output_filename + "_" + pop_name +".slim")
-        batch_file.close()
-
-        self.output_file = open(self.general_output_filename + "_" + pop_name + ".slim" , "w")
+        self.create_scripts(population_parameters)       
 
         #Set up the initialize and fitness functions for the new script
         super().write_initialize(population_parameters)
         super().write_fitness()
 
         #Write the commands that are run for every simulation and the starting population
-        self.write_repeated_commands(population_parameters)
+        super().write_repeated_commands(population_parameters, pop_name = "p1", out = self.output_file)
         self.write_start_pop(population_parameters)
 
 
@@ -42,17 +32,8 @@ class writeSLiMHPC(writeSLiM):
 
 
     def write_subpop_nonwf(self, population_parameters):
-        pop_name = population_parameters["pop_name"]
-
-        #Create a new script and batch file for the population
-        batch_file = open(self.general_output_filename + "_" + pop_name + ".sh", "w")
-        batch_file.write("#!/bin/sh\n\n#SBATCH -J SLiM_Simulation_" + pop_name + "\n#SBATCH -t " + population_parameters["time"] +
-                "\n#SBATCH -p "  + population_parameters["partition"] + "\n#SBATCH -o " + pop_name + ".out\n#SBATCH -e " + pop_name
-                +".err\n#SBATCH -n 1" + "\n\nslim " + self.general_output_filename + "_" + pop_name+".slim")
-        batch_file.close()
-
-        self.output_file = open(self.general_output_filename + "_" + pop_name + ".slim" , "w")
-
+        self.create_scripts(population_parameters)   
+        
         #Set up the initialize and fitness functions for the new script
         super().write_initialize(population_parameters)
         if(self.fitness_profile_calc):
@@ -63,7 +44,7 @@ class writeSLiMHPC(writeSLiM):
         super().write_reproduction()
 
         #Write the commands that are run for every simulation and the starting population
-        self.write_repeated_commands(population_parameters)
+        super().write_repeated_commands(population_parameters, pop_name = "p1", out = self.output_file)
         self.write_start_pop(population_parameters)
 
         self.write_early_function(int(population_parameters["dist_from_start"]) +1, int(population_parameters["end_dist"]), population_parameters)
@@ -72,6 +53,22 @@ class writeSLiMHPC(writeSLiM):
         #Finish writing the script
         self.write_end_sim(population_parameters)
         self.output_file.close()
+        
+    
+    ##Create a new slim script and batch file for the population        
+    def create_scripts(self, population_parameters):
+        
+        pop_name = population_parameters["pop_name"]
+    
+        #Write out batch file to run slim script
+        batch_file = open(self.general_output_filename + "_" + pop_name + ".sh", "w")
+        batch_file.write("#!/bin/sh\n\n#SBATCH -J SLiM_Simulation_" + pop_name + "\n#SBATCH -t " + population_parameters["time"] +
+                "\n#SBATCH -p "  + population_parameters["partition"] + "\n#SBATCH -o " + pop_name + ".out\n#SBATCH -e " + pop_name +
+                ".err\n#SBATCH -n 1" + "\n\nslim " + self.general_output_filename + "_" + pop_name +".slim")
+        batch_file.close()
+        
+        #Open slim script
+        self.output_file = open(self.general_output_filename + "_" + pop_name + ".slim" , "w")
 
 
     #Write code to set up the starting population for each simulation. If first population, population established, otherwise starting population is loaded
@@ -143,54 +140,6 @@ class writeSLiMHPC(writeSLiM):
         self.output_file.write(early_event)
 
 
-    #Write code to count substitutions, make a backup and count generations
-    def write_repeated_commands(self, population_parameters):
-        #Set up variables for repeated commands
-        start_dist = int(population_parameters["dist_from_start"])+1
-        end_dist = int(population_parameters["end_dist"])
-        pop_name =  population_parameters["pop_name"]
-        num_genomes = str(population_parameters["population_size"]*2)
-
-        repeated_commands_string = str(start_dist) +":" + str(end_dist) + "late () {"
-
-        #Write a command to count the substitutions (identity by state)
-        if (population_parameters["count_subs"]):
-            repeated_commands_string += ("\n\tif(length(sim.mutations)!= 0){"
-                        "\n\t\tancestral_genome = sim.getValue(\"fixations_p1\");" +
-                        "\n\t\trow_num = p1.individualCount")
-            if (self.haploidy):
-                repeated_commands_string += ";\n\t\tmuts_mat = integer(row_num*1500);\n\t\tmuts_mat = p1.individuals.genome1.nucleotides(NULL, NULL, \"integer\");"
-            else:
-                repeated_commands_string += "* 2;\n\t\tmuts_mat = integer(row_num*1500);\n\t\tmuts_mat = p1.genomes.nucleotides(NULL, NULL, \"integer\");"
-
-            repeated_commands_string += ("\n\t\tmuts_mat = matrix(muts_mat, nrow = row_num, byrow = T);" +
-                            "\n\t\tcompare_seq = c(muts_mat[0,]);"+
-                            "\n\n\t\tfixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = " +
-                            "row_num), muts_mat)% row_num == 0);" +
-                            "\n\n\t\tdifferent_muts = (ancestral_genome != compare_seq);" +
-                            "\n\t\tnew_fixations = different_muts & fixed_nucs;" +
-                            "\n\t\tsim.setValue(\"fixations_counted_p1" +
-                            "\", sim.getValue(\"fixations_counted_p1\") + sum(new_fixations));" +
-                            "\n\n\t\tancestral_genome[new_fixations] = compare_seq[new_fixations];" +
-                            "\n\t\tsim.setValue(\"fixations_p1\", ancestral_genome);\n\t};")
-
-        #Write a command to output when every 100th generation has passed
-        if(population_parameters["output_gens"]):
-            repeated_commands_string += "\n\n\tif (sim.generation%100 == 0) {\n\t\tcatn(sim.generation);\n\t};"
-
-
-        #Write a command to write a backup of all individuals after every 100 generations
-        if (population_parameters["backup"]):
-             repeated_commands_string += ("\n\n\tif (sim.generation%100 == 0) {" +
-                        "\n\t\twriteFile(\"" + os.getcwd()+ "/backupFiles/" + pop_name + ".fasta\"," +
-                        "(\">parent_ancestral_to_load\\n\" + sim.chromosome.ancestralNucleotides()));" +
-                        "\n\t\tsim.outputFull(\"" + os.getcwd()+ "/backupFiles/" + pop_name + ".txt\");\n\t};")
-
-
-        repeated_commands_string += "\n}\n\n\n"
-        self.output_file.write(repeated_commands_string)
-
-
     #Write the closing statements to end the simulation and either allow for starting of subsequent simulations or output data (depending on terminal status)
     def write_end_sim(self, population_parameters):
 
@@ -200,7 +149,7 @@ class writeSLiMHPC(writeSLiM):
         if(population_parameters["terminal_clade"]):
             end_population_string += super().write_terminal_output(population_parameters, "p1")
         else:
-            if (self.model_type == False):
+            if (not self.model_type):
                 #Tag each individual with either 1 or 2 to go into different subpopulations. Should be split according to proportions.
                 end_population_string += "\n\tp1.individuals.tag = 0;\n\tsample(p1.individuals, asInteger(p1.individualCount* "+ str(population_parameters["split_ratio"]) +")).tag = 1;\n\tp1.individuals[p1.individuals.tag == 0].tag = 2;\n\tsim.addSubpop(\"p2\", 0);"
                 end_population_string += "\n\tp2.takeMigrants(p1.individuals[p1.individuals.tag == 2]);\n\tsim.outputFull(\""+ population_parameters["pop_name"] +"_1.txt\");\n\tp1.takeMigrants(p2.individuals);\n\tp2.takeMigrants(p1.individuals[p1.individuals.tag == 1]);"
@@ -210,26 +159,35 @@ class writeSLiMHPC(writeSLiM):
 
             end_population_string += ("\n\twriteFile(\"" + population_parameters["pop_name"] +
                                       ".fasta\", (\">parent_ancestral_to_load\\n\" + sim.chromosome.ancestralNucleotides()));")
+        
+        #Write out the fixed mutations - this is different than in single computer because we need the old fixations to run the next pop
+        end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_fixed_mutations.txt\"," +
+                " paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue(\"fixations_p1\"))), sep = \"\"));")
+        
+        #Write file with the substitution counts
+        if(population_parameters["count_subs"]):
+            end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_fixed_mutation_counts.txt\"," +
+                "asString(sim.getValue(\"fixations_counted_p1\")));" )
 
-        #Scripting to end the simulation and write the fixed mutations
-        end_population_string += ("\n\twriteFile(\"" + population_parameters["pop_name"] + "_fixed_mutation_counts.txt\"," +
-                "asString(sim.getValue(\"fixations_counted_p1\")));" +
-                "\n\twriteFile(\"" + population_parameters["pop_name"] + "_fixed_mutations.txt\"," +
-                "\n\tpaste(sim.getValue(\"fixations_p1\"), sep = \"\"));")
+        #Write file with the number of synonymous and synonymous mutations
+        if(population_parameters["calculate_selection"]):
+            end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_dNdS_mutations.txt\"," +
+                "paste(\"dN: \", sim.getValue(\"dN_p1\"), " +
+                "\"\\ndS: \", sim.getValue(\"dS_p1\")"+
+                ", sep = \"\"));" )
 
-        end_population_string += "\n\tsim.outputFixedMutations();"
 
         #Calculate dN/dS for the population and write into parameters file
-        if (self.fitness_profile_calc):
-            end_population_string+= ("\n\tsystem(paste(\"Rscript " + sys.path[0] +"/dNdSCalculations.R\","+ str(population_parameters["population_size"]) +", "+
-                    str(population_parameters["mutation_rate"]) +", \""+ population_parameters["pop_name"] + "\", \""+ sys.path[0]+ "\", \""+ os.getcwd()+ "\", sep = \" \"));" +
-                    "\n\tdNdSFile = readFile(\"" + os.getcwd() + "/"+population_parameters["pop_name"]+"_dNdSDistributions.csv\");\n\tdNdSValues = c();" +
-                    "for (i in 1:(length(sim.getValue(\"X\"))-1)){\n\t\tdNdSValues = c(dNdSValues, asFloat(strsplit(dNdSFile[i], \",\")[1]));}\n\tvalues = c(")
+        # if (self.fitness_profile_calc):
+            # end_population_string+= ("\n\tsystem(paste(\"Rscript " + sys.path[0] +"/dNdSCalculations.R\","+ str(population_parameters["population_size"]) +", "+
+                    # str(population_parameters["mutation_rate"]) +", \""+ population_parameters["pop_name"] + "\", \""+ sys.path[0]+ "\", \""+ os.getcwd()+ "\", sep = \" \"));" +
+                    # "\n\tdNdSFile = readFile(\"" + os.getcwd() + "/"+population_parameters["pop_name"]+"_dNdSDistributions.csv\");\n\tdNdSValues = c();" +
+                    # "for (i in 1:(length(sim.getValue(\"X\"))-1)){\n\t\tdNdSValues = c(dNdSValues, asFloat(strsplit(dNdSFile[i], \",\")[1]));}\n\tvalues = c(")
 
-            for i in range(len(self.coding_regions)):
-                end_population_string += "sim.getValue(\"fitness_profiles"+ str(i) +"\")[sim.getValue(\"fitness_profiles"+ str(i) +"\") < max(sim.getValue(\"fitness_profiles"+str(i)+"\"))],"
-            end_population_string = end_population_string[0:len(end_population_string)-1] #Remove comma at end
-            end_population_string += ");\n\twriteFile(\""+ self.fasta_filename +"_parameters.txt\", paste(\"\\n"+ population_parameters["pop_name"] +" estimated dNdS: \", sum(dNdSValues[values])/length(values), sep = \"\"), append = T);"
+            # for i in range(len(self.coding_regions)):
+                # end_population_string += "sim.getValue(\"fitness_profiles"+ str(i) +"\")[sim.getValue(\"fitness_profiles"+ str(i) +"\") < max(sim.getValue(\"fitness_profiles"+str(i)+"\"))],"
+            # end_population_string = end_population_string[0:len(end_population_string)-1] #Remove comma at end
+            # end_population_string += ");\n\twriteFile(\""+ self.fasta_filename +"_parameters.txt\", paste(\"\\n"+ population_parameters["pop_name"] +" estimated dNdS: \", sum(dNdSValues[values])/length(values), sep = \"\"), append = T);"
 
 
         #Write files containing polymorphisms in each population and relative proportions
@@ -257,6 +215,10 @@ class writeSLiMHPC(writeSLiM):
                                       "\n\tsystem(\"rm " + population_parameters["parent_pop_name"] + ".fasta\");")
 
 
+        
+        
+
+        end_population_string += "\n\tsim.outputFixedMutations();"
         if(population_parameters["terminal_clade"]):
             end_population_string += "\n}"
 
