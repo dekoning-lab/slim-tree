@@ -164,32 +164,43 @@ class writeSLiMHPC(writeSLiM):
                 repeated_commands_string += ";\n\t\tmuts_mat = integer(row_num*1500);\n\t\tmuts_mat = p1.individuals.genome1.nucleotides(NULL, NULL, \"integer\");"
             else:
                 repeated_commands_string += "* 2;\n\t\tmuts_mat = integer(row_num*1500);\n\t\tmuts_mat = p1.genomes.nucleotides(NULL, NULL, \"integer\");"
-
-            repeated_commands_string += ("\n\t\tmuts_mat = matrix(muts_mat, nrow = row_num, byrow = T);" +
-                            "\n\t\tcompare_seq = c(muts_mat[0,]);"+
-                            "\n\n\t\tfixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = " +
-                            "row_num), muts_mat)% row_num == 0);" +
-                            "\n\n\t\tdifferent_muts = (ancestral_genome != compare_seq);" +
-                            "\n\t\tnew_fixations = different_muts & fixed_nucs;" +
-                            "\n\t\tsim.setValue(\"fixations_counted_p1" +
-                            "\", sim.getValue(\"fixations_counted_p1\") + sum(new_fixations));" +
-                            "\n\n\t\tancestral_genome[new_fixations] = compare_seq[new_fixations];" +
-                            "\n\t\tsim.setValue(\"fixations_p1\", ancestral_genome);\n\t};")
-                            
+            
+            
+            #If there is a flag to also calculate selection - ie. count fixed dN/dS, figure out if dN or dS
             if(population_parameters["calculate_selection"]):
-                repeated_commands_string += ("\n\t\tnew_fixations_space = which(new_fixations);" +
-                                "\n\t\tfor(fix in new_fixations_space){" +
-                                "\n\t\t\tfix_pos = fix % 3;" +
-                                "\n\t\t\tif(fix_pos == 0 | fix_pos == 1){" +
-                                "\n\t\t\t\told_codon = nucleotidesToCodons(ancestral_genome[(fix-2+2*fix_pos):(fix+2*fix_pos)]);" +
-                                "\n\t\t\t\tnew_codon = nucleotidesToCodons(compare_seq[(fix-2):fix]);" +
-                                "\n\t\t\t\tif (old_codon == new_codon){" +
-                                "\n\t\t\t\t\tsim.setValue(\"dN_p1\", sim.getValue(\"dN_p1\") + 1);" +
-                                "\n\t\t\t\t} else {" +
-                                "\n\t\t\t\t\tsim.setValue(\"dS_p1\", sim.getValue(\"dS_p1\") + 1);" +
-                                "\n\t\t\t\t};\n\t\t\t} else {" +
-                                "\n\t\t\t\tsim.setValue(\"dN_p1\", sim.getValue(\"dN_p1\") + 1);" +
-                                "\n\t\t\t};\n\t\t};")
+                repeated_commands_string += ("\n\t\t\tnew_fixations_space = which(new_fixations);" +
+                                "\n\n\t\t\tdN_name = \"dN_p1\";" +
+                                "\n\t\t\tdS_name = \"dS_p1\";"
+                                "\n\t\t\tfor(fix in new_fixations_space){" +
+                                "\n\t\t\t\tfix_pos = (fix + 1) % 3;" +
+                                "\n\t\t\t\tif (fix_pos == 0) {" +
+                                "\n\t\t\t\t\told_codon = nucleotidesToCodons(ancestral_genome[(fix-2):fix]);" +
+                                "\n\t\t\t\t\tnew_codon = nucleotidesToCodons(new_fixed[(fix-2):fix]);" +
+                                "\n\t\t\t\t\tif (old_codon == new_codon){" +
+                                "\n\t\t\t\t\t\tsim.setValue(dS_name, sim.getValue(dS_name) + 1);" +
+                                "\n\t\t\t\t\t} else {" +
+                                "\n\t\t\t\t\t\tsim.setValue(dN_name, sim.getValue(dN_name) + 1);" +
+                                "\n\t\t\t\t\t};\n\t\t\t} else if (fix_pos == 1) {" +
+                                "\n\t\t\t\t\told_codon = nucleotidesToCodons(ancestral_genome[fix:(fix+2)]);" +
+                                "\n\t\t\t\t\tnew_codon = nucleotidesToCodons(new_fixed[fix:(fix+2)]);" +
+                                "\n\t\t\t\t\tif (old_codon == new_codon){" +
+                                "\n\t\t\t\t\t\tsim.setValue(dS_name, sim.getValue(dS_name) + 1);" +
+                                "\n\t\t\t\t\t} else {" +
+                                "\n\t\t\t\t\t\tsim.setValue(dN_name, sim.getValue(dN_name) + 1);" +
+                                "\n\t\t\t\t\t};\n\t\t\t} else {" +
+                                "\n\t\t\t\t\tsim.setValue(dN_name, sim.getValue(dN_name) + 1);" +
+                                "\n\t\t\t\t};\n\t\t\t};")
+            
+            #If there is a flag to count substitutions, save fixed substitutions to file
+            if(population_parameters["count_subs"]):
+                repeated_commands_string += ("\n\n\t\t\tsim.setValue(\"fixations_counted_p1" +
+                                "\", sim.getValue(\"fixations_counted_p1\") + sum(new_fixations));" +
+                                "\n\t\t\tancestral_genome = new_fixed;" +
+                                "\n\t\t\tsim.setValue(\"fixations_p1\", ancestral_genome);")
+            
+            
+            repeated_commands_string += "\n\t\t};\n\t};"
+
 
         #Write a command to output when every 100th generation has passed
         if(population_parameters["output_gens"]):
@@ -228,29 +239,36 @@ class writeSLiMHPC(writeSLiM):
             end_population_string += ("\n\twriteFile(\"" + population_parameters["pop_name"] +
                                       ".fasta\", (\">parent_ancestral_to_load\\n\" + sim.chromosome.ancestralNucleotides()));")
 
-        #Scripting to end the simulation and write the fixed mutations
-        end_population_string += ("\n\twriteFile(\"" + population_parameters["pop_name"] + "_fixed_mutation_counts.txt\"," +
-                "asString(sim.getValue(\"fixations_counted_p1\")));" +
-                "\n\twriteFile(\"" + population_parameters["pop_name"] + "_fixed_mutations.txt\"," +
-                "\n\tpaste(sim.getValue(\"fixations_p1\"), sep = \"\"));")
-                
-        end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_dNdSCounted\"," +
-                "paste(\"dN: \", sim.getValue(\"dN_" + population_parameters["pop_name"] + "\")," +
-                "\" dS: \", sim.getValue(\"dS_ " + population_parameters["pop_name"] + "\"),  sep = \"\"));" )
+        #Write out the fixed mutations - this is different than in single computer because we need the old fixations to run the next pop
+        end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_fixed_mutations.txt\"," +
+                " paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue(\"fixations_p1\"))), sep = \"\"));")
+        
+        #Write file with the substitution counts
+        if(population_parameters["count_subs"]):
+            end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_fixed_mutation_counts.txt\"," +
+                "asString(sim.getValue(\"fixations_counted_p1\")));" )
 
+        #Write file with the number of synonymous and synonymous mutations
+        if(population_parameters["calculate_selection"]):
+            end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_dNdS_mutations.txt\"," +
+                "paste(\"dN: \", sim.getValue(\"dN_p1\"), " +
+                "\"\\ndS: \", sim.getValue(\"dS_p1\")"+
+                ", sep = \"\"));" )
+                
+                
         end_population_string += "\n\tsim.outputFixedMutations();"
 
         #Calculate dN/dS for the population and write into parameters file
-        if (self.fitness_profile_calc):
-            end_population_string+= ("\n\tsystem(paste(\"Rscript " + sys.path[0] +"/dNdSCalculations.R\","+ str(population_parameters["population_size"]) +", "+
-                    str(population_parameters["mutation_rate"]) +", \""+ population_parameters["pop_name"] + "\", \""+ sys.path[0]+ "\", \""+ os.getcwd()+ "\", sep = \" \"));" +
-                    "\n\tdNdSFile = readFile(\"" + os.getcwd() + "/"+population_parameters["pop_name"]+"_dNdSDistributions.csv\");\n\tdNdSValues = c();" +
-                    "for (i in 1:(length(sim.getValue(\"X\"))-1)){\n\t\tdNdSValues = c(dNdSValues, asFloat(strsplit(dNdSFile[i], \",\")[1]));}\n\tvalues = c(")
+        # if (self.fitness_profile_calc):
+            # end_population_string+= ("\n\tsystem(paste(\"Rscript " + sys.path[0] +"/dNdSCalculations.R\","+ str(population_parameters["population_size"]) +", "+
+                    # str(population_parameters["mutation_rate"]) +", \""+ population_parameters["pop_name"] + "\", \""+ sys.path[0]+ "\", \""+ os.getcwd()+ "\", sep = \" \"));" +
+                    # "\n\tdNdSFile = readFile(\"" + os.getcwd() + "/"+population_parameters["pop_name"]+"_dNdSDistributions.csv\");\n\tdNdSValues = c();" +
+                    # "for (i in 1:(length(sim.getValue(\"X\"))-1)){\n\t\tdNdSValues = c(dNdSValues, asFloat(strsplit(dNdSFile[i], \",\")[1]));}\n\tvalues = c(")
 
-            for i in range(len(self.coding_regions)):
-                end_population_string += "sim.getValue(\"fitness_profiles"+ str(i) +"\")[sim.getValue(\"fitness_profiles"+ str(i) +"\") < max(sim.getValue(\"fitness_profiles"+str(i)+"\"))],"
-            end_population_string = end_population_string[0:len(end_population_string)-1] #Remove comma at end
-            end_population_string += ");\n\twriteFile(\""+ self.fasta_filename +"_parameters.txt\", paste(\"\\n"+ population_parameters["pop_name"] +" estimated dNdS: \", sum(dNdSValues[values])/length(values), sep = \"\"), append = T);"
+            # for i in range(len(self.coding_regions)):
+                # end_population_string += "sim.getValue(\"fitness_profiles"+ str(i) +"\")[sim.getValue(\"fitness_profiles"+ str(i) +"\") < max(sim.getValue(\"fitness_profiles"+str(i)+"\"))],"
+            # end_population_string = end_population_string[0:len(end_population_string)-1] #Remove comma at end
+            # end_population_string += ");\n\twriteFile(\""+ self.fasta_filename +"_parameters.txt\", paste(\"\\n"+ population_parameters["pop_name"] +" estimated dNdS: \", sum(dNdSValues[values])/length(values), sep = \"\"), append = T);"
 
 
         #Write files containing polymorphisms in each population and relative proportions
