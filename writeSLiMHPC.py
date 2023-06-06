@@ -165,6 +165,17 @@ class writeSLiMHPC(writeSLiM):
             else:
                 repeated_commands_string += "* 2;\n\t\tmuts_mat = integer(row_num*1500);\n\t\tmuts_mat = p1.genomes.nucleotides(NULL, NULL, \"integer\");"
             
+            #Figure out any new mutations
+            repeated_commands_string += ("\n\t\tmuts_mat = matrix(muts_mat, nrow = row_num, byrow = T);" +
+                            "\n\t\tcompare_seq = c(muts_mat[0,]);"+
+                            "\n\n\t\tfixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = " +
+                            "row_num), muts_mat)% row_num == 0);" +
+                            "\n\n\t\tdifferent_muts = (ancestral_genome != compare_seq);" +
+                            "\n\t\tnew_fixations = different_muts & fixed_nucs;" +
+                            "\n\n\t\tif(any(new_fixations)){" +
+                            "\n\t\t\tnew_fixed = ancestral_genome;"+
+                            "\n\t\t\tnew_fixed[new_fixations] = compare_seq[new_fixations];")
+            
             
             #If there is a flag to also calculate selection - ie. count fixed dN/dS, figure out if dN or dS
             if(population_parameters["calculate_selection"]):
