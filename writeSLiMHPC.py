@@ -193,13 +193,13 @@ class writeSLiMHPC(writeSLiM):
             
             #If there is a flag to count substitutions, save fixed substitutions to file
             if(population_parameters["count_subs"]):
-                repeated_commands_string += ("\n\n\t\t\tsim.setValue(\"fixations_counted_p1" +
+                repeated_commands_string += ("\n\n\t\tsim.setValue(\"fixations_counted_p1" +
                                 "\", sim.getValue(\"fixations_counted_p1\") + sum(new_fixations));" +
-                                "\n\t\t\tancestral_genome = new_fixed;" +
-                                "\n\t\t\tsim.setValue(\"fixations_p1\", ancestral_genome);")
+                                "\n\t\tancestral_genome = new_fixed;" +
+                                "\n\t\tsim.setValue(\"fixations_p1\", ancestral_genome);")
             
             
-            repeated_commands_string += "\n\t\t};\n\t};"
+            repeated_commands_string += "\n\t};"
 
 
         #Write a command to output when every 100th generation has passed
