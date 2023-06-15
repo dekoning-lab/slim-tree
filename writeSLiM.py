@@ -386,15 +386,15 @@ class writeSLiM:
                                 "\n\t\t\tfor(fix in new_fixations_space){" +
                                 "\n\t\t\t\tfix_pos = (fix + 1) % 3;" +
                                 "\n\t\t\t\tif (fix_pos == 0) {" +
-                                "\n\t\t\t\t\told_codon = nucleotidesToCodons(ancestral_genome[(fix-2):fix]);" +
-                                "\n\t\t\t\t\tnew_codon = nucleotidesToCodons(new_fixed[(fix-2):fix]);" +
+                                "\n\t\t\t\t\told_codon = codonsToAminoAcids(nucleotidesToCodons(ancestral_genome[(fix-2):fix]));" +
+                                "\n\t\t\t\t\tnew_codon = codonsToAminoAcids(nucleotidesToCodons(new_fixed[(fix-2):fix]));" +
                                 "\n\t\t\t\t\tif (old_codon == new_codon){" +
                                 "\n\t\t\t\t\t\tsim.setValue(dS_name, sim.getValue(dS_name) + 1);" +
                                 "\n\t\t\t\t\t} else {" +
                                 "\n\t\t\t\t\t\tsim.setValue(dN_name, sim.getValue(dN_name) + 1);" +
                                 "\n\t\t\t\t\t};\n\t\t\t} else if (fix_pos == 1) {" +
-                                "\n\t\t\t\t\told_codon = nucleotidesToCodons(ancestral_genome[fix:(fix+2)]);" +
-                                "\n\t\t\t\t\tnew_codon = nucleotidesToCodons(new_fixed[fix:(fix+2)]);" +
+                                "\n\t\t\t\t\told_codon = codonsToAminoAcids(nucleotidesToCodons(ancestral_genome[fix:(fix+2)]));" +
+                                "\n\t\t\t\t\tnew_codon = codonsToAminoAcids(nucleotidesToCodons(new_fixed[fix:(fix+2)]));" +
                                 "\n\t\t\t\t\tif (old_codon == new_codon){" +
                                 "\n\t\t\t\t\t\tsim.setValue(dS_name, sim.getValue(dS_name) + 1);" +
                                 "\n\t\t\t\t\t} else {" +

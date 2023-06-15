@@ -947,7 +947,7 @@ class SLiMTree:
 
         #Start the SLiM code to run
         if(self.hpc):
-            os.system(".\"" + self.starting_parameters["output_file"] + "_p1.sh\"")
+            os.system("sbatch \"" + self.starting_parameters["output_file"] + "_p1.sh\"")
         else:
             SLiM_Writer.close_file()
             os.system("slim \"" + self.starting_parameters["output_file"] + "_p1.slim\"")
