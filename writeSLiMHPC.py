@@ -64,7 +64,7 @@ class writeSLiMHPC(writeSLiM):
         batch_file = open(self.general_output_filename + "_" + pop_name + ".sh", "w")
         batch_file.write("#!/bin/sh\n\n#SBATCH -J SLiM_Simulation_" + pop_name + "\n#SBATCH -t " + population_parameters["time"] +
                 "\n#SBATCH -p "  + population_parameters["partition"] + "\n#SBATCH -o " + pop_name + ".out\n#SBATCH -e " + pop_name +
-                ".err\n#SBATCH -n 1" + "\n\nslim " + self.general_output_filename + "_" + pop_name +".slim")
+                ".err\n#SBATCH -n 1" + "\n\nslim \'" + self.general_output_filename + "_" + pop_name +".slim\'")
         batch_file.close()
         
         #Open slim script
