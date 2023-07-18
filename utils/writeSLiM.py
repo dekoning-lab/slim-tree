@@ -312,9 +312,9 @@ class writeSLiM:
         #Write a command to write a backup of all individuals after every 100 generations
         if (population_parameters["backup"]):
              repeated_commands_string += ("\n\n\tif (sim.cycle%100 == 0) {" +
-                        "\n\t\twriteFile(\"" +self.start_params["filenames"][2] + backup_name + ".fasta\"," +
+                        "\n\t\twriteFile(\"" +self.start_params["filenames"][2] +"/" + backup_name + ".fasta\"," +
                         "(\">parent_ancestral_to_load\\n\" + sim.chromosome.ancestralNucleotides()));" +
-                        "\n\t\tsim.outputFull(\"" + self.start_params["filenames"][2] + backup_name + ".txt\");\n\t};")
+                        "\n\t\tsim.outputFull(\"" + self.start_params["filenames"][2]  + "/" + backup_name + ".txt\");\n\t};")
                         
 
         repeated_commands_string += "\n}\n\n\n"

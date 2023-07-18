@@ -68,6 +68,7 @@ class calculateSelectionDenominators:
     
     
     # Loop through each amino acid in the stationary distributions and calculates piQ
+    # ratio is the ratio of amino acids in the genome that are from the distribution
     def get_dist_ds_dn(self, dist_num, ratio):
         synonymous = self.syn_subs[dist_num]
         stationary_dist = self.stationary_distributions.iloc[:,dist_num]
@@ -80,7 +81,7 @@ class calculateSelectionDenominators:
                 continue
                 
             Qij = self.mu_mat[dist_num][codon_num]
-            pi_Qij = stationary_dist[codon_num]*ratio*Qij
+            pi_Qij = stationary_dist[codon_num]*ratio
             
             if(synonymous[codon_num]):
                 codon_ds += pi_Qij
@@ -98,13 +99,14 @@ class calculateSelectionDenominators:
         
         # Find the ratio of each profile in this genome
         num_each_profile = Counter(fitness_profile_nums)
-        profile_ratios = pd.DataFrame(sorted([(i, num_each_profile[i] / len(fitness_profile_nums)) for i in num_each_profile]))
+        profile_ratios = pd.DataFrame(sorted([(i, num_each_profile[i]/len(fitness_profile_nums) ) for i in num_each_profile]))
           
         # Find the value of ds for each of the stationary distributions
         ds_dn = np.array(list(map(lambda x: self.get_dist_ds_dn(x,profile_ratios.loc[x,1]), ndists)))
+        print((sum(ds_dn)))
         
         #Sum and multiply by 3 to get the denominators of dn and ds
-        return (sum(ds_dn)*3)
+        return (sum(ds_dn))
         
         
     #Return dn to public
