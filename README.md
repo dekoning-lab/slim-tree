@@ -1,21 +1,14 @@
 # SLiM-Tree
 
-• Here, we present SLiM-Tree a simulation tool that applies population genetics techniques to phylogenetic timescales without relying on conventional models (under realistic models of sequence-fitness relationships). It is a flexible software package to automate seting up pure population genetics simulations along a phylogeny with a realistic model of molecular evolution.
+• Here, we present SLiM-Tree a flexible simulation tool which automates pure population genetics simulations over phylogenetic timescales under realistic models of sequence-fitness relationships. It is a simulation of across-species genome sequence datasets, including substitution histories and polymorphisms, without the standard suite of simplifying assumptions used in phylogenetics (e.g., mutation limited evolution/ weak mutation or infinite sites, limited mutation among competing allelic types between fixations, no polymorphism, etc.).
 
 • How it works: It Employs SLiM to create a platform which can evolve populations with or without using Wright-Fisher model, allowing users to explore by relaxing simplified assumptions and models.
 
-For a full description of SLiM-Tree usage please refer to the user manual. 
-
 • Requirements: SLiMTree requires installation of Python3 and slim (https://messerlab.org/slim/). Required python packages are sys, argparse, BioPython, matplotlib, random, pandas, numpy, os, json, string and math. If using protein based fitness effects - java and c are also required.
-
-• Usage: slim-tree [-h] [-fd AA_FITNESS_DISTRIBUTIONS] [-hpc] [-p PARTITION] [-t TIME] [-w] [-n POPULATION_SIZE] [-b BURN_IN_MULTIPLIER]
-                 [-r RECOMBINATION_RATE] [-v MUTATION_RATE] [-m MUTATION_MATRIX] [-d TREE_DATA_FILE] [-g GENOME_LENGTH] [-G GENE_COUNT]
-                 [-C CODING_RATIO] [-f FASTA_FILE] [-k SAMPLE_SIZE] [-sr SPLIT_RATIO] [-c] [-o] [-B] [-P] [-S]
-                 input_tree codon_stationary_distributions
-
 
 • How to run SLiM_Tree: run the command python3 ../slim-tree/ <input_tree> <codon_stationary_distributions> 
 
+For a full description of SLiM-Tree usage please refer to the user manual. 
 
 Additional arguments include:
 	
@@ -96,5 +89,10 @@ Additional arguments include:
   	-S: --calculate_selection
             boolean flag that turns on calculations of selection by counting synonymous and non-synonymous fixed substitutions
 
+
+• Usage: slim-tree [-h] [-fd AA_FITNESS_DISTRIBUTIONS] [-hpc] [-p PARTITION] [-t TIME] [-w] [-n POPULATION_SIZE] [-b BURN_IN_MULTIPLIER]
+                 [-r RECOMBINATION_RATE] [-v MUTATION_RATE] [-m MUTATION_MATRIX] [-d TREE_DATA_FILE] [-g GENOME_LENGTH] [-G GENE_COUNT]
+                 [-C CODING_RATIO] [-f FASTA_FILE] [-k SAMPLE_SIZE] [-sr SPLIT_RATIO] [-c] [-o] [-B] [-P] [-S]
+                 input_tree codon_stationary_distributions
 
 The folder DataPostProcessing contains scripts that can be used for post processing of the output data and the folder. 
