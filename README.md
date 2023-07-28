@@ -1,6 +1,6 @@
 # SLiM-Tree
 
-• What are we presenting: Here, we present SLiM-Tree a simulation tool that applies population genetics techniques to phylogenetic timescales without relying on conventional models (under realistic models of sequence-fitness relationships). It is a flexible software package to automate seting up pure population genetics simulations along a phylogeny with a realistic model of molecular evolution.
+• Here, we present SLiM-Tree a simulation tool that applies population genetics techniques to phylogenetic timescales without relying on conventional models (under realistic models of sequence-fitness relationships). It is a flexible software package to automate seting up pure population genetics simulations along a phylogeny with a realistic model of molecular evolution.
 
 • How it works: It Employs SLiM to create a platform which can evolve populations with or without using Wright-Fisher model, allowing users to explore by relaxing simplified assumptions and models.
 
