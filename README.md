@@ -2,9 +2,13 @@
 
 • Here, we present SLiM-Tree a flexible simulation tool which automates pure population genetics simulations over phylogenetic timescales under realistic models of sequence-fitness relationships. It is a simulation of across-species genome sequence datasets, including substitution histories and polymorphisms, without the standard suite of simplifying assumptions used in phylogenetics (e.g., mutation limited evolution/ weak mutation or infinite sites, limited mutation among competing allelic types between fixations, no polymorphism, etc.).
 
-• How it works: It Employs SLiM to create a platform which can evolve populations with or without using Wright-Fisher model, allowing users to explore by relaxing simplified assumptions and models.
+• How it works: It Employs SLiM (https://messerlab.org/slim/) to create a platform which can evolve populations with or without using Wright-Fisher model, allowing users to explore by relaxing simplified assumptions and models.
 
-• Requirements: SLiMTree requires installation of Python3 and slim (https://messerlab.org/slim/). Required python packages are sys, argparse, BioPython, matplotlib, random, pandas, numpy, os, json, string and math. If using protein based fitness effects - java and c are also required.
+• Requirements: SLiMTree requires installation of Python3, R and SLiM. If using protein based fitness effects - java and c are also required.
+	
+	•Required python packages: sys, argparse, BioPython, matplotlib, random, pandas, numpy, os, json, string and math.
+ 	•Required R packages: dplyr, BB, data.table, optparse, seqinr, doParallel, Rfast.
+ 
 
 • How to run SLiM_Tree: run the command python3 ../slim-tree/ <input_tree> <codon_stationary_distributions> 
 
@@ -15,7 +19,7 @@ Additional arguments include:
   	-h: --help  
    		show this help message and exit
    	
-    	-hpc: --high_performance_computing 
+	-hpc: --high_performance_computing 
      		boolean flag to turn on slim-tree high performance computing. Slurm is required
 
 	-fd AA_FITNESS_DISTRIBUTIONS: --aa_fitness_distributions AA_FITNESS_DISTRIBUTIONS 
