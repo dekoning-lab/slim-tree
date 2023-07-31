@@ -92,18 +92,20 @@ class calculateSelectionDenominators:
         return([denom_ds, denom_dn])
     
     
+    
     # Calculates the denominator of the dN and dS true equations based on the fitness profiles numbers
     def calculate_selection_denominators(self, fitness_profile_nums):    
         
         ndists = range(self.stationary_distributions.shape[1]-1)
         
         # Find the ratio of each profile in this genome
-        num_each_profile = Counter(fitness_profile_nums)
-        profile_ratios = pd.DataFrame(sorted([(i, num_each_profile[i]/len(fitness_profile_nums) ) for i in num_each_profile]))
+        num_each_profile = Counter(fitness_profile_nums)        
+        num_each_profile = pd.DataFrame(sorted([(i, num_each_profile[i] ) for i in num_each_profile]))
           
         # Find the value of ds for each of the stationary distributions
-        ds_dn = np.array(list(map(lambda x: self.get_dist_ds_dn(x,profile_ratios.loc[x,1]), ndists)))
-        print((sum(ds_dn)))
+        ds_dn = np.array(list(map(lambda x: self.get_dist_ds_dn(x, num_each_profile.loc[x,1]), ndists)))
+        print((sum(ds_dn)*3))
+        sys.exit(0)
         
         #Sum and multiply by 3 to get the denominators of dn and ds
         return (sum(ds_dn))

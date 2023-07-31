@@ -93,7 +93,7 @@ class findFitness:
         subprocess.call(["Rscript", os.path.dirname(os.path.realpath(__file__)) + "/fitness_profile_finder.R", 
                 "-f", self.stationary_dist_file, "-N", str(population_size), "-v", str(mutation_rate), "-o", fitness_mat])
                 
-        self.fitness_mat = pd.read_csv(fitness_mat, index_col = 0)
+        self.fitness_mat = pd.read_csv(fitness_mat, header = None, index_col = 0)
         
         
     
