@@ -69,27 +69,27 @@ class calculateSelectionDenominators:
     
     # Loop through each amino acid in the stationary distributions and calculates piQ
     # ratio is the ratio of amino acids in the genome that are from the distribution
-    def get_dist_ds_dn(self, dist_num, ratio):
+    def get_dist_ds_dn(self, dist_num, profile_quantity):
         synonymous = self.syn_subs[dist_num]
         stationary_dist = self.stationary_distributions.iloc[:,dist_num]
         
-        codon_ds = 0
-        codon_dn = 0
+        denom_ds = 0
+        denom_dn = 0
         
         for codon_num in range(len(stationary_dist)):
             if(codon_num == dist_num):
                 continue
                 
             Qij = self.mu_mat[dist_num][codon_num]
-            pi_Qij = stationary_dist[codon_num]*ratio
+            pi_Qij = stationary_dist[codon_num]*Qij*profile_quantity#Change for which profile it is
             
             if(synonymous[codon_num]):
-                codon_ds += pi_Qij
+                denom_ds += pi_Qij
             else:
-                codon_dn += pi_Qij
+                denom_dn += pi_Qij
         
         # print(ratio)
-        return([codon_ds, codon_dn])
+        return([denom_ds, denom_dn])
     
     
     # Calculates the denominator of the dN and dS true equations based on the fitness profiles numbers

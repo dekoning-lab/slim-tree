@@ -90,9 +90,6 @@ class writeSLiMHPC(writeSLiM):
 
             #Set appropriate starting population size
             if (self.start_params["nonWF"]):
-                pop_string += ("\n\tsim.readFromPopulationFile(\"" + population_parameters["parent_pop_name"]  + ".txt\");")
-                pop_string += ("\n\tp1.setSubpopulationSize(" + str(population_parameters["population_size"]) + ");")
-            else:
                 #If a non-WF model, take half of the individuals from the parent population to represent the population split according to tags assigned in previous generation.
                 if (population_parameters["last_child_clade"]):
                     #Have population tag 1 have fitness 0.0 so they won't influence next generation
@@ -102,6 +99,9 @@ class writeSLiMHPC(writeSLiM):
                     #Have population tag 2 have fitness 0.0 so they won't influence next generation.
                     pop_string += ("\n\tsim.readFromPopulationFile(\"" + population_parameters["parent_pop_name"]  + "_1.txt\");")
                     pop_string += ("\n\tp2.removeSubpopulation();")
+            else:
+                pop_string += ("\n\tsim.readFromPopulationFile(\"" + population_parameters["parent_pop_name"]  + ".txt\");")
+                pop_string += ("\n\tp1.setSubpopulationSize(" + str(population_parameters["population_size"]) + ");")
 
             #Load population into the end of the parent population's script to start this script when parent's finishes
             parent_output_file = open(self.start_params["filenames"][0] + "_" + population_parameters["parent_pop_name"] + ".slim" , "a")

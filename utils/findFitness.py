@@ -26,9 +26,13 @@ class findFitness:
     #Function to make sure that the stationary distributions are provided in the correct format
     def validify_stationary_distribution(self):
         #Translate to amino acids
-        codons = Seq("".join(list(self.stationary_mat.index)))
+        
         try:
+            codons = Seq("".join(list(self.stationary_mat.index)))
             self.AAs = [*str(codons.translate())]
+        except TypeError: #Make sure that codons are provided in the first row
+            print("Please ensure the first row of your stationary distributions is the codon names. Exiting.")
+            sys.exit(0)
         except CodonTable.TranslationError: #Check to make sure only valid codons are provided
             print("Please ensure that your stationary distribution only has valid codons. Exiting.")
             sys.exit(0)
