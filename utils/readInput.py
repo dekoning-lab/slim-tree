@@ -169,7 +169,7 @@ class readInput:
             arguments_pass = False;
 
 
-        #Ensure that if users the user has only one gene present if using a fasta file
+        #Ensure that the user has only one gene present if using a fasta file
         if (arguments.fasta_file != None and (arguments.coding_ratio != 1.0 or arguments.gene_count != 1)):
             print("When specifying an ancestral sequence with a fasta file, the sequence of only one fully coding gene should be provided. " +
                     "Closing program.")
