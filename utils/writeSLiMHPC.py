@@ -42,8 +42,8 @@ class writeSLiMHPC(writeSLiM):
         super().write_reproduction()
 
         #Write the commands that are run for every simulation and the starting population
-        super().write_repeated_commands(population_parameters, pop_name = "p1", out = self.output_file)
         self.write_start_pop(population_parameters)
+        super().write_repeated_commands(population_parameters, pop_name = "p1", out = self.output_file)
 
         self.write_early_function(int(population_parameters["dist_from_start"]) +1, int(population_parameters["end_dist"]), population_parameters)
 
