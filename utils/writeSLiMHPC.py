@@ -115,8 +115,8 @@ class writeSLiMHPC(writeSLiM):
 
         #At the start of the sim there are no fixations counted and no mutations
         pop_string += "\n\tsim.setValue(\"fixations_counted\", 0);"
-        set_up_fitness += "\n\tsim.setValue(\"dN_p1\", 0);"
-        set_up_fitness += "\n\tsim.setValue(\"dS_p1\", 0);"
+        pop_string += "\n\tsim.setValue(\"dN_p1\", 0);"
+        pop_string += "\n\tsim.setValue(\"dS_p1\", 0);"
         pop_string += "\n}\n\n\n"
 
         self.output_file.write(pop_string)
