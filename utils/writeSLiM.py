@@ -487,12 +487,12 @@ class writeSLiM:
         if (samp_size == "consensus"):
             terminal_output_string += ("\n\n\tconsensus = \"\";" +
                                     "\n\tfor (i in 0:" + str(self.start_params["genome_length"] * 3 - 1) + "){" +
-                                    "\n\t\tconsensus = consensus+ c(\"A\", \"C\", \"G\", \"T\")[whichMax(nucleotideCounts(paste0(matrix(sapply(" + pop_name +
+                                    "\n\t\tconsensus = consensus+ c(\"A\", \"C\", \"G\", \"T\")[whichMax(nucleotideCounts(paste0(matrix(sapply(" + pop +
                                     ".genomes.nucleotides(), \"strsplit(applyValue, sep = '');\"), ncol = " + str(self.start_params["genome_length"] * 3) + 
                                     ", byrow = T)[,i])))];\n\t}" +
-                                    "\n\n\tfasta_string_nuc = paste0(\">" + pop_name + ": \\n\", consensus);" +
+                                    "\n\n\tfasta_string_nuc = paste0(\">" + pop + ": \\n\", consensus);" +
                                     "\n\twriteFile(\"" + nuc_filename + "\", fasta_string_nuc,append = T);" +
-                                    "\n\n\tfasta_string_prot = paste0(\">" + pop_name + ": \\n\", codonsToAminoAcids(nucleotidesToCodons(consensus)));" +
+                                    "\n\n\tfasta_string_prot = paste0(\">" + pop + ": \\n\", codonsToAminoAcids(nucleotidesToCodons(consensus)));" +
                                         "\n\twriteFile(\"" + aa_filename + "\", fasta_string_prot,append = T);")
 
         else:
