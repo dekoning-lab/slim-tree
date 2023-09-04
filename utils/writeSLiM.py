@@ -491,9 +491,8 @@ class writeSLiM:
                                     ".genomes.nucleotides(), \"strsplit(applyValue, sep = '');\"), ncol = " + str(self.start_params["genome_length"] * 3) + 
                                     ", byrow = T)[,i])))];\n\t}" +
                                     "\n\n\tfasta_string_nuc = paste0(\">" + pop_name + ": \\n\", consensus);" +
-                                    "\n\twriteFile(\"" + nuc_filename + "\", fasta_string_nuc,append = T);" )
-            if (not self.user_provided_sequence):
-                terminal_output_string +=("\n\n\tfasta_string_prot = paste0(\">" + pop_name + ": \\n\", codonsToAminoAcids(nucleotidesToCodons(consensus)));" +
+                                    "\n\twriteFile(\"" + nuc_filename + "\", fasta_string_nuc,append = T);" +
+                                    "\n\n\tfasta_string_prot = paste0(\">" + pop_name + ": \\n\", codonsToAminoAcids(nucleotidesToCodons(consensus)));" +
                                         "\n\twriteFile(\"" + aa_filename + "\", fasta_string_prot,append = T);")
 
         else:
