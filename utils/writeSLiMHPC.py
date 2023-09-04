@@ -102,7 +102,7 @@ class writeSLiMHPC(writeSLiM):
 
             #Write code to import in the prevouisly fixed state
             pop_string += ("\n\n\tsim.setValue(\"fixations_p1\", codonsToNucleotides(nucleotidesToCodons(readFile(\""+ 
-                            population_parameters["parent_pop_name"] + "_fixed_mutations.txt\")), format = \"numeric\"));")
+                            population_parameters["parent_pop_name"] + "_fixed_mutations.txt\")), format = \"integer\"));")
 
 
             #Load population into the end of the parent population's script to start this script when parent's finishes
