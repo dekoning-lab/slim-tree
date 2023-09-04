@@ -72,7 +72,7 @@ class writeSLiM:
         if(self.start_params["jukes_cantor"]):
             initialize_string += "mmJukesCantor(" + str(population_parameters ["mutation_rate"]/3) + ");"
         else:
-            initialize_string += population_parameters["mutation_matrix"] +";"
+            initialize_string += population_parameters["mutation_matrix"][1] +";"
 
 
         initialize_string += ("\n\tinitializeMutationTypeNuc(\"m1\", 0.5, \"f\", 0.0);" +
