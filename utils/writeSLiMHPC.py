@@ -100,6 +100,11 @@ class writeSLiMHPC(writeSLiM):
                 pop_string += ("\n\tsim.readFromPopulationFile(\"" + population_parameters["parent_pop_name"]  + ".txt\");")
                 pop_string += ("\n\tp1.setSubpopulationSize(" + str(population_parameters["population_size"]) + ");")
 
+            #Write code to import in the prevouisly fixed state
+            pop_string += ("sim.setValue(\"fixations\", strsplit(readFile(\""+ population_parameters["parent_pop_name"] +
+                           "_fixed_mutations.txt\"), sep = \"\"));")
+
+
             #Load population into the end of the parent population's script to start this script when parent's finishes
             parent_output_file = open(self.start_params["filenames"][0] + "_" + population_parameters["parent_pop_name"] + ".slim" , "a")
             parent_output_file.write("\n\tsystem(\"sbatch \\\"" + self.start_params["filenames"][0] + "_" + population_parameters["pop_name"] + ".sh\\\"\");")
@@ -109,14 +114,10 @@ class writeSLiMHPC(writeSLiM):
 
             parent_output_file.close()
 
-            #Write code to import in the prevouisly fixed state
-            pop_string += ("sim.setValue(\"fixations\", strsplit(readFile(\""+ population_parameters["parent_pop_name"] +
-                           "_fixed_mutations.txt\"), sep = \"\"));")
-
-        #At the start of the sim there are no fixations counted and no mutations
-        pop_string += "\n\tsim.setValue(\"fixations_counted\", 0);"
-        pop_string += "\n\tsim.setValue(\"dN_p1\", 0);"
-        pop_string += "\n\tsim.setValue(\"dS_p1\", 0);"
+        #At the start of the sim there are no fixations (synonymous or non-synonymous)
+        pop_string += "\n\tsim.setValue(\"fixations_counted\", -sim.getValue(\"fixations_counted\"));"
+        pop_string += "\n\tsim.setValue(\"dN_p1\", -sim.getValue(\"dN_p1\"));"
+        pop_string += "\n\tsim.setValue(\"dS_p1\", -sim.getValue(\"dS_p1\"));"
         pop_string += "\n}\n\n\n"
 
         self.output_file.write(pop_string)
@@ -124,6 +125,7 @@ class writeSLiMHPC(writeSLiM):
 
     #Write code for early functions in nonWF models.
     def write_early_function(self, start_dist, end_dist, population_parameters):
+        #Write the early commands - this may need tweaking w/ the fitness algorithm
         #Write the early commands - this may need tweaking w/ the fitness algorithm
         pop_name = population_parameters["pop_name"]
         early_event = (str(int(population_parameters["dist_from_start"]) + 2) + ":" + str(int(population_parameters["end_dist"]) + 1) +
