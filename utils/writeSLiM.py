@@ -492,7 +492,7 @@ class writeSLiM:
                                     ", byrow = T)[,i])))];\n\t}" +
                                     "\n\n\tfasta_string_nuc = paste0(\">" + pop_name + ": \\n\", consensus);" +
                                     "\n\twriteFile(\"" + nuc_filename + "\", fasta_string_nuc,append = T);" +
-                                    "\n\n\tfasta_string_prot = paste0(\">" + pop + ": \\n\", codonsToAminoAcids(nucleotidesToCodons(consensus)));" +
+                                    "\n\n\tfasta_string_prot = paste0(\">" + pop_name + ": \\n\", codonsToAminoAcids(nucleotidesToCodons(consensus)));" +
                                         "\n\twriteFile(\"" + aa_filename + "\", fasta_string_prot,append = T);")
 
         else:
