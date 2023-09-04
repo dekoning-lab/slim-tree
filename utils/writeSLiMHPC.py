@@ -72,7 +72,7 @@ class writeSLiMHPC(writeSLiM):
     #Write code to set up the starting population for each simulation. If first population, population established, otherwise starting population is loaded
     def write_start_pop(self, population_parameters):
 
-        pop_string = (str(int(population_parameters["dist_from_start"])) + " late() {" +
+        pop_string = (str(int(population_parameters["dist_from_start"] + 1)) + " late() {" +
                     "\n\tsetup_fitness();")
 
         #If first population make the population, otherwise load from the parent
