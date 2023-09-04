@@ -23,7 +23,6 @@ class writeSLiMHPC(writeSLiM):
         #Write the commands that are run for every simulation and the starting population
         self.write_start_pop(population_parameters)
         super().write_repeated_commands(population_parameters, pop_name = "p1", out = self.output_file)
-        
 
 
         #Finish writing the script
@@ -73,7 +72,7 @@ class writeSLiMHPC(writeSLiM):
     #Write code to set up the starting population for each simulation. If first population, population established, otherwise starting population is loaded
     def write_start_pop(self, population_parameters):
 
-        pop_string = ("1 late() {" +
+        pop_string = (str(int(population_parameters["dist_from_start"])) + " late() {" +
                     "\n\tsetup_fitness();")
 
         #If first population make the population, otherwise load from the parent
@@ -102,7 +101,7 @@ class writeSLiMHPC(writeSLiM):
                 pop_string += ("\n\tp1.setSubpopulationSize(" + str(population_parameters["population_size"]) + ");")
 
             #Write code to import in the prevouisly fixed state
-            pop_string += ("\n\tsim.setValue(\"fixations\", strsplit(readFile(\""+ population_parameters["parent_pop_name"] +
+            pop_string += ("\n\n\tsim.setValue(\"fixations_p1\", strsplit(readFile(\""+ population_parameters["parent_pop_name"] +
                            "_fixed_mutations.txt\"), sep = \"\"));")
 
 
