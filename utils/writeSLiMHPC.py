@@ -101,8 +101,8 @@ class writeSLiMHPC(writeSLiM):
                 pop_string += ("\n\tp1.setSubpopulationSize(" + str(population_parameters["population_size"]) + ");")
 
             #Write code to import in the prevouisly fixed state
-            pop_string += ("\n\n\tsim.setValue(\"fixations_p1\", strsplit(readFile(\""+ population_parameters["parent_pop_name"] +
-                           "_fixed_mutations.txt\"), sep = \"\"));")
+            pop_string += ("\n\n\tsim.setValue(\"fixations_p1\", codonsToNucleotides(nucleotidesToCodons(readFile(\""+ 
+                            population_parameters["parent_pop_name"] + "_fixed_mutations.txt\"))), format = \"numeric\");")
 
 
             #Load population into the end of the parent population's script to start this script when parent's finishes
