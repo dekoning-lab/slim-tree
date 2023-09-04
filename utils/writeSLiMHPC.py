@@ -170,8 +170,8 @@ class writeSLiMHPC(writeSLiM):
         #Write file with the number of synonymous and synonymous mutations
         if(population_parameters["calculate_selection"]):
             end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_dNdS_mutations.txt\"," +
-                "paste(\"dN: \", sim.getValue(\"dN_p1\"), " +
-                "\"\\ndS: \", sim.getValue(\"dS_p1\")"+
+                "paste(\"dN: \", sim.getValue(\"dN_p1\")/" + str(self.start_params["dn_denom"]) + ", " +
+                "\"\\ndS: \", sim.getValue(\"dS_p1\") /" + str(self.start_params["ds_denom"]) +
                 ", sep = \"\"));" )
 
 
