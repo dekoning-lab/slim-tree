@@ -21,8 +21,9 @@ class writeSLiMHPC(writeSLiM):
         super().write_fitness()
 
         #Write the commands that are run for every simulation and the starting population
-        super().write_repeated_commands(population_parameters, pop_name = "p1", out = self.output_file)
         self.write_start_pop(population_parameters)
+        super().write_repeated_commands(population_parameters, pop_name = "p1", out = self.output_file)
+        
 
 
         #Finish writing the script
@@ -72,7 +73,7 @@ class writeSLiMHPC(writeSLiM):
     #Write code to set up the starting population for each simulation. If first population, population established, otherwise starting population is loaded
     def write_start_pop(self, population_parameters):
 
-        pop_string = (str(int(population_parameters["dist_from_start"])+1) + " late() {" +
+        pop_string = ("1 late() {" +
                     "\n\tsetup_fitness();")
 
         #If first population make the population, otherwise load from the parent
@@ -101,7 +102,7 @@ class writeSLiMHPC(writeSLiM):
                 pop_string += ("\n\tp1.setSubpopulationSize(" + str(population_parameters["population_size"]) + ");")
 
             #Write code to import in the prevouisly fixed state
-            pop_string += ("sim.setValue(\"fixations\", strsplit(readFile(\""+ population_parameters["parent_pop_name"] +
+            pop_string += ("\n\tsim.setValue(\"fixations\", strsplit(readFile(\""+ population_parameters["parent_pop_name"] +
                            "_fixed_mutations.txt\"), sep = \"\"));")
 
 
@@ -115,9 +116,9 @@ class writeSLiMHPC(writeSLiM):
             parent_output_file.close()
 
         #At the start of the sim there are no fixations (synonymous or non-synonymous)
-        pop_string += "\n\tsim.setValue(\"fixations_counted_p1\", -sim.getValue(\"fixations_counted_p1\"));"
-        pop_string += "\n\tsim.setValue(\"dN_p1\", -sim.getValue(\"dN_p1\"));"
-        pop_string += "\n\tsim.setValue(\"dS_p1\", -sim.getValue(\"dS_p1\"));"
+        pop_string += "\n\tsim.setValue(\"fixations_counted_p1\", 0);"
+        pop_string += "\n\tsim.setValue(\"dN_p1\", 0);"
+        pop_string += "\n\tsim.setValue(\"dS_p1\", 0);"
         pop_string += "\n}\n\n\n"
 
         self.output_file.write(pop_string)
