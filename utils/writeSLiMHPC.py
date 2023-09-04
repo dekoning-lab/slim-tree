@@ -115,7 +115,7 @@ class writeSLiMHPC(writeSLiM):
             parent_output_file.close()
 
         #At the start of the sim there are no fixations (synonymous or non-synonymous)
-        pop_string += "\n\tsim.setValue(\"fixations_counted\", -sim.getValue(\"fixations_counted\"));"
+        pop_string += "\n\tsim.setValue(\"fixations_counted_p1\", -sim.getValue(\"fixations_counted_p1\"));"
         pop_string += "\n\tsim.setValue(\"dN_p1\", -sim.getValue(\"dN_p1\"));"
         pop_string += "\n\tsim.setValue(\"dS_p1\", -sim.getValue(\"dS_p1\"));"
         pop_string += "\n}\n\n\n"
