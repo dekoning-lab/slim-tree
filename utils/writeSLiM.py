@@ -179,7 +179,7 @@ class writeSLiM:
                                 "\n\t\t\tfitnesses = c(fitnesses, sim.getValue(aa)[sim.getValue(\"fitness_profiles\" + row_num)[count]]);" +
                                 "\n\t\t\tcount = count + 1; \n\t\t}\n" +
                                 "\n\t\tsim.setValue(\"ancestral_fitnesses\" + asString(row_num), fitnesses);" +
-                                "\n\t\tsim.setValue(\"ancestral_fitness_value\" + asString(row_num), product(fitnesses));"+
+                                "\n\t\tsim.setValue(\"ancestral_fitness_value\" + asString(row_num), mean(fitnesses));"+
                                 "\n\t\tsim.setValue(\"ancestral_aas\" + asString(row_num), aas);\n\n\t}\n}\n\n\n")
 
         self.output_file.write(fitness_function_string)
@@ -206,14 +206,14 @@ class writeSLiM:
         #Calculate the impact of the stop codon
         if (self.start_params["fasta_file"] ==  None):
             genome_fitness_function_string += ("\n\n\t\tif(any(poses[0] | poses[aa_stop_pos])){" +
-                                    "\n\t\t\tfitness_value = fitness_value * product(" + str(self.start_params["min_fitness"]) + "/fitnesses);" +
+                                    "\n\t\t\tfitness_value = fitness_value * mean(" + str(self.start_params["min_fitness"]) + "/fitnesses);" +
                                     "\n\t\t\tnext;\n\t\t}")
         genome_fitness_function_string += ("\n\n\t\tif(any(aa_seq[poses] == \"X\")){" +
                                     "\n\t\t\tpos_stop = match(\"X\", aa_seq[0:(length(aa_seq)-1)]);"+
                                     "\n\t\t\tif(pos_stop == 0){fitnesses = " + str(self.start_params["min_fitness"]) + "/fitnesses;}" +
                                     "\n\t\t\telse if (pos_stop + 1 < aa_stop_pos) " +
                                     "{fitnesses[(pos_stop+1):aa_stop_pos] = " + str(self.start_params["min_fitness"]) + "/fitnesses[(pos_stop+1):aa_stop_pos];}\n\t\t}" +
-                                    "\n\n\t\tfitness_value = fitness_value * product(fitnesses);\n\t}"+
+                                    "\n\n\t\tfitness_value = fitness_value * mean(fitnesses);\n\t}"+
                                     "\n\n\treturn fitness_value;\n}\n\n\n")
 
         self.output_file.write(genome_fitness_function_string)
@@ -389,8 +389,8 @@ class writeSLiM:
         #Write the early commands - this may need tweaking w/ the fitness algorithm
         early_event = (str(int(population_parameters["dist_from_start"]) + 1) + ":" + str(int(population_parameters["end_dist"])) +
                         " early(){\n\t" + pop_name + ".fitnessScaling = " +
-                        str(int(population_parameters["population_size"])) + "/ (" + pop_name +
-                        ".individualCount * " + str(self.start_params["scaling_value"]) + ");" )
+                        str(int(population_parameters["population_size"])) + "/ " + pop_name +
+                        ".individualCount;" )
 
         early_event+= "\n}\n\n\n"
 

@@ -130,8 +130,8 @@ class writeSLiMHPC(writeSLiM):
         pop_name = population_parameters["pop_name"]
         early_event = (str(int(population_parameters["dist_from_start"]) + 2) + ":" + str(int(population_parameters["end_dist"]) + 1) +
                         " early(){\n\t" + "p1.fitnessScaling = " +
-                        str(int(population_parameters["population_size"])) + "/ (" +
-                        "p1.individualCount * " + str(self.scaling_factor) + ");" )
+                        str(int(population_parameters["population_size"])) + "/ " +
+                        "p1.individualCount;" )
 
         early_event+= "\n}\n\n\n"
 
