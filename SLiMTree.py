@@ -87,6 +87,11 @@ class SLiMTree:
             start_params["fitness_profile_nums"] = fitness_finder.define_fitness_profiles(False,
                     start_params["coding_seqs"], start_params["genome_length"])
             
+            
+            
+        # Find the scaling factor for mostly neutral fitnesses
+        start_params["scaling_value"] = fitness_finder.find_fitness_scaling(start_params["fitness_profile_nums"], 
+                    start_params["coding_ratio"] != 1)
                         
                         
         #If dN/dS is being calculated find the denominators

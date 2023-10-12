@@ -237,6 +237,40 @@ class findFitness:
         return(combined_stat_dists)
     
     
+    
+    
+    # Calculates expected fitness from fitness profiles for scaling in non-wright-fisher models
+    def find_fitness_scaling(self, fitness_profile_nums, multiple_genes):
+        #Set up lists and data frames
+        stationary_dists = self.convert_stat_dist()
+        expected_fitness_profiles = []
+        
+
+        # Find the expected value for each fitness profile
+        for num_dist in range(len(stationary_dists.columns)-1):
+            mean = 0
+            stationary = stationary_dists.iloc[:,num_dist]
+            fitness = self.fitness_mat.iloc[:,num_dist]
+            for num_profile in range(len(fitness)-1):
+                mean += stationary[num_profile] * fitness[num_profile]
+
+            expected_fitness_profiles.append(mean)
+
+        # Add fitness profile with mean of 1 to account for the neutral areas
+        if (multiple_genes):
+            expected_fitness_profiles.append(1)
+        expected_fitnesses = []
+
+        # Find the expected value for each site in the genome based on it's respective fitness profile
+        for fitness_profile in fitness_profile_nums:
+            expected_fitnesses.append(expected_fitness_profiles[fitness_profile])
+        
+        # Find the expected value of all sites by multiplying expected values - squared because there are 2 xsomes in diploid models
+        scaling_value = np.sum(expected_fitnesses)
+        
+        return(scaling_value)
+    
+    
     #Return the stationary matrix for use in other scripts
     def get_stationary_mat(self):
         return(self.stationary_mat)
