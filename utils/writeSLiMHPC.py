@@ -83,6 +83,9 @@ class writeSLiMHPC(writeSLiM):
 
             #Write code to start a fixed state from the starting nucleotide sequence
             pop_string += "\n\tsim.setValue(\"fixations\", strsplit(sim.chromosome.ancestralNucleotides(),sep = \"\"));"
+            
+            #Create a second population to dump stuff into at the end of the population simulation for splitting
+            pop_string += "\n\tsim.addSubpop(\"p2\", 0);"
         else:
 
             #Set appropriate starting population size
@@ -91,11 +94,9 @@ class writeSLiMHPC(writeSLiM):
                 if (population_parameters["last_child_clade"]):
                     #Have population tag 1 have fitness 0.0 so they won't influence next generation
                     pop_string += ("\n\tsim.readFromPopulationFile(\"" + population_parameters["parent_pop_name"]  + "_2.txt\");")
-                    pop_string += ("\n\tp2.removeSubpopulation();")
                 else:
                     #Have population tag 2 have fitness 0.0 so they won't influence next generation.
                     pop_string += ("\n\tsim.readFromPopulationFile(\"" + population_parameters["parent_pop_name"]  + "_1.txt\");")
-                    pop_string += ("\n\tp2.removeSubpopulation();")
             else:
                 pop_string += ("\n\tsim.readFromPopulationFile(\"" + population_parameters["parent_pop_name"]  + ".txt\");")
                 pop_string += ("\n\tp1.setSubpopulationSize(" + str(population_parameters["population_size"]) + ");")
@@ -131,7 +132,8 @@ class writeSLiMHPC(writeSLiM):
         early_event = (str(int(population_parameters["dist_from_start"]) + 2) + ":" + str(int(population_parameters["end_dist"]) + 1) +
                         " early(){\n\t" + "p1.fitnessScaling = " +
                         str(int(population_parameters["population_size"])) + "/" +
-                        "p1.individualCount;" )
+                        "p1.individualCount;" +
+                        "\n\t p2.fitnessScaling = 0;")
 
         early_event+= "\n}\n\n\n"
 
@@ -150,7 +152,7 @@ class writeSLiMHPC(writeSLiM):
             if (self.start_params["nonWF"]):
                 #Tag each individual with either 1 or 2 to go into different subpopulations. Should be split according to proportions.
                 end_population_string += ("\n\tp1.individuals.tag = 0;\n\tsample(p1.individuals, asInteger(p1.individualCount* "+
-                        str(population_parameters["split_ratio"]) +")).tag = 1;\n\tp1.individuals[p1.individuals.tag == 0].tag = 2;\n\tsim.addSubpop(\"p2\", 0);"
+                        str(population_parameters["split_ratio"]) +")).tag = 1;\n\tp1.individuals[p1.individuals.tag == 0].tag = 2;"
                         "\n\tp2.takeMigrants(p1.individuals[p1.individuals.tag == 2]);\n\tsim.outputFull(\""+ 
                         population_parameters["pop_name"] +"_1.txt\");\n\tp1.takeMigrants(p2.individuals);\n\tp2.takeMigrants" +
                         "(p1.individuals[p1.individuals.tag == 1]);"
