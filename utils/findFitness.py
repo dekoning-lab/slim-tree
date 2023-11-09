@@ -265,8 +265,6 @@ class findFitness:
         
         for fitness_profile in fitness_profile_nums:
             expected_fitnesses.append(expected_fitness_profiles[fitness_profile])
-        
-        print(np.sum(expected_fitnesses))
             
     
         # Find the expected value of all sites by multiplying expected values - squared because there are 2 xsomes in diploid models
