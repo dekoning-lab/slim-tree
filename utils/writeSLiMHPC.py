@@ -85,7 +85,8 @@ class writeSLiMHPC(writeSLiM):
             pop_string += "\n\tsim.setValue(\"fixations\", strsplit(sim.chromosome.ancestralNucleotides(),sep = \"\"));"
             
             #Create a second population to dump stuff into at the end of the population simulation for splitting
-            pop_string += "\n\tsim.addSubpop(\"p2\", 0);"
+            if (self.start_params["nonWF"]):
+                pop_string += "\n\tsim.addSubpop(\"p2\", 0);"
         else:
 
             #Set appropriate starting population size
