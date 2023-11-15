@@ -34,8 +34,8 @@ class writeSLiM:
         #Make the population and set up fitness effects
         pop_string = ("1 early() {" +
                     "\n\tsetup_fitness();" +
-                    "\n\twriteFile(\"" + self.start_params["filenames"][1] + "_aa.fasta\", \"\", append = F);" +
-                    "\n\twriteFile(\"" + self.start_params["filenames"][1] + "_nuc.fasta\", \"\", append = F);" +
+                    #"\n\twriteFile(\"" + self.start_params["filenames"][1] + "_aa.fasta\", \"\", append = F);" +
+                    #"\n\twriteFile(\"" + self.start_params["filenames"][1] + "_nuc.fasta\", \"\", append = F);" +
                     "\n\tsim.addSubpop(\"p1\", " + str(population_parameters["population_size"]) + ");" + 
                     "\n\tsim.setValue(\"fixations_p1\", sim.chromosome.ancestralNucleotides(format = \"integer\"));" +    #Write code to start a fixed state from the starting nucleotide sequence
                     "\n\tsim.setValue(\"fixations_counted_p1\", 0);" + #At the start of the sim there are no fixations counted
@@ -469,8 +469,8 @@ class writeSLiM:
     def write_terminal_output(self, population_parameters, pop = "p1"):
 
         #Set up the names of the 3 fasta files to be output to
-        nuc_filename = self.start_params["filenames"][1] + "_nuc.fasta"
-        aa_filename =  self.start_params["filenames"][1] + "_aa.fasta"
+        #nuc_filename = self.start_params["filenames"][1] + "_nuc.fasta"
+        #aa_filename =  self.start_params["filenames"][1] + "_aa.fasta"
         ancestral_filename = self.start_params["filenames"][1] + "_fixed.fasta"
 
 
@@ -504,14 +504,15 @@ class writeSLiM:
                                     ", 2*" + pop + ".individualCount), replace=F);")
 
 
-
+            
             #Iterate through each random sample to write script to output samples of amino acids and nucleotides to fasta files
             terminal_output_string += ("\n\n\tfor (g in genomes){" +
+                                        "\n\t\tfasta_string_nuc = \"\";" +
                                         "\n\t\tfasta_string_nuc = paste0(\">\", g.individual, \", " + pop_name + ": \\n\", g.nucleotides());" +
-                                        "\n\t\twriteFile(\"" + nuc_filename + "\", fasta_string_nuc,append = T);" + 
-                                        "\n\t\tfasta_string_prot = paste0(\">\", g.individual, \", " + pop_name + 
+                                        "\n\t\twriteFile(\"" + os.getcwd()+ "/nuc_FASTA/" + population_parameters["pop_name"] + "_nuc.fasta" + "\", fasta_string_nuc,append = T);" +
+                                        "\n\t\tfasta_string_prot = paste0(\">\", g.individual, \", " + pop_name +
                                         ": \\n\", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));" +
-                                        "\n\t\twriteFile(\"" + aa_filename + "\", fasta_string_prot,append = T);}" )
+                                        "\n\t\twriteFile(\"" + os.getcwd()+ "/aa_FASTA/" + population_parameters["pop_name"] + "_aa.fasta" + "\", fasta_string_prot,append = T);}" )            
 
 
         return terminal_output_string

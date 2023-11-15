@@ -199,7 +199,22 @@ class readInput:
             	    sys.exit(0)
                 cont = input("Continue? Please enter y or n")
                 
+        #Afarinesh_Make FASTA file directories
+        #nuc
+        nuc_FASTA_files_directory = "/".join(split_starting_output[0:(len(split_starting_output)-1)]) + "/nuc_FASTA"
+        try:
+           os.mkdir(nuc_FASTA_files_directory)
+        except OSError:
+            print("using the same nuc_FASTA folder")       
         
+        #aa
+        aa_FASTA_files_directory = "/".join(split_starting_output[0:(len(split_starting_output)-1)]) + "/aa_FASTA"
+        try:
+           os.mkdir(aa_FASTA_files_directory)
+        except OSError:
+            print("using the same  aa_FASTA folder")
+
+ 
         #Set up where files will be output to 
         output_filename = output_files_directory + "/" + split_starting_output[-1]
         
