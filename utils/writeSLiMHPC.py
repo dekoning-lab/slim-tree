@@ -77,8 +77,8 @@ class writeSLiMHPC(writeSLiM):
 
         #If first population make the population, otherwise load from the parent
         if(population_parameters["parent_pop_name"] == None):
-            pop_string += ("\n\twriteFile(\"" + self.start_params["filenames"][1] + "_aa.fasta\", \"\", append = F);" +
-                                   "\n\twriteFile(\"" + self.start_params["filenames"][1] + "_nuc.fasta\", \"\", append = F);" +
+            pop_string += (#"\n\twriteFile(\"" + self.start_params["filenames"][1] + "_aa.fasta\", \"\", append = F);" +
+                                   #"\n\twriteFile(\"" + self.start_params["filenames"][1] + "_nuc.fasta\", \"\", append = F);" +
                                    "\n\tsim.addSubpop(\"p1\", " + str(population_parameters["population_size"]) + ");" )
 
             #Write code to start a fixed state from the starting nucleotide sequence
@@ -206,9 +206,9 @@ class writeSLiMHPC(writeSLiM):
 
 
         #If this is the last clade from a certain parent, write script to destroy that parent's temporary files
-        if(population_parameters["last_child_clade"]):
-            end_population_string += ("\n\n\tsystem(\"rm " + population_parameters["parent_pop_name"] + ".txt\");" +
-                                      "\n\tsystem(\"rm " + population_parameters["parent_pop_name"] + ".fasta\");")
+        #if(population_parameters["last_child_clade"]):
+        #    end_population_string += ("\n\n\tsystem(\"rm " + population_parameters["parent_pop_name"] + ".txt\");" +
+        #                              "\n\tsystem(\"rm " + population_parameters["parent_pop_name"] + ".fasta\");")
 
 
         

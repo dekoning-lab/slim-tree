@@ -3,8 +3,6 @@
 import argparse, sys, os, yaml, pandas, copy
 import numpy as np
 
-
-
 class readInput:
     def __init__(self):
         pass
@@ -49,10 +47,6 @@ class readInput:
         #Simulation parameters
         parser.add_argument('-w', '--nonWF', action='store_true', default=False, help = 'boolean flag to specify that a non-wright-fisher ' +
                                 'model should be used in lieu of a wright-fisher model.')
-        #+'Note: a non-wright-fisher model is used for all simulations using structure based calculations of protein fitness.')
-        # parser.add_argument('-sf', '--structure_fitness_effects', action='store_true', default=False,
-                # help = 'boolean flag specifying that fitness effects are to be calculated using protein structures rather than fitness profiles.' +
-                                # 'A pdb file specifying the ancestral protein structure is required. A non-wright-fisher model will be used')
         
                 
         #Arguments for specifying population parameters
@@ -89,7 +83,7 @@ class readInput:
                                     type = float, default = 0.5)
 
 
-	#Flags to turn on and off simulation functions
+	      #Flags to turn on and off simulation functions
         parser.add_argument('-c','--count_subs', action='store_true', default=False, help = 'boolean flag to turn on substitution counting. ' +
                                     'This will slow down simulations')
         parser.add_argument('-o','--output_gens', action='store_true', default=False, help = 'boolean flag to output every 100th generation. ' +
@@ -108,7 +102,7 @@ class readInput:
         return (arguments)
         
     
-    
+        
     #Command to make string version of mutation matrix from csv file
     def make_mutation_matrix(self, mutation_matrix):
         mut_mat = pandas.read_csv(mutation_matrix, names = ["A","C","G","T"])
@@ -134,7 +128,6 @@ class readInput:
         #Make and return string of the mutational matrix
         mut_mat_str = "matrix(c(" + str(list(mut_mat.flatten()))[1:-1] + "), ncol = 4, byrow = T)"
         return (mut_mat, mut_mat_str)    
-        
         
         
    #Go through arguments and make sure that the user hasn't provided any arguments that cannot be processed     
@@ -165,6 +158,10 @@ class readInput:
             arguments_pass = False;            
             
         return(arguments_pass)
+      
+      
+        
+    
         
     
     #Read input tree to make output file names
@@ -188,7 +185,22 @@ class readInput:
             	    sys.exit(0)
                 cont = input("Continue? Please enter y or n")
                 
+        #Afarinesh_Make FASTA file directories
+        #nuc
+        nuc_FASTA_files_directory = "/".join(split_starting_output[0:(len(split_starting_output)-1)]) + "/nuc_FASTA"
+        try:
+           os.mkdir(nuc_FASTA_files_directory)
+        except OSError:
+            print("using the same nuc_FASTA folder")       
         
+        #aa
+        aa_FASTA_files_directory = "/".join(split_starting_output[0:(len(split_starting_output)-1)]) + "/aa_FASTA"
+        try:
+           os.mkdir(aa_FASTA_files_directory)
+        except OSError:
+            print("using the same  aa_FASTA folder")
+
+ 
         #Set up where files will be output to 
         output_filename = output_files_directory + "/" + split_starting_output[-1]
         
@@ -204,8 +216,6 @@ class readInput:
             return((output_filename, output_file_start, backup_files_directory))
         else:
             return((output_filename, output_file_start, None))
-        
-        
     
     
     
@@ -224,10 +234,9 @@ class readInput:
 
         
         return(param_dict)
+       
         
-
-
-
+        
     #Save input given by user to a file so that it can be viewed/remembered after running the simulation
     def save_input(self, param_dict):
         
@@ -250,7 +259,6 @@ class readInput:
         parameter_file = open(file_start + "_parameters.yaml", 'w')
         yaml.dump(param_dict_dump,parameter_file)
         parameter_file.close()
-        
        
         
     
@@ -265,3 +273,6 @@ class readInput:
 if __name__ == '__main__':
     input_reader = readInput()
     input_reader.process_input()
+
+
+       
