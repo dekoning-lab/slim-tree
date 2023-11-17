@@ -10,20 +10,26 @@ from collections import Counter
 #Class which calculates the selection denominators for dn ds analysis
 class calculateSelectionDenominators:
     
-    def __init__(self, stationary_distributions, fitness_profile_nums, mu, mu_mat):
+    def __init__(self, stationary_distributions, fitness_profile_nums, mu, short_mu_mat):
         
         #Set up variables
         self.stationary_distributions = stationary_distributions
+        
+        #Get the list of codons 
+        self.codons = list(stationary_distributions.index)
         self.ncodons = len(self.stationary_distributions.index)
         
         #Find synonymous and non-synonymous positions in stationary dists
         self.find_syn_codons(stationary_distributions)
-        self.find_num_muts(stationary_distributions)
+        
         
         #Find rates of mutation
-        jc = mu_mat == None #If there is a mutation matrix then it's not a jukes-cantor model
-        self.mu_mat = self.find_mu_mat(jc, mu_mat, mu)
-        
+        if(short_mu_mat == None): #If there is a not a mutation matrix, we need to make 4 by 4 mutation matrix from rate of mutation
+            short_mu_mat = np.full((4, 4), mu/3)
+        else: #Grab the correct matrix - ie. the matrix that is in array form
+            short_mu_mat = short_mu_mat[0]
+            
+        self.mu_mat = self.find_rate_mut(short_mu_mat)
         
         self.dN_denom, self.dS_denom = self.calculate_selection_denominators(fitness_profile_nums)
     
@@ -51,46 +57,37 @@ class calculateSelectionDenominators:
             
             
     
-    # Find all possible codons with more than 1 mutation
-    def find_num_muts(self, stationary_distributions):
-        #Get the list of codons 
-        codons = list(stationary_distributions.index)
+    
+    
+    # Find all possible codons with only 1 mutation and find mutation rate for that codon
+    def find_rate_mut(self, short_mu_mat):
+        #Set up mutation matrix
+        mu_mat = np.full((self.ncodons, self.ncodons), 0.0)
         
-        #Recurse through codons and find which ones have more than 1 mutation
-        self.num_muts = []
-        for cod1 in codons:
-            muts_list = []
-            for cod2 in codons:
-                cod1_split = [*cod1]
-                cod2_split = [*cod2]
-                num_same = len(set(enumerate(cod1_split)).intersection(set(enumerate(cod2_split))))
-                muts_list.append(3-num_same)
+        #Set up conversion from nucleotide character to position in short mutation matrix
+        convert_nucleotide = {"A": 0, "C": 1, "G" : 2, "T" : 3}
+        
+        #Recurse through codons and find mutation rate
+        for cod1 in range(self.ncodons):
+            cod1_split = set(enumerate([*self.codons[cod1]]))
             
-            self.num_muts.append(muts_list)
+            for cod2 in range(self.ncodons):
+                cod2_split = set(enumerate([*self.codons[cod2]]))
+                differences = list(cod1_split.symmetric_difference(cod2_split))
+                num_dif = len(differences)/2
+                
+                if(num_dif != 1):
+                    continue
+               
+                old_codon_num = convert_nucleotide[list(differences[1])[1]]
+                new_codon_num = convert_nucleotide[list(differences[0])[1]]
+                
+                mu_mat[cod1, cod2] = short_mu_mat[old_codon_num, new_codon_num]
+                
+        return (mu_mat)
             
             
-         
-    
-    # Converts a mutation matrix or single value (for jukes-cantor), to a list of average forward and reverse mutation rates
-    def find_mu_mat (self, jc, mu_mat, mu):
-        
-    
-        # Make mutation matrix of the mu value if Jukes-Cantor
-        if (jc):
-            mu_mat = np.full((61, 61), mu/3)
-        
-        
-        #Need to convert other mutation matrices to larger matrix
-        
-
-        
-        
-        
-        return(mu_mat)
-    
-
-        
-    
+            
     
     # Loop through each amino acid in the stationary distributions and calculates piQ
     # ratio is the ratio of amino acids in the genome that are from the distribution
@@ -104,10 +101,7 @@ class calculateSelectionDenominators:
         #Recurse through codons and find pi_Qij
         for i in range(self.ncodons):       
             for j in range(self.ncodons):
-                #Ensure that only a single substitution is being added
-                if (self.num_muts[i][j] != 1):
-                    continue
-           
+            
                 Qij = self.mu_mat[i][j]
                 pi_Qij = stationary_dist[i]*Qij*profile_quantity
                 
@@ -132,11 +126,10 @@ class calculateSelectionDenominators:
           
         # Find the value of ds for each of the stationary distributions
         ds_dn = np.array(list(map(lambda x: self.get_dist_ds_dn(x, num_each_profile.loc[x,1]), ndists)))
-        print((sum(ds_dn)*3))
-        sys.exit(0)
+
         
         #Sum and multiply by 3 to get the denominators of dn and ds
-        return (sum(ds_dn))
+        return (sum(ds_dn)*3)
         
         
     #Return dn to public

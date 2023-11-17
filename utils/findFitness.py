@@ -59,7 +59,7 @@ class findFitness:
         
         #Reorder columns in order required for the software
         fitness_mat = fitness_mat.sort_index(axis=0)
-        self.fitness_mat = fitness_mat.reindex(fitness_mat.index[list(range(1,21))+[0]])
+        self.fitness_mat = fitness_mat
         
         
         
@@ -258,15 +258,17 @@ class findFitness:
 
         # Add fitness profile with mean of 1 to account for the neutral areas
         if (multiple_genes):
-            expected_fitness_profiles = expected_fitness_profiles + [1]
+            expected_fitness_profiles.append(1)
         expected_fitnesses = []
 
         # Find the expected value for each site in the genome based on it's respective fitness profile
+        
         for fitness_profile in fitness_profile_nums:
             expected_fitnesses.append(expected_fitness_profiles[fitness_profile])
-        
+            
+    
         # Find the expected value of all sites by multiplying expected values - squared because there are 2 xsomes in diploid models
-        scaling_value = np.prod(expected_fitnesses)**2
+        scaling_value = np.sum(expected_fitnesses)
         
         return(scaling_value)
     

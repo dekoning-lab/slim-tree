@@ -63,11 +63,11 @@ class SLiMTree:
         fitness_finder = findFitness.findFitness(start_params["codon_stationary_distributions"])
         if(start_params["aa_fitness_distributions"] != None):
             fitness_finder.process_existing_fitness_file(start_params["aa_fitness_distributions"])
-        elif (start_params["mutation_rate"] != None):
+        elif (start_params["jukes_cantor"]):
             fitness_finder.find_optimal_fitnesses(start_params["mutation_rate"], 
                         start_params["population_size"])
         else: 
-            fitness_finder.find_optimal_fitnesses_mu_mat(start_params["mutation_matrix"], 
+            fitness_finder.find_optimal_fitnesses_mu_mat(start_params["mutation_matrix"][0], 
                         start_params["population_size"])
                         
         start_params["fitness_profiles"], start_params["min_fitness"]  = fitness_finder.process_fitness_dists()
@@ -89,10 +89,9 @@ class SLiMTree:
             
             
             
-        #If this is a non-wright fisher model. Find the scaling factor
-        if (start_params["nonWF"]):
-            start_params["scaling_value"] = fitness_finder.find_fitness_scaling(start_params["fitness_profile_nums"], 
-                        start_params["coding_ratio"] != 1)
+        # Find the scaling factor for mostly neutral fitnesses
+        start_params["scaling_value"] = fitness_finder.find_fitness_scaling(start_params["fitness_profile_nums"], 
+                    start_params["coding_ratio"] != 1)
                         
                         
         #If dN/dS is being calculated find the denominators

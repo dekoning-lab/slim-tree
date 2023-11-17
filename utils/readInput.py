@@ -1,8 +1,7 @@
 #Script which reads user input for slim-tree and writes to dictionary which is returned to main slim-tree
 
-import argparse, sys, os, yaml
-
-
+import argparse, sys, os, yaml, pandas, copy
+import numpy as np
 
 class readInput:
     def __init__(self):
@@ -48,10 +47,6 @@ class readInput:
         #Simulation parameters
         parser.add_argument('-w', '--nonWF', action='store_true', default=False, help = 'boolean flag to specify that a non-wright-fisher ' +
                                 'model should be used in lieu of a wright-fisher model.')
-        #+'Note: a non-wright-fisher model is used for all simulations using structure based calculations of protein fitness.')
-        # parser.add_argument('-sf', '--structure_fitness_effects', action='store_true', default=False,
-                # help = 'boolean flag specifying that fitness effects are to be calculated using protein structures rather than fitness profiles.' +
-                                # 'A pdb file specifying the ancestral protein structure is required. A non-wright-fisher model will be used')
         
                 
         #Arguments for specifying population parameters
@@ -88,7 +83,7 @@ class readInput:
                                     type = float, default = 0.5)
 
 
-	#Flags to turn on and off simulation functions
+	      #Flags to turn on and off simulation functions
         parser.add_argument('-c','--count_subs', action='store_true', default=False, help = 'boolean flag to turn on substitution counting. ' +
                                     'This will slow down simulations')
         parser.add_argument('-o','--output_gens', action='store_true', default=False, help = 'boolean flag to output every 100th generation. ' +
@@ -107,7 +102,7 @@ class readInput:
         return (arguments)
         
     
-    
+        
     #Command to make string version of mutation matrix from csv file
     def make_mutation_matrix(self, mutation_matrix):
         mut_mat = pandas.read_csv(mutation_matrix, names = ["A","C","G","T"])
@@ -115,37 +110,24 @@ class readInput:
         nrow = mut_mat.shape[0]
 
         #Check that mutational matrices are either 4 by 4 or 4 by 64
-        if ((nrow != 4 and nrow !=64) or (mut_mat.shape[1] != 4)):
-            print("Mutational matrices must be either 4 by 4 or 4 by 64. Representing mutations from " +
-                "nucleotide to nucleotide or tri-nucleotide to nucleotide, respectfully.")
+        if ((nrow != 4) or (mut_mat.shape[1] != 4)):
+            print("Mutational matrices must be 4 by 4. Representing mutations from " +
+                "nucleotide to nucleotide.")
             sys.exit(0)
 
         mut_mat = mut_mat.to_numpy()
 
         #Check to make sure that mutations from nucleotide to itself are 0
-        if(nrow == 4):
-            diag_sum = sum(np.diag(mut_mat))
-        else:
-            col_1 = mut_mat[:,0]
-            col_2 = mut_mat[:,1]
-            col_3 = mut_mat[:,2]
-            col_4 = mut_mat[:,3]
-            diag_sum = sum(col_1[0:4] + col_1[16:20] + col_1[32:36] + col_1[48:52] +
-                            col_2[4:8] + col_2[20:24] + col_2[36:40] + col_2[52:56] +
-                            col_3[8:12] + col_3[24:28] + col_3[40:44] + col_3[56:60] +
-                            col_4[12:16] + col_4[28:32] + col_4[44:48] + col_4[60:64])
+        diag_sum = sum(np.diag(mut_mat))
 
         if(diag_sum != 0):
-            print("All mutations from a nucleotide to itself must be 0. ie. in 4 by 4 " +
-                "mutation matrices, all diagonals must be 0 and in 4 by 64 mutation matrices, " +
-                "the first 4 rows in column 1 must be 0, the second 4 rows in column 2 must be 0, etc.")
+            print("All mutations from a nucleotide to itself must be 0.")
             sys.exit(0)
 
 
         #Make and return string of the mutational matrix
         mut_mat_str = "matrix(c(" + str(list(mut_mat.flatten()))[1:-1] + "), ncol = 4, byrow = T)"
-        return mut_mat_str    
-        
+        return (mut_mat, mut_mat_str)    
         
         
    #Go through arguments and make sure that the user hasn't provided any arguments that cannot be processed     
@@ -176,6 +158,10 @@ class readInput:
             arguments_pass = False;            
             
         return(arguments_pass)
+      
+      
+        
+    
         
     
     #Read input tree to make output file names
@@ -230,8 +216,6 @@ class readInput:
             return((output_filename, output_file_start, backup_files_directory))
         else:
             return((output_filename, output_file_start, None))
-        
-        
     
     
     
@@ -250,24 +234,31 @@ class readInput:
 
         
         return(param_dict)
+       
         
-
-
-
+        
     #Save input given by user to a file so that it can be viewed/remembered after running the simulation
     def save_input(self, param_dict):
         
-        file_start = param_dict["filenames"][1]
+        param_dict_dump = copy.deepcopy(param_dict)
+        file_start = param_dict_dump["filenames"][1]
         
-        # If this is a jukes cantor model write add theta to dictionary
-        if (param_dict["jukes_cantor"]):
-            param_dict["theta"] = 4*param_dict["mutation_rate"]*param_dict["population_size"]
+        # If this is a jukes cantor model add theta to dictionary
+        if (param_dict_dump["jukes_cantor"]):
+            param_dict_dump["theta"] = 4*param_dict_dump["mutation_rate"]*param_dict_dump["population_size"]
+        else: #If not a jukes cantor model, get human readable matrix and find average mutation rate and average theta
+            param_dict_dump["mean_mutation_rate"] = float(param_dict_dump["mutation_matrix"][0].mean().mean())
+            param_dict_dump["mutation_matrix"] = param_dict_dump["mutation_matrix"][1]
+            param_dict_dump["average_theta"] = 4*param_dict_dump["mean_mutation_rate"]*param_dict_dump["population_size"]
+        
+        
+        #Remove filenames from data for datafile
+        param_dict_dump.pop("filenames")
         
         # Save starting parameters for later reference
         parameter_file = open(file_start + "_parameters.yaml", 'w')
-        yaml.dump(param_dict,parameter_file)
+        yaml.dump(param_dict_dump,parameter_file)
         parameter_file.close()
-        
        
         
     
@@ -282,3 +273,6 @@ class readInput:
 if __name__ == '__main__':
     input_reader = readInput()
     input_reader.process_input()
+
+
+       

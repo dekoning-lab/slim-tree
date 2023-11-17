@@ -72,7 +72,7 @@ class writeSLiM:
         if(self.start_params["jukes_cantor"]):
             initialize_string += "mmJukesCantor(" + str(population_parameters ["mutation_rate"]/3) + ");"
         else:
-            initialize_string += population_parameters["mutation_matrix"] +";"
+            initialize_string += population_parameters["mutation_matrix"][1] +";"
 
 
         initialize_string += ("\n\tinitializeMutationTypeNuc(\"m1\", 0.5, \"f\", 0.0);" +
@@ -179,7 +179,7 @@ class writeSLiM:
                                 "\n\t\t\tfitnesses = c(fitnesses, sim.getValue(aa)[sim.getValue(\"fitness_profiles\" + row_num)[count]]);" +
                                 "\n\t\t\tcount = count + 1; \n\t\t}\n" +
                                 "\n\t\tsim.setValue(\"ancestral_fitnesses\" + asString(row_num), fitnesses);" +
-                                "\n\t\tsim.setValue(\"ancestral_fitness_value\" + asString(row_num), product(fitnesses));"+
+                                "\n\t\tsim.setValue(\"ancestral_fitness_value\" + asString(row_num), sum(fitnesses));"+
                                 "\n\t\tsim.setValue(\"ancestral_aas\" + asString(row_num), aas);\n\n\t}\n}\n\n\n")
 
         self.output_file.write(fitness_function_string)
@@ -189,31 +189,51 @@ class writeSLiM:
         #Defining a function in SLiM which returns the fitness of an individual genome
 
         genome_fitness_function_string = ("function (float) get_genome_fitness (object nucs){" +
-                                    "\n\tfitness_value = 1.0;" +
+                                    "\n\tfitness_value = 0.0;" +
                                     "\n\tfor (row_num in (0:(nrow(start_stop_codon_positions) -1))){" +
-                                    "\n\t\tstarting_pos = drop(start_stop_codon_positions[row_num,0]);" +
+                                    
+                                    
+                                    #Get ancestral fitness for this position
+                                    "\n\n\t\tanc_fit_val =  sim.getValue(\"ancestral_fitness_value\" + asString(row_num));" +
+                                    
+                                    #Get amino acid sequence
+                                    "\n\n\t\tstarting_pos = drop(start_stop_codon_positions[row_num,0]);" +
                                     "\n\t\tending_pos = drop(start_stop_codon_positions[row_num,1])+2;" +
                                     "\n\t\taa_stop_pos = (ending_pos - starting_pos + 1)/3 - 1;" +
                                     "\n\t\taa_seq = codonsToAminoAcids(nucs.nucleotides(start = starting_pos, " +
                                     "end = ending_pos, format = \"codon\"), paste = F);" +
-                                    "\n\t\tposes = (aa_seq != sim.getValue(\"ancestral_aas\" + row_num));" +
+                                    
+                                    #Find where sequences are different
+                                    "\n\n\t\tposes = (aa_seq != sim.getValue(\"ancestral_aas\" + row_num));" +
+                                    
+                                    #If no differences, ancestral fitness
                                     "\n\n\t\tif(sum(poses) == 0){" +
-                                    "\n\t\t\tfitness_value = fitness_value * sim.getValue(\"ancestral_fitness_value\" + asString(row_num));" +
-                                    "\n\t\t\t next;\n\t\t}" +
-                                    "\n\n\t\tfitnesses = sim.getValue(\"ancestral_fitnesses\"+row_num);" +
-                                    "\n\t\tfitnesses[poses] = sapply(which(poses), \"sim.getValue(aa_seq[applyValue]);\")" +
-                                    "[sim.getValue(\"fitness_profiles\" + row_num)[poses]];")
-        #Calculate the impact of the stop codon
-        if (self.start_params["fasta_file"] ==  None):
-            genome_fitness_function_string += ("\n\n\t\tif(any(poses[0] | poses[aa_stop_pos])){" +
-                                    "\n\t\t\tfitness_value = fitness_value * product(" + str(self.start_params["min_fitness"]) + "/fitnesses);" +
-                                    "\n\t\t\tnext;\n\t\t}")
-        genome_fitness_function_string += ("\n\n\t\tif(any(aa_seq[poses] == \"X\")){" +
-                                    "\n\t\t\tpos_stop = match(\"X\", aa_seq[0:(length(aa_seq)-1)]);"+
-                                    "\n\t\t\tif(pos_stop == 0){fitnesses = " + str(self.start_params["min_fitness"]) + "/fitnesses;}" +
-                                    "\n\t\t\telse if (pos_stop + 1 < aa_stop_pos) " +
-                                    "{fitnesses[(pos_stop+1):aa_stop_pos] = " + str(self.start_params["min_fitness"]) + "/fitnesses[(pos_stop+1):aa_stop_pos];}\n\t\t}" +
-                                    "\n\n\t\tfitness_value = fitness_value * product(fitnesses);\n\t}"+
+                                    "\n\t\t\tcodon_fit = anc_fit_val;" +
+                                    "\n\t\t}"  +
+                                    
+                                    #If missing start or stop codon, 0
+                                    "\n\t\telse if(any(poses[0] | poses[aa_stop_pos])){" +
+                                    "\n\t\t\tcodon_fit = 0;" +
+                                    "\n\t\t}"  +
+                                    
+                                    #Get the fitness of the whole genome, replace changes with new values
+                                    "\n\t\telse{" 
+                                    "\n\t\tfitness_vals = sim.getValue(\"ancestral_fitnesses\"+row_num);" +
+                                    "\n\t\t\tfitness_vals[poses] = sapply(which(poses), \"sim.getValue(aa_seq[applyValue])" +
+                                    "[sim.getValue(\\\"fitness_profiles\\\" + row_num)[applyValue + starting_pos]];\");" +
+                                    
+                                    #If anything is a stop codon remove that portion from fitnesses
+                                    "\n\n\t\t\tif(any(aa_seq[poses] == \"X\")){" +
+                                    "\n\t\t\t\tearly_stop_point = which(aa_seq[poses] == \"X\")[0];" +
+                                    "\n\t\t\t\tfitness_vals = fitness_vals[starting_pos:early_stop_point];" +
+                                    "\n\t\t\t}" +
+                                    
+                                    "\n\n\t\t\tcodon_fit = sum(fitness_vals);" +
+                                    "\n\t\t}"
+                                    
+                                    
+                                    
+                                    "\n\n\t\tfitness_value = fitness_value + codon_fit;\n\t}"+
                                     "\n\n\treturn fitness_value;\n}\n\n\n")
 
         self.output_file.write(genome_fitness_function_string)
@@ -223,7 +243,8 @@ class writeSLiM:
 
         #Now write out the fitness callback based on the fitness distribution
 
-        fitness_callback_string = ("fitnessEffect() {return(get_genome_fitness(individual.genome1));" + 
+        fitness_callback_string = ("fitnessEffect() {return(get_genome_fitness(individual.genome1) / " + 
+                    str(self.start_params["scaling_value"]) + ");" + 
                     "//If error says total fitness < 0.0, mutation rate is lethal\n}\n\n\n")
 
         self.output_file.write(fitness_callback_string)
@@ -389,8 +410,8 @@ class writeSLiM:
         #Write the early commands - this may need tweaking w/ the fitness algorithm
         early_event = (str(int(population_parameters["dist_from_start"]) + 1) + ":" + str(int(population_parameters["end_dist"])) +
                         " early(){\n\t" + pop_name + ".fitnessScaling = " +
-                        str(int(population_parameters["population_size"])) + "/ (" + pop_name +
-                        ".individualCount * " + str(self.start_params["scaling_value"]) + ");" )
+                        str(int(population_parameters["population_size"])) + "/" + pop_name +
+                        ".individualCount;" )
 
         early_event+= "\n}\n\n\n"
 
@@ -487,13 +508,12 @@ class writeSLiM:
         if (samp_size == "consensus"):
             terminal_output_string += ("\n\n\tconsensus = \"\";" +
                                     "\n\tfor (i in 0:" + str(self.start_params["genome_length"] * 3 - 1) + "){" +
-                                    "\n\t\tconsensus = consensus+ c(\"A\", \"C\", \"G\", \"T\")[whichMax(nucleotideCounts(paste0(matrix(sapply(" + pop_name +
+                                    "\n\t\tconsensus = consensus+ c(\"A\", \"C\", \"G\", \"T\")[whichMax(nucleotideCounts(paste0(matrix(sapply(" + pop +
                                     ".genomes.nucleotides(), \"strsplit(applyValue, sep = '');\"), ncol = " + str(self.start_params["genome_length"] * 3) + 
                                     ", byrow = T)[,i])))];\n\t}" +
                                     "\n\n\tfasta_string_nuc = paste0(\">" + pop_name + ": \\n\", consensus);" +
-                                    "\n\twriteFile(\"" + nuc_filename + "\", fasta_string_nuc,append = T);" )
-            if (not self.user_provided_sequence):
-                terminal_output_string +=("\n\n\tfasta_string_prot = paste0(\">" + pop_name + ": \\n\", codonsToAminoAcids(nucleotidesToCodons(consensus)));" +
+                                    "\n\twriteFile(\"" + nuc_filename + "\", fasta_string_nuc,append = T);" +
+                                    "\n\n\tfasta_string_prot = paste0(\">" + pop_name + ": \\n\", codonsToAminoAcids(nucleotidesToCodons(consensus)));" +
                                         "\n\twriteFile(\"" + aa_filename + "\", fasta_string_prot,append = T);")
 
         else:
