@@ -243,8 +243,8 @@ class writeSLiM:
 
         #Now write out the fitness callback based on the fitness distribution
 
-        fitness_callback_string = ("fitnessEffect() {return(get_genome_fitness(individual.genome1) / " + 
-                    str(self.start_params["scaling_value"]) + ");" + 
+        fitness_callback_string = ("fitnessEffect() {return((get_genome_fitness(individual.genome1)+get_genome_fitness(individual.genome2)) / " + 
+                    str(2*self.start_params["scaling_value"]) + ");" + 
                     "//If error says total fitness < 0.0, mutation rate is lethal\n}\n\n\n")
 
         self.output_file.write(fitness_callback_string)
