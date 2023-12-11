@@ -94,6 +94,8 @@ class readInput:
                                     'specifying all polymorphic and fixed states at the end of a branch')
         parser.add_argument('-S', '--calculate_selection', action='store_true', default=False, help = 'boolean flag that turns on calculations ' +
                                     'of selection by counting synonymous and non-synonymous fixed substitutions')
+        parser.add_argument('-N', '--neutral_evolution', action='store_true', default=False, help = 'boolean flag to run neutral evolution ' +
+                                    'instead of fitness based evolution')                            
 
 
         #Get arguments from user
