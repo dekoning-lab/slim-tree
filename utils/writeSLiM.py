@@ -120,6 +120,7 @@ class writeSLiM:
     
     
             #Define required constants
+            count = 0;
             profile_num = 0;
     
             textfile = open("a_file.txt", "w")
@@ -132,6 +133,7 @@ class writeSLiM:
     
                 fitness_vector = "c(" + fitness_vector[1:len(fitness_vector)-1] + ")"
                 set_up_fitness += "\n\tsim.setValue(\"fitness_profiles" + str(count) +"\"," + fitness_vector + ");"
+                count += 1;
     
     
     
