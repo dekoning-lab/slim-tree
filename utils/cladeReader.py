@@ -2,6 +2,7 @@
 
 from Bio import Phylo
 import copy
+import math
 
 
 class cladeReader:
@@ -85,7 +86,7 @@ class cladeReader:
         starting_parameter_dict = {
             "pop_name": None,
             "child_clades" : None,
-            "population_size" : self.start_params["population_size"],
+            "population_size" : self.start_params["population_size"] * 2,
             "recombination_rate" : self.start_params["recombination_rate"],
             "sample_size": self.start_params["sample_size"],
             "split_ratio": self.start_params["split_ratio"],
@@ -198,6 +199,14 @@ class cladeReader:
         clade_dict['terminal_clade'] = clade.clades == []
         clade_dict['last_child_clade'] = last_child_clade
         clade_dict['end_dist'] = pop_end
+        
+        #Find population size -> floor and ceiling ensures that odd sized populations have the same number of individuals in next gen
+        pop_size = clade_dict['population_size'] / 2 #Division by 2 ensures that there is not exponential growth in population size
+        if(last_child_clade):
+            pop_size = math.ceil(pop_size)
+        else:
+            pop_size = math.floor(pop_size)
+        clade_dict['population_size'] = pop_size
 
         return [clade_dict]
         
