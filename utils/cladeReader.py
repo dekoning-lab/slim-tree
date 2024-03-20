@@ -86,7 +86,7 @@ class cladeReader:
         starting_parameter_dict = {
             "pop_name": None,
             "child_clades" : None,
-            "population_size" : self.start_params["population_size"] * 2,
+            "population_size" : self.start_params["population_size"],
             "recombination_rate" : self.start_params["recombination_rate"],
             "sample_size": self.start_params["sample_size"],
             "split_ratio": self.start_params["split_ratio"],
