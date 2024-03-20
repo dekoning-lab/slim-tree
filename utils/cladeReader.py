@@ -200,13 +200,6 @@ class cladeReader:
         clade_dict['last_child_clade'] = last_child_clade
         clade_dict['end_dist'] = pop_end
         
-        #Find population size -> floor and ceiling ensures that odd sized populations have the same number of individuals in next gen
-        # pop_size = clade_dict['population_size'] / 2 #Division by 2 ensures that there is not exponential growth in population size
-        # if(last_child_clade):
-            # pop_size = math.ceil(pop_size)
-        # else:
-            # pop_size = math.floor(pop_size)
-        # clade_dict['population_size'] = pop_size
 
         return [clade_dict]
         
