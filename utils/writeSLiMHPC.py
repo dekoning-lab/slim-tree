@@ -175,7 +175,7 @@ class writeSLiMHPC(writeSLiM):
             end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_fixed_mutation_counts.txt\"," +
                 "asString(sim.getValue(\"fixations_counted_p1\")));" )
 
-        #Write file with the number of synonymous and synonymous mutations
+        #Write file with the number of synonymous and synonymous substitutions
         if(population_parameters["calculate_selection"]):
             end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_dNdS.txt\"," +
                 "paste0(\"dN: \", sim.getValue(\"dN_p1\"), \" / " + str(self.start_params["dn_denom"]) + " = \", " +

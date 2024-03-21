@@ -452,7 +452,7 @@ class writeSLiM:
                 "\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_fixed_mutations.txt\"," +
                 " paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue(\"fixations_" + population_parameters["pop_name"] + "\"))), sep = \"\"));")
 
-        #Write file with the number of synonymous and synonymous mutations
+        #Write file with the number of synonymous and synonymous substitutions
         if(population_parameters["calculate_selection"]):
             end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_dNdS.txt\"," +
                 "paste0(\"dN: \", sim.getValue(\"dN_" + population_parameters["pop_name"] + "\"), \" / " + str(self.start_params["dn_denom"]) + " = \", " +
