@@ -109,6 +109,7 @@ class findFitness:
             subprocess.run(["sbatch",  "find_fitness.sh"])
             
             #Waits until batch file finished before continuing
+            print(os.path.isfile(fitness_mat))
             while not os.path.isfile(fitness_mat): time.sleep(1)
             
         else:      
