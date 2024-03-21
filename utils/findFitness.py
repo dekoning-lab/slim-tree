@@ -91,6 +91,10 @@ class findFitness:
         
         fitness_mat =  os.getcwd() + "/table_fitness_dists.csv"
         
+        #If existing fitness mat exists remove it, ensures HPC waits if file is already there
+        os.remove(fitness_mat) 
+        
+        
         #If hpc make file to run R script to find fitness profiles and run batch file
         if (hpc):
             batch_file = open("find_fitness.sh", "w")
@@ -103,6 +107,9 @@ class findFitness:
             batch_file.close()
             
             subprocess.run(["sbatch",  "find_fitness.sh"])
+            
+            #Waits until batch file finished before continuing
+            while not os.path.exists(): sleep(fitness_mat)
         else:      
             #Run R script to find fitness profiles
             subprocess.call(["Rscript", os.path.dirname(os.path.realpath(__file__)) + "/fitness_profile_finder.R", 
