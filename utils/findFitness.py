@@ -98,8 +98,8 @@ class findFitness:
                 "\n#SBATCH -p "  + str(partition) + 
                 "\n#SBATCH -o fitness.out\n#SBATCH -e fitness.err" +
                 "\n#SBATCH -n 10" + 
-                "\nRscript" + os.path.dirname(os.path.realpath(__file__)) + "/fitness_profile_finder.R" +
-                "-f" + self.stationary_dist_file + "-N" + str(population_size) + "-v" + str(mutation_rate)+ "-o" + fitness_mat))
+                "\nRscript " + os.path.dirname(os.path.realpath(__file__)) + "/fitness_profile_finder.R" +
+                " -f " + self.stationary_dist_file + " -N " + str(population_size) + " -v " + str(mutation_rate)+ " -o " + fitness_mat))
             batch_file.close()
             
             subprocess.call(["sbatch",  "find_fitness.sh"])
