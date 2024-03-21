@@ -86,7 +86,7 @@ class findFitness:
             
     #Function which finds fitnesses from stationary distributions using R script if fitness file not given.
     #Writes fitnesses to new file so they may be reused in the future
-    def find_optimal_fitnesses(self, mutation_rate, population_size, hpc, partition, time):
+    def find_optimal_fitnesses(self, mutation_rate, population_size, hpc, partition, time_p):
         print("Finding fitnesses for stationary distributions")
         
         fitness_mat =  os.getcwd() + "/table_fitness_dists.csv"
@@ -98,7 +98,7 @@ class findFitness:
         #If hpc make file to run R script to find fitness profiles and run batch file
         if (hpc):
             batch_file = open("find_fitness.sh", "w")
-            batch_file.write(("#!/bin/sh\n\n#SBATCH -J find_fitness \n#SBATCH -t " + str(time) +
+            batch_file.write(("#!/bin/sh\n\n#SBATCH -J find_fitness \n#SBATCH -t " + str(time_p) +
                 "\n#SBATCH -p "  + str(partition) + 
                 "\n#SBATCH -o fitness.out\n#SBATCH -e fitness.err" +
                 "\n#SBATCH -n 10" + 
