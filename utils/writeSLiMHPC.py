@@ -120,6 +120,7 @@ class writeSLiMHPC(writeSLiM):
         pop_string += "\n\tsim.setValue(\"fixations_counted_p1\", 0);"
         pop_string += "\n\tsim.setValue(\"dN_p1\", 0);"
         pop_string += "\n\tsim.setValue(\"dS_p1\", 0);"
+        set_up_fitness += "\n\tsim.setValue(\"subs_p1\", \"\\n\\nSubstitutions:\");"
         pop_string += "\n}\n\n\n"
 
         self.output_file.write(pop_string)
@@ -177,9 +178,11 @@ class writeSLiMHPC(writeSLiM):
         #Write file with the number of synonymous and synonymous mutations
         if(population_parameters["calculate_selection"]):
             end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_dNdS.txt\"," +
-                "paste(\"dN: \", sim.getValue(\"dN_p1\")/" + str(self.start_params["dn_denom"]) + ", " +
-                "\"\\ndS: \", sim.getValue(\"dS_p1\") /" + str(self.start_params["ds_denom"]) +
-                ", sep = \"\"));" )
+                "paste0(\"dN: \", sim.getValue(\"dN_p1\"), \" / " + str(self.start_params["dn_denom"]) + " = \", " +
+                "sim.getValue(\"dN_p1\") / " + str(self.start_params["dn_denom"]) + ", " +
+                "\"\\ndS: \", sim.getValue(\"dS_p1\"), \" / " + str(self.start_params["ds_denom"]) + " = \", " +
+                "sim.getValue(\"dS_p1\") / " + str(self.start_params["ds_denom"]) + ", " +
+                "sim.getValue(\"subs_p1\")));" )
 
 
 

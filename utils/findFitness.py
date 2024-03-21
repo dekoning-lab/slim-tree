@@ -5,6 +5,7 @@ import numpy as np
 from Bio.Seq import Seq
 from Bio.Seq import CodonTable
 from Bio import SeqIO
+from copy import deepcopy
 
 class findFitness:
 
@@ -230,7 +231,7 @@ class findFitness:
     
     #Convert stationary distribution from codons to amino acids
     def convert_stat_dist(self):
-        combined_stat_dists = self.stationary_mat
+        combined_stat_dists = deepcopy(self.stationary_mat)
         combined_stat_dists.index = self.AAs
         combined_stat_dists = combined_stat_dists.groupby(combined_stat_dists.index).sum()
         

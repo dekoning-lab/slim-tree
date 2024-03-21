@@ -163,6 +163,7 @@ class writeSLiM:
         set_up_fitness += "\n\tsim.setValue(\"fixations_counted_p1\", 0);"
         set_up_fitness += "\n\tsim.setValue(\"dN_p1\", 0);"
         set_up_fitness += "\n\tsim.setValue(\"dS_p1\", 0);"
+        set_up_fitness += "\n\tsim.setValue(\"subs_p1\", \"\\n\\nSubstitutions:\");"
         set_up_fitness += "\n}\n\n\n"
 
 
@@ -286,8 +287,8 @@ class writeSLiM:
                         ".genomes.nucleotides(NULL, NULL, \"integer\");"+
                         "\n\t\tmuts_mat = matrix(muts_mat, nrow = row_num, byrow = T);" +
                         "\n\t\tcompare_seq = c(muts_mat[0,]);"+
-                        "\n\n\t\tfixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = " +
-                        "row_num), muts_mat)% row_num == 0);" +
+                        "\n\n\t\tfixed_nucs = apply(muts_mat, 1, " +
+                        "\"max(applyValue) - min (applyValue) == 0;\");" +
                         "\n\n\t\tdifferent_muts = (ancestral_genome != compare_seq);" +
                         "\n\t\tnew_fixations = different_muts & fixed_nucs;" +
                         "\n\n\t\tif(any(new_fixations)){" +
@@ -299,26 +300,30 @@ class writeSLiM:
             if(population_parameters["calculate_selection"]):
                 repeated_commands_string += ("\n\t\t\tnew_fixations_space = which(new_fixations);" +
                                 "\n\n\t\t\tdN_name = \"dN_" + pop_name + "\";" +
-                                "\n\t\t\tdS_name = \"dS_" + pop_name + "\";"
+                                "\n\t\t\tdS_name = \"dS_" + pop_name + "\";" +
+                                "\n\t\t\tsubs_name = \"subs_" + pop_name + "\";"+
                                 "\n\t\t\tfor(fix in new_fixations_space){" +
                                 "\n\t\t\t\tfix_pos = (fix + 1) % 3;" +
                                 "\n\t\t\t\tif (fix_pos == 0) {" +
-                                "\n\t\t\t\t\told_codon = codonsToAminoAcids(nucleotidesToCodons(ancestral_genome[(fix-2):fix]));" +
-                                "\n\t\t\t\t\tnew_codon = codonsToAminoAcids(nucleotidesToCodons(new_fixed[(fix-2):fix]));" +
-                                "\n\t\t\t\t\tif (old_codon == new_codon){" +
-                                "\n\t\t\t\t\t\tsim.setValue(dS_name, sim.getValue(dS_name) + 1);" +
-                                "\n\t\t\t\t\t} else {" +
-                                "\n\t\t\t\t\t\tsim.setValue(dN_name, sim.getValue(dN_name) + 1);" +
-                                "\n\t\t\t\t\t};\n\t\t\t} else if (fix_pos == 1) {" +
-                                "\n\t\t\t\t\told_codon = codonsToAminoAcids(nucleotidesToCodons(ancestral_genome[fix:(fix+2)]));" +
-                                "\n\t\t\t\t\tnew_codon = codonsToAminoAcids(nucleotidesToCodons(new_fixed[fix:(fix+2)]));" +
-                                "\n\t\t\t\t\tif (old_codon == new_codon){" +
-                                "\n\t\t\t\t\t\tsim.setValue(dS_name, sim.getValue(dS_name) + 1);" +
-                                "\n\t\t\t\t\t} else {" +
-                                "\n\t\t\t\t\t\tsim.setValue(dN_name, sim.getValue(dN_name) + 1);" +
-                                "\n\t\t\t\t\t};\n\t\t\t} else {" +
+                                "\n\t\t\t\t\told_nucs = ancestral_genome[(fix-2):fix];" +
+                                "\n\t\t\t\t\tnew_nucs = new_fixed[(fix-2):fix];" +
+                                "\n\t\t\t\t} else if (fix_pos == 1) {" +
+                                "\n\t\t\t\t\told_nucs = ancestral_genome[fix:(fix+2)];" +
+                                "\n\t\t\t\t\tnew_nucs = new_fixed[fix:(fix+2)];" +
+                                "\n\t\t\t\t} else if (fix_pos == 2) {" +
+                                "\n\t\t\t\t\told_nucs = ancestral_genome[(fix-1):(fix+1)];" +
+                                "\n\t\t\t\t\tnew_nucs = new_fixed[(fix-1):(fix+1)];" +
+                                "\n\t\t\t\t}"+
+                                "\n\n\t\t\t\told_AA = codonsToAminoAcids(nucleotidesToCodons(old_nucs));" +
+                                "\n\t\t\t\tnew_AA = codonsToAminoAcids(nucleotidesToCodons(new_nucs));" +
+                                "\n\t\t\t\tif (old_AA == new_AA){" +
+                                "\n\t\t\t\t\tsim.setValue(dS_name, sim.getValue(dS_name) + 1);" +
+                                "\n\t\t\t\t} else {" +
                                 "\n\t\t\t\t\tsim.setValue(dN_name, sim.getValue(dN_name) + 1);" +
-                                "\n\t\t\t\t};\n\t\t\t};")
+                                "\n\t\t\t\t}" +
+                                "\n\t\t\t\tsim.setValue(subs_name, sim.getValue(subs_name)+" +
+                                "paste0(\"\\n\",asInteger(floor(fix/3)), old_AA, \":\", new_AA));" +
+                                "\n\t\t\t}")
             
             #If there is a flag to count substitutions, save fixed substitutions to file
             if(population_parameters["count_subs"]):
@@ -362,7 +367,8 @@ class writeSLiM:
                     population_parameters["parent_pop_name"] +"\"));" +
                     "\n\tsim.setValue(\"fixations_counted_"+ population_parameters["pop_name"]+"\", 0);" +
                     "\n\tsim.setValue(\"dN_"+ population_parameters["pop_name"]+"\", 0);" +
-                    "\n\tsim.setValue(\"dS_"+ population_parameters["pop_name"]+"\", 0);")
+                    "\n\tsim.setValue(\"dS_"+ population_parameters["pop_name"]+"\", 0);" +
+                    "\n\tsim.setValue(\"subs_"+ population_parameters["pop_name"]+"\", \"\\n\\nSubstitutions:\");")
 
             if(population_parameters["last_child_clade"] == True):
                 define_population_string += "\n\t" + population_parameters["parent_pop_name"]+".setSubpopulationSize(0);"
@@ -448,10 +454,12 @@ class writeSLiM:
 
         #Write file with the number of synonymous and synonymous mutations
         if(population_parameters["calculate_selection"]):
-            end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_dNdS_mutations.txt\"," +
-                "paste(\"dN: \", sim.getValue(\"dN_" + population_parameters["pop_name"] + "\")/" + str(self.start_params["dn_denom"]) + ", " +
-                "\"\\ndS: \", sim.getValue(\"dS_" + population_parameters["pop_name"] + "\")/" + str(self.start_params["ds_denom"]) + 
-                ", sep = \"\"));" )
+            end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_dNdS.txt\"," +
+                "paste0(\"dN: \", sim.getValue(\"dN_" + population_parameters["pop_name"] + "\"), \" / " + str(self.start_params["dn_denom"]) + " = \", " +
+                "sim.getValue(\"dN_" + population_parameters["pop_name"] + "\") / " + str(self.start_params["dn_denom"]) + ", " +
+                "\"\\ndS: \", sim.getValue(\"dS_" + population_parameters["pop_name"] + "\"), \" / " + str(self.start_params["ds_denom"]) + " = \", " +
+                "sim.getValue(\"dS_" + population_parameters["pop_name"] + "\") / " + str(self.start_params["ds_denom"]) + ", " +
+                "sim.getValue(\"subs_" + population_parameters["pop_name"] + "\")));" )
 
 
         #Write files containing polymorphisms in each population and relative proportions
