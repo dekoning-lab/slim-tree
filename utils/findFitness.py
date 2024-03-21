@@ -102,7 +102,7 @@ class findFitness:
                 " -f " + self.stationary_dist_file + " -N " + str(population_size) + " -v " + str(mutation_rate)+ " -o " + fitness_mat))
             batch_file.close()
             
-            subprocess.call(["sbatch",  "find_fitness.sh"])
+            subprocess.run(["sbatch",  "find_fitness.sh"])
         else:      
             #Run R script to find fitness profiles
             subprocess.call(["Rscript", os.path.dirname(os.path.realpath(__file__)) + "/fitness_profile_finder.R", 

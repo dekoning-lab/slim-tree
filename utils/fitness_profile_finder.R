@@ -12,6 +12,12 @@
 #seqinr
 
 
+#Install packages not already installed
+list.of.packages <- c("dplyr", "BB", "data.table", "optparse", "seqinr", "doParallel", "Rfast")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+
+#load packages
 suppressMessages(library(dplyr))
 suppressMessages(library(BB))
 suppressMessages(library(data.table))
