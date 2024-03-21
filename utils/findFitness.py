@@ -109,7 +109,7 @@ class findFitness:
             subprocess.run(["sbatch",  "find_fitness.sh"])
             
             #Waits until batch file finished before continuing
-            while not os.path.exists(): sleep(fitness_mat)
+            while not os.path.exists(fitness_mat): sleep(1)
         else:      
             #Run R script to find fitness profiles
             subprocess.call(["Rscript", os.path.dirname(os.path.realpath(__file__)) + "/fitness_profile_finder.R", 
