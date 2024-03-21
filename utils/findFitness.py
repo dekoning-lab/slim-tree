@@ -86,13 +86,27 @@ class findFitness:
             
     #Function which finds fitnesses from stationary distributions using R script if fitness file not given.
     #Writes fitnesses to new file so they may be reused in the future
-    def find_optimal_fitnesses(self, mutation_rate, population_size):
+    def find_optimal_fitnesses(self, mutation_rate, population_size, hpc, partition, time):
         print("Finding fitnesses for stationary distributions")
         
         fitness_mat =  os.getcwd() + "/table_fitness_dists.csv"
-        #Run R script to find fitness profiles
-        subprocess.call(["Rscript", os.path.dirname(os.path.realpath(__file__)) + "/fitness_profile_finder.R", 
-                "-f", self.stationary_dist_file, "-N", str(population_size), "-v", str(mutation_rate), "-o", fitness_mat])
+        
+        #If hpc make file to run R script to find fitness profiles and run batch file
+        if (hpc):
+            batch_file = open("find_fitness.sh", "w")
+            batch_file.write(("#!/bin/sh\n\n#SBATCH -J find_fitness \n#SBATCH -t " + str(time) +
+                "\n#SBATCH -p "  + str(partition) + 
+                "\n#SBATCH -o fitness.out\n#SBATCH -e fitness.err" +
+                "\n#SBATCH -n 10" + 
+                "\nRscript" + os.path.dirname(os.path.realpath(__file__)) + "/fitness_profile_finder.R" +
+                "-f" + self.stationary_dist_file + "-N" + str(population_size) + "-v" + str(mutation_rate)+ "-o" + fitness_mat))
+            batch_file.close()
+            
+            subprocess.call(["sbatch",  "find_fitness.sh"])
+        else:      
+            #Run R script to find fitness profiles
+            subprocess.call(["Rscript", os.path.dirname(os.path.realpath(__file__)) + "/fitness_profile_finder.R", 
+                    "-f", self.stationary_dist_file, "-N", str(population_size), "-v", str(mutation_rate), "-o", fitness_mat])
                 
         self.fitness_mat = pd.read_csv(fitness_mat, header = None, index_col = 0)
         
