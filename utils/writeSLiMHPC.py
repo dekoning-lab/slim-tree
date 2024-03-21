@@ -120,7 +120,7 @@ class writeSLiMHPC(writeSLiM):
         pop_string += "\n\tsim.setValue(\"fixations_counted_p1\", 0);"
         pop_string += "\n\tsim.setValue(\"dN_p1\", 0);"
         pop_string += "\n\tsim.setValue(\"dS_p1\", 0);"
-        set_up_fitness += "\n\tsim.setValue(\"subs_p1\", \"\\n\\nSubstitutions:\");"
+        pop_string += "\n\tsim.setValue(\"subs_p1\", \"\\n\\nSubstitutions:\");"
         pop_string += "\n}\n\n\n"
 
         self.output_file.write(pop_string)
