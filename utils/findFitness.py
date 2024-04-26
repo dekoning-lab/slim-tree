@@ -207,7 +207,6 @@ class findFitness:
         for codon_num in start_codon_nums: codons[codon_num] = start_codon
         for codon_num in stop_codon_nums: codons[codon_num] = random.choice(stop_codons)
 
-
         return (codons)
 
 
@@ -245,8 +244,9 @@ class findFitness:
         
         codons = []
         for codon_name in codon_names:
-            codons.append(self.slim_codons[codon_name][0])
+            codons.append(str(self.slim_codons[codon_name][0]))
         
+        print(codons)
         return (codons, int(genome_length))
         
     

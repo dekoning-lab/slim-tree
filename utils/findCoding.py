@@ -49,7 +49,7 @@ class findCoding:
         
     #If user defined sequence the coding seqs will be decided just by the genome length
     def get_coding_seqs_fasta(self):
-        self.coding_regions = np.stack(np.array_split([int(0), int(self.genome_length)], 1))
+        self.coding_regions = np.stack(np.array_split([int(0), int(self.genome_length)-1], 1))
 
     
     #Returns coding regions

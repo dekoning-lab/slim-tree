@@ -68,7 +68,6 @@ class writeSLiM:
 
         #If Jukes-Cantor model set mutation rate to Jukes-Cantor model, otherwise set to the mutational matrix
         initialize_string += "\n\tmm = "
-
         if(self.start_params["jukes_cantor"]):
             initialize_string += "mmJukesCantor(" + str(population_parameters ["mutation_rate"]/3) + ");"
         else:
@@ -80,7 +79,7 @@ class writeSLiM:
                         "\n\tinitializeGenomicElementType(\"g1\", m1, 1.0, mm);" +
                         "\n\tinitializeGenomicElementType(\"g2\", m1, 1.0, mm);" +
                         "\n\tinitializeRecombinationRate("+ str(population_parameters ["recombination_rate"])+");")
-
+        print(self.start_params["coding_seqs"])
         #Initialize Genomic Elements according to number of genes for easy visualization in SLiMgui. g1 = coding region, g2 = non-coding region
         for region_num in range(len(self.start_params["coding_seqs"])):
 
