@@ -13,7 +13,7 @@ class findFitness:
         self.stationary_dist_file = stationary_dist_file
         self.stationary_mat = pd.read_csv(stationary_dist_file, header = None, index_col = 0)
         self.ndists = self.stationary_mat.shape[1]
-        self.validify_stationary_distribution()
+        self.validify_stationary_distribution(self.stationary_mat)
         
         
         
@@ -25,11 +25,11 @@ class findFitness:
     
     
     #Function to make sure that the stationary distributions are provided in the correct format
-    def validify_stationary_distribution(self):
+    def validify_stationary_distribution(self, stationary_mat):
         #Translate to amino acids
         
         try:
-            codons = Seq("".join(list(self.stationary_mat.index)))
+            codons = Seq("".join(list(stationary_mat.index)))
             self.AAs = [*str(codons.translate())]
         except TypeError: #Make sure that codons are provided in the first row
             print("Please ensure the first row of your stationary distributions is the codon names. Exiting.")
@@ -88,7 +88,6 @@ class findFitness:
     #Writes fitnesses to new file so they may be reused in the future
     def find_optimal_fitnesses(self, mutation_rate, population_size, hpc, partition, time_p):
         print("Finding fitnesses for stationary distributions")
-        
         fitness_mat =  os.getcwd() + "/table_fitness_dists.csv"
         
         #If existing fitness mat exists remove it, ensures HPC waits if file is already there
@@ -115,9 +114,8 @@ class findFitness:
             #Run R script to find fitness profiles
             subprocess.call(["Rscript", os.path.dirname(os.path.realpath(__file__)) + "/fitness_profile_finder.R", 
                     "-f", self.stationary_dist_file, "-N", str(population_size), "-v", str(mutation_rate), "-o", fitness_mat])
-                
+
         self.fitness_mat = pd.read_csv(fitness_mat, header = None, index_col = 0)
-        
         
     
     #Function to find fitnesses if a non-jukes-cantor matrix is supplied - uses the average mutation rate of the matrix

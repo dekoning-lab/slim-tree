@@ -1,0 +1,29 @@
+aa_fitness_distributions: null
+average_theta: 0.0014
+backup: false
+burn_in: 1000
+calculate_selection: false
+coding_ratio: 1.0
+codon_stationary_distributions: /mnt/c/Users/ebrin/Documents/BioinformaticsSoftware/slim-tree/tests/testFiles/table_stationary_distributions
+count_subs: false
+fasta_file: null
+gene_count: 1
+genome_length: 500
+high_performance_computing: false
+input_tree: /mnt/c/Users/ebrin/Documents/BioinformaticsSoftware/slim-tree/tests/testFiles/test_tree.txt
+jukes_cantor: false
+mean_mutation_rate: 3.5e-06
+mutation_matrix: matrix(c(0.0, 3.5e-06, 3.5e-06, 3.5e-06, 3.5e-06, 0.0, 3.5e-06, 3.5e-06,
+  3.5e-06, 3.5e-06, 0.0, 3.5e-06, 3.5e-06, 3.5e-06, 3.5e-06, 0.0), ncol = 4, byrow
+  = T)
+neutral_evolution: false
+nonWF: true
+output_gens: false
+partition: apophis
+polymorphisms: false
+population_size: 100
+recombination_rate: 2.5e-08
+sample_size: all
+split_ratio: 0.5
+time: '12:00:00'
+tree_data_file: null

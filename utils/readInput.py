@@ -40,7 +40,7 @@ class readInput:
         #High performance computing parameters - allows for computation using Slurm
         parser.add_argument('-hpc','--high_performance_computing', action='store_true', default=False, help = 'boolean flag to turn on ' +
                                 'slim-tree high performance computing. Slurm is required')
-        parser.add_argument('-p', '--partition', type = str, help = 'partition to run Slurm on - required if using high performance computing')
+        parser.add_argument('-p', '--partition', type = str, help = 'partition to run Slurm o n - required if using high performance computing')
         parser.add_argument('-t', '--time', type = str, help = 'maximum time to run each simulation for - suggested time is the maximum ' +
                                 'time available for a partition - required if using high performance computing')
 
@@ -48,7 +48,7 @@ class readInput:
         parser.add_argument('-w', '--nonWF', action='store_true', default=False, help = 'boolean flag to specify that a non-wright-fisher ' +
                                 'model should be used in lieu of a wright-fisher model.')
         
-                
+               
         #Arguments for specifying population parameters
         parser.add_argument('-n','--population_size', help = 'starting population size for the simulation, default = 100', type = int, default = 100)
         parser.add_argument('-b','--burn_in_multiplier', type=int, default = 10, help = 'value to multiply population size by ' +
@@ -107,16 +107,18 @@ class readInput:
         
     #Command to make string version of mutation matrix from csv file
     def make_mutation_matrix(self, mutation_matrix):
-        mut_mat = pandas.read_csv(mutation_matrix, names = ["A","C","G","T"])
-
+        mut_mat = pandas.read_csv(mutation_matrix, header = None)
         nrow = mut_mat.shape[0]
+        ncol = mut_mat.shape[1]
 
-        #Check that mutational matrices are either 4 by 4 or 4 by 64
-        if ((nrow != 4) or (mut_mat.shape[1] != 4)):
+        #Check that mutational matrices is 4 by 4
+        if (nrow != 4 or ncol != 4):
             print("Mutational matrices must be 4 by 4. Representing mutations from " +
                 "nucleotide to nucleotide.")
             sys.exit(0)
 
+        
+        mut_mat.columns = ["A","C","G","T"]
         mut_mat = mut_mat.to_numpy()
 
         #Check to make sure that mutations from nucleotide to itself are 0
@@ -225,7 +227,7 @@ class readInput:
     def make_param_dict(self, arguments):
     
         # Set up the starting parameters
-        param_dict = vars(arguments)
+        param_dict = copy.deepcopy(vars(arguments))
         
         #Figure out burn in time
         param_dict["burn_in"] = arguments.burn_in_multiplier * arguments.population_size
@@ -249,11 +251,11 @@ class readInput:
         if (param_dict_dump["jukes_cantor"]):
             param_dict_dump["theta"] = 4*param_dict_dump["mutation_rate"]*param_dict_dump["population_size"]
         else: #If not a jukes cantor model, get human readable matrix and find average mutation rate and average theta
-            param_dict_dump["mean_mutation_rate"] = float(param_dict_dump["mutation_matrix"][0].mean().mean())
+            param_dict_dump["mean_mutation_rate"] = float(param_dict_dump["mutation_matrix"][0].sum().sum()) /12   #Takes average of 4 by 4 matrix and removes the diagonals from estimation
             param_dict_dump["mutation_matrix"] = param_dict_dump["mutation_matrix"][1]
             param_dict_dump["average_theta"] = 4*param_dict_dump["mean_mutation_rate"]*param_dict_dump["population_size"]
-        
-        
+            param_dict_dump.pop("mutation_rate")
+            
         #Remove filenames from data for datafile
         param_dict_dump.pop("filenames")
         

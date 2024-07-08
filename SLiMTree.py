@@ -1,20 +1,6 @@
 #Program to take in a tree in Newick file and output SLiM code to run a simulation from that tree
 
-
-# import sys, argparse, random, os, json, string, math, pandas, re, yaml, subprocess
-# import numpy as np
-
-# from Bio import Phylo
-# from Bio import SeqIO
-# from Bio.Seq import Seq
-# from matplotlib.pyplot import show, savefig
-# from writeSLiM import writeSLiM
-# from writeSLiMHPC import writeSLiMHPC
-# from calculateSelectionDenominators import calculateSelectionDenominators
-# from contactmaps import ContactMap
-# from contactmaps import utils
-
-from utils import readInput, findFitness, findCoding, calculateSelectionDenominators, cladeReader, writeSLiM, writeSLiMHPC
+import utils
 import os
 
 class SLiMTree:
@@ -27,7 +13,7 @@ class SLiMTree:
         
         
         #Get the data for each clade in the tree
-        clades = cladeReader.cladeReader(start_params)
+        clades = utils.cladeReader.cladeReader(start_params)
         clade_dict_list = clades.get_clade_dict_list()
 
         #Write and run the slim code
@@ -45,7 +31,7 @@ class SLiMTree:
     def read_input(self):
     
         #Read and process input from user commands
-        input_reader = readInput.readInput()
+        input_reader = utils.readInput.readInput()
         input_reader.process_input()
         start_params = input_reader.get_params()
         
@@ -60,7 +46,7 @@ class SLiMTree:
     #Process fitnesses from the starting parameters
     def process_fitness(self, start_params):
         #Read in the stationary distributions, processes fitness profiles and find ancestral sequences
-        fitness_finder = findFitness.findFitness(start_params["codon_stationary_distributions"])
+        fitness_finder = utils.findFitness.findFitness(start_params["codon_stationary_distributions"])
         if(start_params["aa_fitness_distributions"] != None):
             fitness_finder.process_existing_fitness_file(start_params["aa_fitness_distributions"])
         elif (start_params["jukes_cantor"]):
@@ -77,7 +63,7 @@ class SLiMTree:
         
         #Get coding regions and find the ancestral sequence and assign fitness profiles to coding regions
         if(start_params["fasta_file"] == None):
-            start_params["coding_seqs"] = findCoding.findCoding(start_params["genome_length"], start_params["coding_ratio"],
+            start_params["coding_seqs"] = utils.findCoding.findCoding(start_params["genome_length"], start_params["coding_ratio"],
                         start_params["gene_count"]).get_coding_regions()
             start_params["fitness_profile_nums"] = fitness_finder.define_fitness_profiles(True,
                     start_params["coding_seqs"], start_params["genome_length"])
@@ -85,7 +71,7 @@ class SLiMTree:
                         start_params["fitness_profile_nums"])
         else:
             start_params["ancestral_sequence"], start_params["genome_length"] = fitness_finder.find_ancestral_fasta(start_params["fasta_file"])
-            start_params["coding_seqs"] = findCoding.findCoding(start_params["genome_length"]).get_coding_regions()
+            start_params["coding_seqs"] = utils.findCoding.findCoding(start_params["genome_length"]).get_coding_regions()
             start_params["fitness_profile_nums"] = fitness_finder.define_fitness_profiles(False,
                     start_params["coding_seqs"], start_params["genome_length"])
             
@@ -98,7 +84,7 @@ class SLiMTree:
                         
         #If dN/dS is being calculated find the denominators
         if(start_params["calculate_selection"]):
-            sel_denom = calculateSelectionDenominators.calculateSelectionDenominators(fitness_finder.get_stationary_mat(),
+            sel_denom = utils.calculateSelectionDenominators.calculateSelectionDenominators(fitness_finder.get_stationary_mat(),
                         start_params["fitness_profile_nums"], start_params["mutation_rate"], start_params["mutation_matrix"])
             start_params["dn_denom"] = sel_denom.get_dn()
             start_params["ds_denom"] = sel_denom.get_ds()
@@ -112,9 +98,9 @@ class SLiMTree:
 
         #Open SLiM writer based on tool type and write the initialize statement
         if(start_params["high_performance_computing"]):
-            slim_writer = writeSLiMHPC.writeSLiMHPC(start_params)
+            slim_writer = utils.writeSLiMHPC.writeSLiMHPC(start_params)
         else:
-            slim_writer = writeSLiM.writeSLiM(start_params)
+            slim_writer = utils.writeSLiM.writeSLiM(start_params)
 
         #Write a script for each clade which will be run sequentially
         if (start_params["nonWF"]):
