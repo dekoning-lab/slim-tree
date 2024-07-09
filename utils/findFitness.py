@@ -9,17 +9,19 @@ from copy import deepcopy
 
 class findFitness:
 
-    def __init__(self, stationary_dist_file):
-        self.stationary_dist_file = stationary_dist_file
-        self.stationary_mat = pd.read_csv(stationary_dist_file, header = None, index_col = 0)
-        self.ndists = self.stationary_mat.shape[1]
-        self.validify_stationary_distribution(self.stationary_mat)
-        
-        
-        
-        #Read csv of codon numbers
-        slim_codon_nums = os.path.join( os.path.dirname( __file__ ), '..' ) + '/fitnessDataFiles/slim_codon_nums.csv'
-        self.slim_codons = pd.read_csv(slim_codon_nums, header = 0, index_col = 0).transpose().to_dict('list')
+    def __init__(self, stationary_dist_file, neutral):
+    
+        if (not neutral):
+            self.stationary_dist_file = stationary_dist_file
+            self.stationary_mat = pd.read_csv(stationary_dist_file, header = None, index_col = 0)
+            self.ndists = self.stationary_mat.shape[1]
+            self.validify_stationary_distribution(self.stationary_mat)
+            
+            
+            
+            #Read csv of codon numbers
+            slim_codon_nums = os.path.join( os.path.dirname( __file__ ), '..' ) + '/fitnessDataFiles/slim_codon_nums.csv'
+            self.slim_codons = pd.read_csv(slim_codon_nums, header = 0, index_col = 0).transpose().to_dict('list')
         
         
     
@@ -207,6 +209,9 @@ class findFitness:
 
         return (codons)
 
+    #Randomly select the ancestral sequence from a neutral models
+    def find_ancestral_neutral(self, genome_length):
+        return list(str(element) for element in np.random.randint(low = 0,high=63,size=genome_length))
 
         
     #Check to make sure file is in terms of nucleotides
@@ -288,7 +293,7 @@ class findFitness:
             expected_fitnesses.append(expected_fitness_profiles[fitness_profile])
             
     
-        # Find the expected value of all sites by multiplying expected values - squared because there are 2 xsomes in diploid models
+        # Find the expected value of all sites
         scaling_value = np.sum(expected_fitnesses)
         
         return(scaling_value)

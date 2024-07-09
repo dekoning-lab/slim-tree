@@ -114,7 +114,11 @@ class testCalculateSelectionDenominators(unittest.TestCase):
         test_dn_ds = self.denom_calculator.calculate_selection_denominators([0,0,1,1,2,2], correct_syn_codons)
         self.assertEqual(list(test_dn_ds), [3.5353155666683473e-07, 1.3467871833338936e-07])
         
-        # Test when mutation rate varies
+        
+        # #Tests that when we have the same number of all codons dn and ds are equal. This is the 4th (3rd position) profile
+        # test_dn_ds = self.denom_calculator.calculate_selection_denominators([3], correct_syn_codons)
+        # print(test_dn_ds)
+
         # Test calculation of dn/ds when mutation rate varies
         self.denom_calculator.mu_mat = numpy.array(
                             [[0.0, 0.0, 0.0, 2e-6, 0.0],
@@ -125,3 +129,5 @@ class testCalculateSelectionDenominators(unittest.TestCase):
         test_dn_ds = self.denom_calculator.calculate_selection_denominators([0,0,0,0,0], correct_syn_codons)
         self.assertEqual(list(test_dn_ds), [2.303004757e-06*5, 2.87875642e-07*5])
     
+    
+   

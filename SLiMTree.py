@@ -45,43 +45,51 @@ class SLiMTree:
         
     #Process fitnesses from the starting parameters
     def process_fitness(self, start_params):
-        #Read in the stationary distributions, processes fitness profiles and find ancestral sequences
-        fitness_finder = utils.findFitness.findFitness(start_params["codon_stationary_distributions"])
-        if(start_params["aa_fitness_distributions"] != None):
-            fitness_finder.process_existing_fitness_file(start_params["aa_fitness_distributions"])
-        elif (start_params["jukes_cantor"]):
-            fitness_finder.find_optimal_fitnesses(start_params["mutation_rate"], 
-                        start_params["population_size"], start_params["high_performance_computing"], 
-                        start_params["partition"], start_params["time"])
-        else: 
-            fitness_finder.find_optimal_fitnesses_mu_mat(start_params["mutation_matrix"][0], 
-                        start_params["population_size"], start_params["high_performance_computing"], 
-                        start_params["partition"], start_params["time"])
-                        
-        start_params["fitness_profiles"], start_params["min_fitness"]  = fitness_finder.process_fitness_dists()
         
+        fitness_finder = utils.findFitness.findFitness(start_params["codon_stationary_distributions"], start_params["neutral_evolution"])
         
-        #Get coding regions and find the ancestral sequence and assign fitness profiles to coding regions
-        if(start_params["fasta_file"] == None):
-            start_params["coding_seqs"] = utils.findCoding.findCoding(start_params["genome_length"], start_params["coding_ratio"],
-                        start_params["gene_count"]).get_coding_regions()
-            start_params["fitness_profile_nums"] = fitness_finder.define_fitness_profiles(True,
-                    start_params["coding_seqs"], start_params["genome_length"])
-            start_params["ancestral_sequence"] = fitness_finder.find_ancestral(start_params["coding_seqs"], 
-                        start_params["fitness_profile_nums"])
-        else:
-            start_params["ancestral_sequence"], start_params["genome_length"] = fitness_finder.find_ancestral_fasta(start_params["fasta_file"])
+        #If neutral evolution don't need to process the fitnesses, just get the ancestral_sequence
+        if (start_params["neutral_evolution"]):
+            start_params["ancestral_sequence"] = fitness_finder.find_ancestral_neutral(start_params["genome_length"])
             start_params["coding_seqs"] = utils.findCoding.findCoding(start_params["genome_length"]).get_coding_regions()
-            start_params["fitness_profile_nums"] = fitness_finder.define_fitness_profiles(False,
-                    start_params["coding_seqs"], start_params["genome_length"])
+        
+        else:
+            #Read in the stationary distributions, processes fitness profiles and find ancestral sequences
+            if(start_params["aa_fitness_distributions"] != None):
+                fitness_finder.process_existing_fitness_file(start_params["aa_fitness_distributions"])
+            elif (start_params["jukes_cantor"]):
+                fitness_finder.find_optimal_fitnesses(start_params["mutation_rate"], 
+                            start_params["population_size"], start_params["high_performance_computing"], 
+                            start_params["partition"], start_params["time"])
+            else: 
+                fitness_finder.find_optimal_fitnesses_mu_mat(start_params["mutation_matrix"][0], 
+                            start_params["population_size"], start_params["high_performance_computing"], 
+                            start_params["partition"], start_params["time"])
+                            
+            start_params["fitness_profiles"], start_params["min_fitness"]  = fitness_finder.process_fitness_dists()
             
             
-            
-        # Find the scaling factor for mostly neutral fitnesses
-        start_params["scaling_value"] = fitness_finder.find_fitness_scaling(start_params["fitness_profile_nums"], 
-                    start_params["coding_ratio"] != 1)
-                        
-                        
+            #Get coding regions and find the ancestral sequence and assign fitness profiles to coding regions
+            if(start_params["fasta_file"] == None):
+                start_params["coding_seqs"] = utils.findCoding.findCoding(start_params["genome_length"], start_params["coding_ratio"],
+                            start_params["gene_count"]).get_coding_regions()
+                start_params["fitness_profile_nums"] = fitness_finder.define_fitness_profiles(True,
+                        start_params["coding_seqs"], start_params["genome_length"])
+                start_params["ancestral_sequence"] = fitness_finder.find_ancestral(start_params["coding_seqs"], 
+                            start_params["fitness_profile_nums"])
+            else:
+                start_params["ancestral_sequence"], start_params["genome_length"] = fitness_finder.find_ancestral_fasta(start_params["fasta_file"])
+                start_params["coding_seqs"] = utils.findCoding.findCoding(start_params["genome_length"]).get_coding_regions()
+                start_params["fitness_profile_nums"] = fitness_finder.define_fitness_profiles(False,
+                        start_params["coding_seqs"], start_params["genome_length"])
+                
+                
+                
+            # Find the scaling factor for mostly neutral fitnesses
+            start_params["scaling_value"] = fitness_finder.find_fitness_scaling(start_params["fitness_profile_nums"], 
+                        start_params["coding_ratio"] != 1)
+                            
+                            
         #If dN/dS is being calculated find the denominators
         if(start_params["calculate_selection"]):
             sel_denom = utils.calculateSelectionDenominators.calculateSelectionDenominators(fitness_finder.get_stationary_mat(),

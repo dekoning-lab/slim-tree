@@ -34,7 +34,7 @@ class readInput:
         
         #Table of possible stationary distributions - which we convert to fitness effects, can also input fitness effects
         parser.add_argument('codon_stationary_distributions', type = str, help = 'file containing a series of stationary codon ' +
-                                'distributions from which to calculate fitness.')
+                                'distributions from which to calculate fitness. Type null if neutral evolution (-N) flag')
         parser.add_argument('-fd', '--aa_fitness_distributions', type = str, help = 'file containing a amino acid fitnesses')
                 
         #High performance computing parameters - allows for computation using Slurm
