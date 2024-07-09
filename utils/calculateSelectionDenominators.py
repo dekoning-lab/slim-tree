@@ -30,7 +30,7 @@ class calculateSelectionDenominators:
             short_mu_mat = short_mu_mat[0]
             
         self.mu_mat = self.find_rate_mut(short_mu_mat)
-        self.dN_denom, self.dS_denom = self.calculate_selection_denominators(fitness_profile_nums, syn_subs)
+        self.dS_denom, self.dN_denom = self.calculate_selection_denominators(fitness_profile_nums, syn_subs)
     
 
     # Grab the possible codons and split into synonymous and non-synonymous from the stationary distributions

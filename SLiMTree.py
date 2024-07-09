@@ -99,8 +99,6 @@ class SLiMTree:
                         start_params["fitness_profile_nums"], start_params["mutation_rate"], start_params["mutation_matrix"])
             start_params["dn_denom"] = sel_denom.get_dn()
             start_params["ds_denom"] = sel_denom.get_ds()
-            print(start_params["dn_denom"])
-            print(start_params["ds_denom"])
         
         return(start_params)
 
