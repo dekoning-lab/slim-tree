@@ -11,8 +11,27 @@ class findFitness:
 
     def __init__(self, stationary_dist_file, neutral):
     
+        #All possible codons
+        self.codons = ['TTT', 'TTC','TTA', 'TTG', 'CTT', 
+                        'CTC', 'CTA', 'CTG', 'ATT', 'ATC', 
+                        'ATA', 'ATG', 'GTT', 'GTC', 'GTA', 
+                        'GTG', 'TCT', 'TCC', 'TCA', 'TCG',
+                        'CCT', 'CCC', 'CCA', 'CCG', 'ACT', 
+                        'ACC', 'ACA', 'ACG', 'GCT', 'GCC', 
+                        'GCA', 'GCG', 'TAT', 'TAC', 'CAT', 
+                        'CAC', 'CAA', 'CAG', 'AAT', 'AAC', 
+                        'AAA', 'AAG', 'GAT', 'GAC', 'GAA', 
+                        'GAG', 'TGT', 'TGC', 'TGG','CGT', 
+                        'CGC', 'CGA', 'CGG', 'AGT', 'AGC', 
+                        'AGA', 'AGG', 'GGT', 'GGC', 'GGA', 'GGG']
+        
+        
         if (neutral):
-            
+            self.stationary_mat = pd.DataFrame(index=np.arange(61), columns=np.arange(0))
+            self.stationary_mat.insert(0, 0, 1/61)
+            #Every amino acid is represented
+            self.stationary_mat.index = self.codons
+            self.validify_stationary_distribution(self.stationary_mat)
         else:
             self.stationary_dist_file = stationary_dist_file
             self.stationary_mat = pd.read_csv(stationary_dist_file, header = None, index_col = 0)
@@ -47,10 +66,11 @@ class findFitness:
             print("Do not include stop codons in your stationary distribution. Exiting.")
             sys.exit(0)
             
-        #Check to make sure that all amino acids are represented in the stationary distribution
-        if(len(set(self.AAs)) != 20):
-            print("Please ensure that every amino acid is represented in your stationary distributions. Exiting.")
+        #Check to make sure that all codons are represented in the stationary distribution
+        if(all(cod in list(codons)  for cod in self.codons)):
+            print("Please ensure that every codon is represented in your stationary distributions. Exiting.")
             sys.exit(0)
+            
     
     
     

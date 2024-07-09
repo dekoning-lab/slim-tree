@@ -122,14 +122,12 @@ class calculateSelectionDenominators:
         num_each_profile = Counter(fitness_profile_nums)
         num_each_profile = pd.DataFrame(sorted([(i, num_each_profile[i] ) for i in num_each_profile]))
         
-        # print(num_each_profile)
-        
         # Find the value of ds for each of the stationary distributions
         ds_dn = np.array(list(map(lambda x: self.get_dist_ds_dn(x, num_each_profile.loc[x,1], syn_subs), range(len(num_each_profile)))))
 
         
         #Sum to get the denominators of dn and ds
-        return (sum(ds_dn))
+        return (sum(ds_dn)/3)
         
         
     #Return dn to public

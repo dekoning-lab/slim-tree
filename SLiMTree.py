@@ -52,6 +52,9 @@ class SLiMTree:
         if (start_params["neutral_evolution"]):
             start_params["ancestral_sequence"] = fitness_finder.find_ancestral_neutral(start_params["genome_length"])
             start_params["coding_seqs"] = utils.findCoding.findCoding(start_params["genome_length"]).get_coding_regions()
+            
+            #All neutral so fitness profile nums are also neutral
+            start_params["fitness_profile_nums"] = [0] * start_params["genome_length"]
         
         else:
             #Read in the stationary distributions, processes fitness profiles and find ancestral sequences
@@ -96,6 +99,8 @@ class SLiMTree:
                         start_params["fitness_profile_nums"], start_params["mutation_rate"], start_params["mutation_matrix"])
             start_params["dn_denom"] = sel_denom.get_dn()
             start_params["ds_denom"] = sel_denom.get_ds()
+            print(start_params["dn_denom"])
+            print(start_params["ds_denom"])
         
         return(start_params)
 
