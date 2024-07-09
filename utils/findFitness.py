@@ -11,7 +11,9 @@ class findFitness:
 
     def __init__(self, stationary_dist_file, neutral):
     
-        if (not neutral):
+        if (neutral):
+            
+        else:
             self.stationary_dist_file = stationary_dist_file
             self.stationary_mat = pd.read_csv(stationary_dist_file, header = None, index_col = 0)
             self.ndists = self.stationary_mat.shape[1]
@@ -248,8 +250,7 @@ class findFitness:
         codons = []
         for codon_name in codon_names:
             codons.append(str(self.slim_codons[codon_name][0]))
-        
-        print(codons)
+            
         return (codons, int(genome_length))
         
     
