@@ -315,9 +315,9 @@ class writeSLiM:
                                 "\n\t\t\t\t}"+
                                 "\n\n\t\t\t\told_AA = codonsToAminoAcids(nucleotidesToCodons(old_nucs));" +
                                 "\n\t\t\t\tnew_AA = codonsToAminoAcids(nucleotidesToCodons(new_nucs));" +
-                                "\n\t\t\t\tif (old_AA == new_AA){" +
+                                "\n\t\t\t\tif (old_AA == new_AA && new_AA != \"X\"){" +
                                 "\n\t\t\t\t\tsim.setValue(dS_name, sim.getValue(dS_name) + 1);" +
-                                "\n\t\t\t\t} else {" +
+                                "\n\t\t\t\t} else if (new_AA != \"X\") {" +
                                 "\n\t\t\t\t\tsim.setValue(dN_name, sim.getValue(dN_name) + 1);" +
                                 "\n\t\t\t\t}" +
                                 "\n\t\t\t\tsim.setValue(subs_name, sim.getValue(subs_name)+" +
