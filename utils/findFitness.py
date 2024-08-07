@@ -9,27 +9,50 @@ from copy import deepcopy
 
 class findFitness:
 
-    def __init__(self, stationary_dist_file):
-        self.stationary_dist_file = stationary_dist_file
-        self.stationary_mat = pd.read_csv(stationary_dist_file, header = None, index_col = 0)
-        self.ndists = self.stationary_mat.shape[1]
-        self.validify_stationary_distribution()
+    def __init__(self, stationary_dist_file, neutral):
+    
+        #All possible codons
+        self.codons = ['TTT', 'TTC','TTA', 'TTG', 'CTT', 
+                        'CTC', 'CTA', 'CTG', 'ATT', 'ATC', 
+                        'ATA', 'ATG', 'GTT', 'GTC', 'GTA', 
+                        'GTG', 'TCT', 'TCC', 'TCA', 'TCG',
+                        'CCT', 'CCC', 'CCA', 'CCG', 'ACT', 
+                        'ACC', 'ACA', 'ACG', 'GCT', 'GCC', 
+                        'GCA', 'GCG', 'TAT', 'TAC', 'CAT', 
+                        'CAC', 'CAA', 'CAG', 'AAT', 'AAC', 
+                        'AAA', 'AAG', 'GAT', 'GAC', 'GAA', 
+                        'GAG', 'TGT', 'TGC', 'TGG','CGT', 
+                        'CGC', 'CGA', 'CGG', 'AGT', 'AGC', 
+                        'AGA', 'AGG', 'GGT', 'GGC', 'GGA', 'GGG']
         
         
-        
-        #Read csv of codon numbers
-        slim_codon_nums = os.path.join( os.path.dirname( __file__ ), '..' ) + '/fitnessDataFiles/slim_codon_nums.csv'
-        self.slim_codons = pd.read_csv(slim_codon_nums, header = 0, index_col = 0).transpose().to_dict('list')
+        if (neutral):
+            self.stationary_mat = pd.DataFrame(index=np.arange(61), columns=np.arange(0))
+            self.stationary_mat.insert(0, 0, 1/61)
+            #Every amino acid is represented
+            self.stationary_mat.index = self.codons
+            self.validify_stationary_distribution(self.stationary_mat)
+        else:
+            self.stationary_dist_file = stationary_dist_file
+            self.stationary_mat = pd.read_csv(stationary_dist_file, header = None, index_col = 0)
+            self.ndists = self.stationary_mat.shape[1]
+            self.validify_stationary_distribution(self.stationary_mat)
+            
+            
+            
+            #Read csv of codon numbers
+            slim_codon_nums = os.path.join( os.path.dirname( __file__ ), '..' ) + '/fitnessDataFiles/slim_codon_nums.csv'
+            self.slim_codons = pd.read_csv(slim_codon_nums, header = 0, index_col = 0).transpose().to_dict('list')
         
         
     
     
     #Function to make sure that the stationary distributions are provided in the correct format
-    def validify_stationary_distribution(self):
+    def validify_stationary_distribution(self, stationary_mat):
         #Translate to amino acids
         
         try:
-            codons = Seq("".join(list(self.stationary_mat.index)))
+            codons = Seq("".join(list(stationary_mat.index)))
             self.AAs = [*str(codons.translate())]
         except TypeError: #Make sure that codons are provided in the first row
             print("Please ensure the first row of your stationary distributions is the codon names. Exiting.")
@@ -43,10 +66,11 @@ class findFitness:
             print("Do not include stop codons in your stationary distribution. Exiting.")
             sys.exit(0)
             
-        #Check to make sure that all amino acids are represented in the stationary distribution
-        if(len(set(self.AAs)) != 20):
-            print("Please ensure that every amino acid is represented in your stationary distributions. Exiting.")
+        #Check to make sure that all codons are represented in the stationary distribution
+        if(all(cod in list(codons)  for cod in self.codons)):
+            print("Please ensure that every codon is represented in your stationary distributions. Exiting.")
             sys.exit(0)
+            
     
     
     
@@ -88,7 +112,6 @@ class findFitness:
     #Writes fitnesses to new file so they may be reused in the future
     def find_optimal_fitnesses(self, mutation_rate, population_size, hpc, partition, time_p):
         print("Finding fitnesses for stationary distributions")
-        
         fitness_mat =  os.getcwd() + "/table_fitness_dists.csv"
         
         #If existing fitness mat exists remove it, ensures HPC waits if file is already there
@@ -115,9 +138,8 @@ class findFitness:
             #Run R script to find fitness profiles
             subprocess.call(["Rscript", os.path.dirname(os.path.realpath(__file__)) + "/fitness_profile_finder.R", 
                     "-f", self.stationary_dist_file, "-N", str(population_size), "-v", str(mutation_rate), "-o", fitness_mat])
-                
+
         self.fitness_mat = pd.read_csv(fitness_mat, header = None, index_col = 0)
-        
         
     
     #Function to find fitnesses if a non-jukes-cantor matrix is supplied - uses the average mutation rate of the matrix
@@ -209,6 +231,9 @@ class findFitness:
 
         return (codons)
 
+    #Randomly select the ancestral sequence from a neutral models
+    def find_ancestral_neutral(self, genome_length):
+        return list(str(element) for element in np.random.randint(low = 0,high=63,size=genome_length))
 
         
     #Check to make sure file is in terms of nucleotides
@@ -245,8 +270,7 @@ class findFitness:
         codons = []
         for codon_name in codon_names:
             codons.append(str(self.slim_codons[codon_name][0]))
-        
-        print(codons)
+            
         return (codons, int(genome_length))
         
     
@@ -290,7 +314,7 @@ class findFitness:
             expected_fitnesses.append(expected_fitness_profiles[fitness_profile])
             
     
-        # Find the expected value of all sites by multiplying expected values - squared because there are 2 xsomes in diploid models
+        # Find the expected value of all sites
         scaling_value = np.sum(expected_fitnesses)
         
         return(scaling_value)
