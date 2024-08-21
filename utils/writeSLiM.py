@@ -79,7 +79,6 @@ class writeSLiM:
                         "\n\tinitializeGenomicElementType(\"g1\", m1, 1.0, mm);" +
                         "\n\tinitializeGenomicElementType(\"g2\", m1, 1.0, mm);" +
                         "\n\tinitializeRecombinationRate("+ str(population_parameters ["recombination_rate"])+");")
-        print(self.start_params["coding_seqs"])
         #Initialize Genomic Elements according to number of genes for easy visualization in SLiMgui. g1 = coding region, g2 = non-coding region
         for region_num in range(len(self.start_params["coding_seqs"])):
 
@@ -122,7 +121,7 @@ class writeSLiM:
             count = 0;
             profile_num = 0;
     
-            textfile = open("a_file.txt", "w")
+            textfile = open("fitness_profile_nums.txt", "w")
             for element in self.start_params["fitness_profile_nums"]:
                 textfile.write(str(element) + "\n")
             textfile.close()
@@ -257,7 +256,7 @@ class writeSLiM:
     #Write the reproduction callback for non-Wright-Fisher models
     def write_reproduction(self):
         #Basic reproduction callback for now; more functionality could be added later if necessary.
-        reproduction_string = ("reproduction(){\n\tsubpop.addRecombinant(individual.genome1, NULL, NULL, NULL, NULL, NULL);\n}\n\n\n")
+        reproduction_string = ("reproduction(){\n\tsubpop.addCrossed(individual, subpop.sampleIndividuals(1));\n}\n\n\n")
 
         self.output_file.write(reproduction_string)
 
