@@ -60,7 +60,7 @@ class readInput:
         
         
         #Specify population parameters for specific branches
-        parser.add_argument('-d','--tree_data_file', nargs = 1, type=argparse.FileType('r'), help = 'file to change the population size ' +
+        parser.add_argument('-d','--tree_data_file', nargs = 1, type=str, help = 'file to change the population size ' +
                                     'for specific branches using YAML formatting. When using HPC, other parameters may also be changed.')
                 
         

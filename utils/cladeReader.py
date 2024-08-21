@@ -3,6 +3,9 @@
 from Bio import Phylo
 import copy
 import math
+import yaml
+import sys
+import numpy as np
 
 
 class cladeReader:
@@ -24,9 +27,12 @@ class cladeReader:
 
     #Read individual data from the file - to add more parameters modify data_translation_dict
     def read_clade_data(self, data_file):
+        data_file = data_file[0]
+        
         #Read yaml data file of changes in tree
-        yaml_data = yaml.safe_load(data_file)
-        data_file.close()
+        with open(data_file, 'r') as yaml_file:
+            yaml_data = yaml.safe_load(yaml_file)
+        yaml_file.close()
         
         
         #Dictionary to change key names for abbreviations
@@ -50,11 +56,11 @@ class cladeReader:
             new_dict = {(data_translation[k] if k in data_translation else k):v  for (k,v) in yaml_data[dat].items() }
             
             #Check to make sure no changes are specified that cannot be handled
-            if self.hpc and len(np.setdiff1d(list(new_dict.keys()), possible_hpc_changes)) != 0:
+            if self.start_params["high_performance_computing"] and len(np.setdiff1d(list(new_dict.keys()), possible_hpc_changes)) != 0:
                 print("When using slim-tree with HPC only the following parameters may be modified for specific branches:")
                 print(*list(data_translation.values()), sep = "\n")
                 sys.exit(0)
-            elif not self.hpc and len(np.setdiff1d(list(new_dict.keys()), possible_changes)) != 0:
+            elif not self.start_params["high_performance_computing"] and len(np.setdiff1d(list(new_dict.keys()), possible_changes)) != 0:
                 print("When using slim-tree without HPC, only the population size may be modified for specific branches. Exiting")
                 sys.exit(0)
                 
@@ -66,6 +72,7 @@ class cladeReader:
             
             
             yaml_data[dat] = new_dict
+
             
         return(yaml_data)
 
