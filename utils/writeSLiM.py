@@ -257,7 +257,7 @@ class writeSLiM:
     #Write the reproduction callback for non-Wright-Fisher models
     def write_reproduction(self):
         #Basic reproduction callback for now; more functionality could be added later if necessary.
-        reproduction_string = ("reproduction(){\n\tsubpop.addRecombinant(individual.genome1, NULL, NULL, NULL, NULL, NULL);\n}\n\n\n")
+        reproduction_string = ("reproduction(){\n\tsubpop.addCrossed(individual, subpop.sampleIndividuals(1));\n}\n\n\n")
 
         self.output_file.write(reproduction_string)
 
