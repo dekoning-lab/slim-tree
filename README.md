@@ -21,10 +21,10 @@
 • Additional parameters include:
 	
   	-h: 
-   	show this help message and exit
+   	Show this help message and exit
    	
 	-hpc: 
-     	boolean flag to turn on slim-tree high performance computing. Slurm is required
+     	Boolean flag to turn on slim-tree high performance computing. Slurm is required
 
 	-fd aa_fitness_distributions.csv:
  	The SLiM-Tree is designed to generate a table of amino acid fitness distributions using the provided stationary distributions. However, you also have the option to input your table of fitness distribution in .csv format using `-fd' flag.
