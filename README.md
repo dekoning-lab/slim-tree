@@ -30,22 +30,22 @@
  	The SLiM-Tree is designed to generate a table of amino acid fitness distributions using the provided stationary distributions. However, you also have the option to input your table of fitness distribution in .csv format using `-fd' flag.
 	  
 	-p partition_name:
- 	partition to run Slurm on - required if using high performance computing (-hpc)
+ 	Partition to run Slurm on - required if using high performance computing (-hpc)
 	  
 	-t time(00:00:00):
- 	maximum time to run each simulation for, required if using high performance computing (-hpc)
+ 	Maximum time to run each simulation for, required if using high performance computing (-hpc)
 
-   	-w --nonWF:          
+   	-w --nonWF:
     	Boolean flag to specify that a non-wright-fisher model should be used in lieu of the default wright-fisher model. 
   
- 	-n population_size (default = 100): 
-  	starting population size for the simulation. 
+ 	-n population_size (default = 100):
+  	Starting population size for the simulation. 
 
   	-b burn_in_multiplier (default = 10):
-   	value to multiply population size by for burn in.
+   	Value to multiply population size by for burn in.
 
 	-r recombination_rate (default = 2.5e-8):
- 	recombination rate. 
+ 	Recombination rate. 
 
  	-v mutation_rate (default =2.5e-6):
         Starting mutation rate for the simulation.
