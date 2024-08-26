@@ -24,7 +24,7 @@
    	Show this help message and exit
    	
 	-hpc: 
-     	Boolean flag to turn on slim-tree high performance computing. Slurm is required
+ 	Boolean flag to turn on slim-tree high performance computing. Slurm is required
 
 	-fd aa_fitness_distributions.csv:
  	The SLiM-Tree is designed to generate a table of amino acid fitness distributions using the provided stationary distributions. However, you also have the option to input your table of fitness distribution in .csv format using `-fd' flag.
@@ -91,11 +91,7 @@
         Boolean flag that turns on calculations of selection by counting synonymous and non-synonymous fixed substitutions
 
 
-• Usage: slim-tree <input_tree> <codon_stationary_distributions.csv> [-h] [-fd aa_fitness_distributions.csv] 
-	[-hpc] [-p partition] [-t time] [-w --nonWF] [-n population_size] [-b burn_in_multiplier]
-        [-r recombination_rate] [-v mutation_rate] [-m mutation_matrix] [-d tree_data_file.yaml] [-g genome_length] [-G gene_count]
-        [-C coding_ratio] [-f fasta_file.fasta] [-k sampling_method] [-sr split_ratio] [-c count_substitutions] [-o output_gene] 
-	[-B backup] [-P polymorphisms] [-S calculate_selection_dn/ds]
+• Usage: slim-tree <input_tree> <codon_stationary_distributions.csv> [-h] [-fd aa_fitness_distributions.csv] [-hpc] [-p partition] [-t time] [-w --nonWF] [-n population_size] [-b burn_in_multiplier] [-r recombination_rate] [-v mutation_rate] [-m mutation_matrix] [-d tree_data_file.yaml] [-g genome_length] [-G gene_count] [-C coding_ratio] [-f fasta_file.fasta] [-k sampling_method] [-sr split_ratio] [-c count_substitutions] [-o output_gene] [-B backup] [-P polymorphisms] [-S calculate_selection_dn/ds]
 
 
 The folder DataPostProcessing contains scripts that can be used for post processing of the output data and the folder. 
