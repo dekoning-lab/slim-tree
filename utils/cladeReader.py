@@ -165,15 +165,15 @@ class cladeReader:
             if(clade_name in clade_data.keys()):
                 current_clade_data = self.start_params["tree_data_file"][clade_name]
                 for keyname in current_clade_data.keys():
-                    print(keyname)
                     if(keyname == 'mutation_matrix'):
                         input_reader = readInput.readInput()
                         clade_dict[keyname] = input_reader.make_mutation_matrix(str(current_clade_data[keyname]))
                     elif (keyname == 'jukes_cantor'):
                         clade_dict["jukes_cantor"] = current_clade_data[keyname]
+                    elif(keyname == "mutation_rate"):
+                        clade_dict["mutation_rate"] = float(current_clade_data[keyname])
                     else:
                         clade_dict[keyname] = str(current_clade_data[keyname])
-                    
 
 
         #Figure out what population name is for self and assign clade name appropriately
