@@ -5,6 +5,7 @@ import copy
 import math
 import yaml
 import sys
+from utils import readInput
 import numpy as np
 
 
@@ -164,10 +165,14 @@ class cladeReader:
             if(clade_name in clade_data.keys()):
                 current_clade_data = self.start_params["tree_data_file"][clade_name]
                 for keyname in current_clade_data.keys():
+                    print(keyname)
                     if(keyname == 'mutation_matrix'):
-                        clade_dict[keyname] = self.make_mutation_matrix(current_clade_data[keyname])
+                        input_reader = readInput.readInput()
+                        clade_dict[keyname] = input_reader.make_mutation_matrix(str(current_clade_data[keyname]))
+                    elif (keyname == 'jukes_cantor'):
+                        clade_dict["jukes_cantor"] = current_clade_data[keyname]
                     else:
-                        clade_dict[keyname] = current_clade_data[keyname]
+                        clade_dict[keyname] = str(current_clade_data[keyname])
                     
 
 
@@ -206,7 +211,6 @@ class cladeReader:
         clade_dict['terminal_clade'] = clade.clades == []
         clade_dict['last_child_clade'] = last_child_clade
         clade_dict['end_dist'] = pop_end
-        
 
         return [clade_dict]
         

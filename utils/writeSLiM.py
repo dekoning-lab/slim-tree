@@ -68,7 +68,7 @@ class writeSLiM:
 
         #If Jukes-Cantor model set mutation rate to Jukes-Cantor model, otherwise set to the mutational matrix
         initialize_string += "\n\tmm = "
-        if(self.start_params["jukes_cantor"]):
+        if(population_parameters["jukes_cantor"]):
             initialize_string += "mmJukesCantor(" + str(population_parameters ["mutation_rate"]/3) + ");"
         else:
             initialize_string += population_parameters["mutation_matrix"][1] +";"
