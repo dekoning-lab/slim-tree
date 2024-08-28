@@ -11,30 +11,32 @@ import numpy as np
 
 class cladeReader:
     
-    def __init__(self, start_params):
-        
+    def __init__(self, start_params):     
         self.start_params = start_params
         
         if (self.start_params["tree_data_file"] != None):
             self.start_params["tree_data_file"] = self.read_clade_data(self.start_params["tree_data_file"])
-            
-
+        
         self.clade_dict_list = self.read_input_tree()
 
 
 
-
-
-
-    #Read individual data from the file - to add more parameters modify data_translation_dict
+    #Read individual data from the file - given in YAML formatting
     def read_clade_data(self, data_file):
         data_file = data_file[0]
         
         #Read yaml data file of changes in tree
         with open(data_file, 'r') as yaml_file:
             yaml_data = yaml.safe_load(yaml_file)
+            
+            #Check to make sure yaml file is loaded
+            if (not isinstance(yaml_data, dict)):
+                print("Please make sure your changes are in yaml format. " +
+                        "For more information on yaml format visit: " +
+                        "https://en.wikipedia.org/wiki/YAML. Program closing.")
+                sys.exit(0)
+            
         yaml_file.close()
-        
         
         #Dictionary to change key names for abbreviations
         data_translation = {
@@ -54,7 +56,11 @@ class cladeReader:
         #Recurse through changed branches
         for dat in yaml_data:
             #Translate keynames to full names if abbreviation used
-            new_dict = {(data_translation[k] if k in data_translation else k):v  for (k,v) in yaml_data[dat].items() }
+            try:
+                new_dict = {(data_translation[k] if k in data_translation else k):v  for (k,v) in yaml_data[dat].items() }
+            except AttributeError:
+                print("Please check the formatting of your yaml file, you likely did not include the branch name. Closing program.")
+                sys.exit(0)
             
             #Check to make sure no changes are specified that cannot be handled
             if self.start_params["high_performance_computing"] and len(np.setdiff1d(list(new_dict.keys()), possible_hpc_changes)) != 0:
@@ -70,6 +76,7 @@ class cladeReader:
                 new_dict['jukes_cantor'] = True
             elif('mutation_matrix' in new_dict.keys()):
                 new_dict['jukes_cantor'] = False
+                
             
             
             yaml_data[dat] = new_dict
@@ -79,12 +86,16 @@ class cladeReader:
 
 
 
-    #Read the phylogenetic tree data given by the user - from YAML format
+    #Read the phylogenetic tree data given by the user 
     def read_input_tree(self):
 
         self.pop_num = 0
-
-        phylogeny = Phylo.read(self.start_params["input_tree"],"newick")
+        
+        try:
+            phylogeny = Phylo.read(self.start_params["input_tree"],"newick")
+        except ValueError:
+            print ("Please make sure your input tree is in Newick format. Program closing")
+            sys.exit(0)
 
         #Figure out how long the simulation is going to run for
         max_depth = int(max(phylogeny.depths().values())) + self.start_params["burn_in"] + 1
@@ -168,12 +179,10 @@ class cladeReader:
                     if(keyname == 'mutation_matrix'):
                         input_reader = readInput.readInput()
                         clade_dict[keyname] = input_reader.make_mutation_matrix(str(current_clade_data[keyname]))
-                    elif (keyname == 'jukes_cantor'):
-                        clade_dict["jukes_cantor"] = current_clade_data[keyname]
-                    elif(keyname == "mutation_rate"):
-                        clade_dict["mutation_rate"] = float(current_clade_data[keyname])
-                    else:
+                    elif (keyname == 'partition' or keyname == 'time' or keyname == 'sample_size'):
                         clade_dict[keyname] = str(current_clade_data[keyname])
+                    else:
+                        clade_dict[keyname] = current_clade_data[keyname]
 
 
         #Figure out what population name is for self and assign clade name appropriately
@@ -190,9 +199,11 @@ class cladeReader:
         
         #Determine when sim of pop ends - note must run for at least 1 gen
         pop_end = self.start_params["burn_in"]  + phylogeny.distance(clade)
-        if (dist_from_start >= pop_end):
-            pop_end = dist_from_start + 1
-            
+        
+        #Make sure that given tree is in generations
+        if (math.floor(dist_from_start) >= math.floor(pop_end)):
+            print("Please make sure that your tree is in generations not mutations. Exiting.")
+            sys.exit(0)
 
         #Determine whether population belongs to the last child clade - allows for removal of extraneous data
         parents_children = parent_clade_dict["child_clades"]
@@ -211,6 +222,13 @@ class cladeReader:
         clade_dict['terminal_clade'] = clade.clades == []
         clade_dict['last_child_clade'] = last_child_clade
         clade_dict['end_dist'] = pop_end
+        
+        #Remove mutation rate or mutation matrix if not in this clade
+        if(clade_dict['jukes_cantor'] and 'mutation_matrix' in clade_dict.keys()):
+            clade_dict.pop('mutation_matrix')
+        
+        if(not clade_dict['jukes_cantor'] and 'mutation_rate' in clade_dict.keys()):
+            clade_dict.pop('mutation_rate')
 
         return [clade_dict]
         

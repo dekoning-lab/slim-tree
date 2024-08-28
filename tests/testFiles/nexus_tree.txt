@@ -1,0 +1,21 @@
+#NEXUS
+Begin TAXA;
+  Dimensions ntax=4;
+  TaxLabels SpaceDog SpaceCat SpaceOrc SpaceElf;
+End;
+
+Begin data;
+  Dimensions nchar=15;
+  Format datatype=dna missing=? gap=- matchchar=.;
+  Matrix
+    [ When a position is a "matchchar", it means that it is the same as the first entry at the same position. ]
+    SpaceDog   atgctagctagctcg
+    SpaceCat   ......??...-.a.
+    SpaceOrc   ...t.......-.g. [ same as atgttagctag-tgg ]
+    SpaceElf   ...t.......-.a.           
+  ;
+End;
+
+BEGIN TREES;
+  Tree tree1 = (((SpaceDog,SpaceCat),SpaceOrc,SpaceElf));
+END;
