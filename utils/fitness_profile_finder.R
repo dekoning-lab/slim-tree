@@ -15,7 +15,7 @@
 #Install packages not already installed
 list.of.packages <- c("dplyr", "BB", "data.table", "optparse", "seqinr", "doParallel", "Rfast")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages)
+if(length(new.packages)) install.packages(new.packages, repos = "http://cran.us.r-project.org")
 
 #load packages
 suppressMessages(library(dplyr))

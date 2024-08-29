@@ -67,7 +67,10 @@ class findFitness:
             sys.exit(0)
             
         #Check to make sure that all codons are represented in the stationary distribution
-        if(all(cod in list(codons)  for cod in self.codons)):
+        all_codons_set = set(self.codons)
+        given_codons_set = set (list(stationary_mat.index))
+        
+        if(all_codons_set != given_codons_set):
             print("Please ensure that every codon is represented in your stationary distributions. Exiting.")
             sys.exit(0)
             
@@ -84,6 +87,7 @@ class findFitness:
         
         #Reorder columns in order required for the software
         fitness_mat = fitness_mat.sort_index(axis=0)
+        
         self.fitness_mat = fitness_mat
         
         
@@ -102,7 +106,7 @@ class findFitness:
         
         #Verify that the fitness profiles are in terms of amino acids and that all are provided
         npossibilities = fitness_mat.shape[0]
-        if(npossibilities != 21):
+        if(npossibilities != 21 or set(fitness_mat.index) != set(self.AAs + ["X"]) ):
             print("Fitness data files must be in terms of amino acids. There should be the 20 amino acids and stops (ie. 21 rows). Exiting.")
             sys.exit(0)
             
@@ -131,15 +135,21 @@ class findFitness:
             
             subprocess.run(["sbatch",  "find_fitness.sh"])
             
-            #Waits until batch file finished before continuing
-            while not os.path.isfile(fitness_mat): time.sleep(1)
+            #Waits until batch file finished before continuing - need to throw message if R script fails
+            while not (os.path.isfile(fitness_mat) and os.path.getsize("fitness.err") == 0): 
+                time.sleep(1)
             
         else:      
             #Run R script to find fitness profiles
             subprocess.call(["Rscript", os.path.dirname(os.path.realpath(__file__)) + "/fitness_profile_finder.R", 
                     "-f", self.stationary_dist_file, "-N", str(population_size), "-v", str(mutation_rate), "-o", fitness_mat])
-
-        self.fitness_mat = pd.read_csv(fitness_mat, header = None, index_col = 0)
+        
+        #Check if fitness matrix exits, if it does not exist error is in R script
+        if(os.path.isfile(fitness_mat))
+            self.fitness_mat = pd.read_csv(fitness_mat, header = None, index_col = 0)
+        else:
+            print("There seems to be a bug in running the R script to get fitnesses. Check your packages. Closing program.")
+            sys.exit(0)
         
     
     #Function to find fitnesses if a non-jukes-cantor matrix is supplied - uses the average mutation rate of the matrix

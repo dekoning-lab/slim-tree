@@ -5,3 +5,7 @@ Run all unit tests: from slim-tree main run "python3 -m unittest discover -s tes
 
 STEP 2:
 Run examples 1 - 11 to ensure that all examples are working 
+
+#####MAYBE REMOVE
+#STEP 3:
+#Test fitness profile calculation by running "test_script.sh" on server
