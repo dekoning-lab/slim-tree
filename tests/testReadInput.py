@@ -55,10 +55,10 @@ class testReadInput(unittest.TestCase):
         #Check that mutation matrices with different values can be run
         diff_vals = self.input_reader.make_mutation_matrix(self.test_file_path + "/mut_mat_different.csv")
         self.assertEqual(diff_vals[0].tolist(), 
-        [[0.0e+00, 3.5e-07, 3.0e-06, 2.5e-05],[4.0e-08, 0.0e+00, 3.0e-06, 2.5e-05], [4.0e-08, 3.5e-07, 0.0e+00, 2.5e-05], [4.0e-08, 3.5e-07, 3.0e-06, 0.0e+00]])
+        [[0.0e+00, 3.5e-03, 3.0e-02, 2.5e-02],[4.0e-04, 0.0e+00, 3.0e-02, 2.5e-03], [4.0e-04, 3.5e-03, 0.0e+00, 2.5e-04], [4.0e-04, 3.5e-03, 3.0e-02, 0.0e+00]])
        
         self.assertEqual(diff_vals[1], 
-        'matrix(c(0.0, 3.5e-07, 3e-06, 2.5e-05, 4e-08, 0.0, 3e-06, 2.5e-05, 4e-08, 3.5e-07, 0.0, 2.5e-05, 4e-08, 3.5e-07, 3e-06, 0.0), ncol = 4, byrow = T)')
+        'matrix(c(0.0, 0.0035, 0.03, 0.025, 0.0004, 0.0, 0.03, 0.0025, 0.0004, 0.0035, 0.0, 0.00025, 0.0004, 0.0035, 0.03, 0.0), ncol = 4, byrow = T)')
        
        
         #Check that mutation matrices with same values can be processed

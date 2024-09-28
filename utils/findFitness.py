@@ -144,8 +144,8 @@ class findFitness:
             subprocess.call(["Rscript", os.path.dirname(os.path.realpath(__file__)) + "/fitness_profile_finder.R", 
                     "-f", self.stationary_dist_file, "-N", str(population_size), "-v", str(mutation_rate), "-o", fitness_mat])
         
-        #Check if fitness matrix exits, if it does not exist error is in R script
-        if(os.path.isfile(fitness_mat))
+        #Check if fitness matrix exists, if it does not exist error is in R script
+        if(os.path.isfile(fitness_mat)):
             self.fitness_mat = pd.read_csv(fitness_mat, header = None, index_col = 0)
         else:
             print("There seems to be a bug in running the R script to get fitnesses. Check your packages. Closing program.")
@@ -153,9 +153,18 @@ class findFitness:
         
     
     #Function to find fitnesses if a non-jukes-cantor matrix is supplied - uses the average mutation rate of the matrix
-    def find_optimal_fitnesses_mu_mat(self, mutation_matrix, population_size):
-        mu = mutation_matrix.mean().mean()
-        self.find_optimal_fitnesses(mu, population_size)
+    def find_optimal_fitnesses_mu_mat(self, mutation_matrix, population_size, hpc, partition, time_p, test = False):
+        #Find mean of all non-diagonal elements
+        sum_all = mutation_matrix.values.sum()
+        nrow = mutation_matrix.shape[0]
+        
+        mu =  (sum_all - np.diag(mutation_matrix).sum())/(nrow**2 - nrow)
+
+        #Find the fitnesses if not a test, if a test just return the mean to test
+        if(test):
+            return(mu)
+        else:
+            self.find_optimal_fitnesses(mu, population_size, hpc, partition, time_p)
 
 
 
@@ -170,6 +179,7 @@ class findFitness:
 
         #Convert fitness profiles to a dictionary for easier integration into eidos
         fitness_profiles = self.fitness_mat.transpose().to_dict('list')
+        
         
         #Find the smallest fitness values
         fitness_distributions = self.fitness_mat.values.tolist()
