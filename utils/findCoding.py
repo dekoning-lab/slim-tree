@@ -2,6 +2,7 @@
 
 import math
 import numpy as np
+import sys
 
 class findCoding:
     def __init__(self, genome_length, coding_ratio = None, gene_count = None):
@@ -20,6 +21,11 @@ class findCoding:
     
     #Return the range of coding sequences for the set number of genes.
     def get_coding_seqs(self):
+        
+        #If coding ratio is 1 but there are multiple genes, throw an error. This will break the software
+        if (self.gene_count > 1 and self.coding_ratio == 1):
+            print("Please ensure that if you have more than 1 gene, your coding ratio is not 1. Exiting.")
+            sys.exit(0)
         
         if(self.gene_count == 0 or self.coding_ratio == 0):
             return None

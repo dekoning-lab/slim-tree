@@ -4,6 +4,7 @@ from utils import findCoding
 from contextlib import redirect_stdout
 import pandas as pd
 import math
+import os, io, pathlib
 
 class testFindCoding(unittest.TestCase):
 
@@ -15,6 +16,19 @@ class testFindCoding(unittest.TestCase):
     def test_get_coding_seqs(self):
         #Test a case with 1 coding gene - whole length - uses default from setUp
         self.assertEqual([0,self.genome_length-1], list(self.codeFinder.get_coding_regions().flatten()))
+        
+        #Test a case with 100% coding and 2 genes - should throw an error
+        self.codeFinder.coding_ratio = 1
+        self.codeFinder.gene_count = 2
+        
+        with self.assertRaises(SystemExit) as cm:
+            with redirect_stdout(io.StringIO()) as sout:
+                self.codeFinder.get_coding_seqs()
+        
+        self.assertEqual(cm.exception.code, 0)
+        self.assertEqual(sout.getvalue(), ("Please ensure that if you have more than 1 gene, your coding ratio is not 1. Exiting.\n"))
+        sout.close()
+       
         
         #Test a case with 50% coding and 1 gene
         self.codeFinder.coding_ratio = 0.5
