@@ -196,21 +196,21 @@ class findFitness:
         # Set up fitness profiles
         if(randomize_fitness_profiles): #User did not provide a sequence
             fitness_profile_nums = []
-            fitness_length = self.fitness_mat.shape[1] - 2
+            neut_fitness_pos = self.fitness_mat.shape[1] - 1
             for coding_pos in range(len(coding_poses)):
-                fitness_profile_nums = (fitness_profile_nums + [fitness_length] + #starting codon is correct
-                            random.choices(range(fitness_length),k=coding_poses[coding_pos,1] - coding_poses[coding_pos,0] - 1))
+                fitness_profile_nums = (fitness_profile_nums + [neut_fitness_pos] + #starting codon is correct
+                            random.choices(range(neut_fitness_pos),k=coding_poses[coding_pos,1] - coding_poses[coding_pos,0] - 1))
 
                 if (coding_pos != len(coding_poses) - 1):
-                    fitness_profile_nums = fitness_profile_nums + list(np.repeat(fitness_length, coding_poses[coding_pos+1,0] - 
+                    fitness_profile_nums = fitness_profile_nums + list(np.repeat(neut_fitness_pos, coding_poses[coding_pos+1,0] - 
                                     coding_poses[coding_pos,1] ))
                 else:
-                    fitness_profile_nums = fitness_profile_nums + list(np.repeat(fitness_length, genome_length - 
+                    fitness_profile_nums = fitness_profile_nums + list(np.repeat(neut_fitness_pos, genome_length - 
                                     coding_poses[coding_pos,1]))
         
         else: #Use user provided fitness profiles either provided or taken from the stationary dists
             
-            if(self.ndists != genome_length):
+            if(self.ndists != genome_length): 
                 print("Please ensure that when using a fasta file, the same number of fitness profiles are provided as the length " +
                 "of the genome in the fasta file. Exiting.")
                 sys.exit(0)
@@ -251,6 +251,8 @@ class findFitness:
 
         return (codons)
 
+
+
     #Randomly select the ancestral sequence from a neutral models
     def find_ancestral_neutral(self, genome_length):
         return list(str(element) for element in np.random.randint(low = 0,high=63,size=genome_length))
@@ -268,11 +270,25 @@ class findFitness:
         
         #Read in fasta file
         try:
+            num_record = 0
             for record in SeqIO.parse(fasta_file, "fasta"):
                 ans_seq = str(record.seq).upper()
+                num_record += 1
 
         except:
             print("Please provide ancestral sequence file in fasta format. Exiting.")
+            sys.exit(0)
+        
+        
+        #Make sure only one sequence uploaded
+        if(num_record == 0):
+            #Impropper formatting 
+            print("Please provide ancestral sequence file in fasta format. Exiting.")
+            sys.exit(0)
+        elif(num_record > 1):
+            #Too many sequences
+            print("You have provided more than one sequence in your fasta file. " +
+                    "Please provide only one sequence. Exiting.")
             sys.exit(0)
             
         
@@ -324,12 +340,11 @@ class findFitness:
             expected_fitness_profiles.append(mean)
 
         # Add fitness profile with mean of 1 to account for the neutral areas
-        if (multiple_genes):
-            expected_fitness_profiles.append(1)
-        expected_fitnesses = []
+        expected_fitness_profiles.append(1)
+
 
         # Find the expected value for each site in the genome based on it's respective fitness profile
-        
+        expected_fitnesses = []
         for fitness_profile in fitness_profile_nums:
             expected_fitnesses.append(expected_fitness_profiles[fitness_profile])
             

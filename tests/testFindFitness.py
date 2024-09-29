@@ -3,6 +3,7 @@ from unittest import mock
 from utils import findFitness
 from contextlib import redirect_stdout
 import pandas as pd
+import numpy as np
 import os, io, pathlib
 
 class testCladeReader(unittest.TestCase):
@@ -143,7 +144,7 @@ class testCladeReader(unittest.TestCase):
         self.fit.stationary_dist_file = self.test_file_path + "/table_stationary_dists_full.csv"
         good_fitness_file = self.test_file_path + "table_fitness_dists_full.csv"
         correct_fitness_mat = pd.read_csv(good_fitness_file, header = None, index_col = 0).values.tolist()
-        self.fit.process_existing_fitness_file(self.test_file_path +  "table_fitness_dists_wrong_order.csv")
+        self.fit.process_existing_fitness_file(self.test_file_path +  "table_fitness_dists_full.csv")
         
         #Compare output of process_fitness_dists
         profile_process_output = self.fit.process_fitness_dists()
@@ -159,24 +160,164 @@ class testCladeReader(unittest.TestCase):
         self.assertEqual(round(profile_process_output[1],9), 0.830820542)
 
 
-    # def test_define_fitness_profiles(self):
+    def test_define_fitness_profiles(self):
         
-        # #Set up with the correct fitness distribution and fitness file
-        # self.fit.stationary_dist_file = self.test_file_path + "/table_stationary_dists_full.csv"
-        # good_fitness_file = self.test_file_path + "table_fitness_dists_full.csv"
-        # correct_fitness_mat = pd.read_csv(good_fitness_file, header = None, index_col = 0).values.tolist()
-        # self.fit.process_existing_fitness_file(self.test_file_path +  "table_fitness_dists_wrong_order.csv")
-        
-        
-        # #Test with random fitness profiles all coding
-        # print(self.fit.define_fitness_profiles( True, [1,50], 50))
-        
-        # #Test with a user provided sequence that is the same length as the number of profiles
-        
-        # #Test with a shorter sequence
-        
-        #Test with a longer sequence
+        #Set up with the correct fitness distribution and fitness file
+        self.fit.stationary_dist_file = self.test_file_path + "/table_stationary_dists_full.csv"
+        good_fitness_file = self.test_file_path + "table_fitness_dists_full.csv"
+        correct_fitness_mat = pd.read_csv(good_fitness_file, header = None, index_col = 0).values.tolist()
+        self.fit.process_existing_fitness_file(self.test_file_path +  "table_fitness_dists_full.csv")
+        profile_process_output = self.fit.process_fitness_dists()
         
         
-        return True
+        #Test with random fitness profiles all coding one coding area
+        assigned_fit_profiles = self.fit.define_fitness_profiles( True, np.array([[0,29]]), 30)
+        self.assertEqual(len(assigned_fit_profiles), 30)
+        self.assertEqual(assigned_fit_profiles[0],50) #50 is the neutral codon
+        self.assertTrue(all(x < 50 for x in assigned_fit_profiles[1:29]))
+        self.assertEqual(assigned_fit_profiles[29], 50)
+        
+        
+        #Test with random fitness profiles with multiple coding areas
+        assigned_fit_profiles = self.fit.define_fitness_profiles( True, np.array([[0,9],
+        [19,29]]), 30)
+        self.assertEqual(len(assigned_fit_profiles), 30)
+        self.assertEqual(assigned_fit_profiles[0],50) #50 is the neutral codon
+        self.assertEqual(assigned_fit_profiles[9], 50)
+        self.assertTrue(all(x < 50 for x in assigned_fit_profiles[1:9]))
+        self.assertTrue(all(x == 50 for x in assigned_fit_profiles[10:19]))
+        self.assertEqual(assigned_fit_profiles[19], 50)
+        self.assertTrue(all(x < 50 for x in assigned_fit_profiles[20:29]))
+        self.assertEqual(assigned_fit_profiles[29], 50)
+
+        
+        #Test with a user provided sequence that is the same length as the number of profiles
+        assigned_fit_profiles = self.fit.define_fitness_profiles( False, np.array([[0,49]]), 50)
+        self.assertEqual(list(range(50)), assigned_fit_profiles)
+        
+        #Test with a shorter sequence with self.assertRaises(SystemExit) as cm:
+        with self.assertRaises(SystemExit) as cm1:    
+            with redirect_stdout(io.StringIO()) as sout1:
+                self.fit.define_fitness_profiles( False, np.array([[0,49]]), 30)
+        
+        self.assertEqual(cm1.exception.code, 0)
+        self.assertEqual(sout1.getvalue(), ("Please ensure that when using a fasta file, the same number of fitness profiles are provided as the length " +
+                "of the genome in the fasta file. Exiting.\n"))
+        sout1.close()
+        
+        
+        # Test with a longer sequence
+        with self.assertRaises(SystemExit) as cm2:
+            with redirect_stdout(io.StringIO()) as sout2:
+                self.fit.define_fitness_profiles( False, np.array([[0,49]]), 60)
+        
+        self.assertEqual(cm2.exception.code, 0)
+        self.assertEqual(sout2.getvalue(), ("Please ensure that when using a fasta file, the same number of fitness profiles are provided as the length " +
+                "of the genome in the fasta file. Exiting.\n"))
+        sout2.close()
     
+
+    
+    def test_find_anscestral(self):
+        #Set up with the correct fitness distribution and fitness file
+        self.fit.stationary_dist_file = self.test_file_path + "/table_stationary_dists_full.csv"
+        good_fitness_file = self.test_file_path + "table_fitness_dists_full.csv"
+        correct_fitness_mat = pd.read_csv(good_fitness_file, header = None, index_col = 0).values.tolist()
+        self.fit.process_existing_fitness_file(self.test_file_path +  "table_fitness_dists_full.csv")
+        profile_process_output = self.fit.process_fitness_dists()
+        
+    
+        #Test finding ancestral sequence with one coding region
+        assigned_fit_profiles = self.fit.define_fitness_profiles( True, np.array([[0,29]]), 30)
+        ans_seq = self.fit.find_ancestral(np.array([[0,29]]), assigned_fit_profiles)
+        self.assertEqual(ans_seq[0], "14")
+        self.assertTrue(ans_seq[29] in ["48", "50", "56"])
+        self.assertTrue(all(x not in ["48", "50", "56"] for x in ans_seq[1:29]))
+        
+        #Test finding ancestral sequence with two coding regions
+        assigned_fit_profiles = self.fit.define_fitness_profiles( True, np.array([[0,9],
+        [19,29]]), 30)
+        ans_seq = self.fit.find_ancestral( np.array([[0,9], [19,29]]), assigned_fit_profiles)
+        self.assertEqual(ans_seq[0], "14")
+        self.assertTrue(ans_seq[9] in ["48", "50", "56"])
+        self.assertTrue(all(x not in ["48", "50", "56"] for x in ans_seq[1:9]))
+        self.assertEqual(ans_seq[19], "14")
+        self.assertTrue(ans_seq[29] in ["48", "50", "56"])
+        self.assertTrue(all(x not in ["48", "50", "56"] for x in ans_seq[20:29]))
+        
+    
+    
+    def test_find_anscestral_neutral(self):
+        #Test to ensure correct length and values
+        ans_seq = self.fit.find_ancestral_neutral(30)
+        self.assertEqual(len(ans_seq), 30)
+        self.assertTrue(all (int(x) <= 63 for x in ans_seq ))
+        
+    
+    def test_find_anscestral_fasta(self):
+        #Test with a good sequence -> AA seq = LINLH
+        ans_seq, genome_length = self.fit.find_ancestral_fasta(self.test_file_path + "good_seq.fas")
+        self.assertEqual(genome_length, 5)
+        #L = 28,29, 30, 31, 60, 62
+        #I = 12,13,15
+        #N = 1, 3
+        #H = 17,19
+        self.assertTrue(str(ans_seq[0]) in ["28", "29", "30", "31", "60", "62"])
+        self.assertTrue(str(ans_seq[1]) in ["12","13","15"])
+        self.assertTrue(str(ans_seq[2]) in ["1", "3"])
+        self.assertTrue(str(ans_seq[3]) in ["28","29", "30", "31", "60", "62"])
+        self.assertTrue(str(ans_seq[4]) in ["17", "19"])
+        
+        #Test with a sequence that is not in fasta format
+        with self.assertRaises(SystemExit) as cm1:    
+            with redirect_stdout(io.StringIO()) as sout1:
+                self.fit.find_ancestral_fasta(self.test_file_path + "not_fasta.fas")
+        
+        self.assertEqual(cm1.exception.code, 0)
+        self.assertEqual(sout1.getvalue(), ("Please provide ancestral sequence file in fasta format. Exiting.\n"))
+        sout1.close()
+        
+        
+        #Test with a sequence in terms of amino acids
+        with self.assertRaises(SystemExit) as cm1:    
+            with redirect_stdout(io.StringIO()) as sout1:
+                self.fit.find_ancestral_fasta(self.test_file_path + "amino.fas")
+        
+        self.assertEqual(cm1.exception.code, 0)
+        self.assertEqual(sout1.getvalue(), ("Please ensure that your fasta file is in terms of nucleotides, not amino acids. Exiting.\n"))
+        sout1.close()
+        
+        
+        #Test a fasta file with more than one sequence
+        with self.assertRaises(SystemExit) as cm1:    
+            with redirect_stdout(io.StringIO()) as sout1:
+                self.fit.find_ancestral_fasta(self.test_file_path + "2_seq.fas")
+        
+        self.assertEqual(cm1.exception.code, 0)
+        self.assertEqual(sout1.getvalue(), ("You have provided more than one sequence in your fasta file. Please provide only one sequence. Exiting.\n"))
+        sout1.close()
+        
+        
+        
+    def test_find_fitness_scaling(self):
+        #Set up with the correct fitness distribution and fitness file
+        self.fit.stationary_dist_file = self.test_file_path + "/table_stationary_dists_full.csv"
+        good_fitness_file = self.test_file_path + "table_fitness_dists_full.csv"
+        correct_fitness_mat = pd.read_csv(good_fitness_file, header = None, index_col = 0).values.tolist()
+        self.fit.process_existing_fitness_file(self.test_file_path +  "table_fitness_dists_full.csv")
+        profile_process_output = self.fit.process_fitness_dists()
+        
+        
+        #Test with only one profile (the first profile)
+        self.assertEqual(0.99585076, round(self.fit.find_fitness_scaling([0], False),8))
+        
+        #Test with one profile for a longer genome
+        self.assertEqual(round(0.99585076*5,8), round(self.fit.find_fitness_scaling([0,0,0,0,0], False),8))
+        
+        #Test with 1 gene of two profiles
+        self.assertEqual(round(0.99585076 + 0.994762035,8), round(self.fit.find_fitness_scaling([1,0], False),8))
+        
+        #Test with multiple genes
+        self.assertEqual(round(1+0.99585076 + 0.994762035+1+1+1+1+0.99585076 + 0.994762035+1,7), round(self.fit.find_fitness_scaling([50,1,0,50,50,50,50,1,0,50], False),8))
+        
+        
