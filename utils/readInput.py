@@ -1,6 +1,6 @@
 #Script which reads user input for slim-tree and writes to dictionary which is returned to main slim-tree
 
-import argparse, sys, os, yaml, pandas, copy
+import argparse, sys, os, yaml, pandas, copy, shutil
 import numpy as np
 
 class readInput:
@@ -188,22 +188,28 @@ class readInput:
                 if(cont == "n"):
             	    sys.exit(0)
                 cont = input("Continue? Please enter y or n")
-                
+            
+            shutil.rmtree(output_files_directory)
+            os.mkdir(output_files_directory)
+            
         #Afarinesh_Make FASTA file directories
         #nuc
         nuc_FASTA_files_directory = "/".join(split_starting_output[0:(len(split_starting_output)-1)]) + "/nuc_FASTA"
         try:
            os.mkdir(nuc_FASTA_files_directory)
         except OSError:
-            print("using the same nuc_FASTA folder")       
+            shutil.rmtree(nuc_FASTA_files_directory)
+            print("using the same nuc_FASTA folder")  
+            os.mkdir(nuc_FASTA_files_directory)
         
         #aa
         aa_FASTA_files_directory = "/".join(split_starting_output[0:(len(split_starting_output)-1)]) + "/aa_FASTA"
         try:
            os.mkdir(aa_FASTA_files_directory)
         except OSError:
+            shutil.rmtree(aa_FASTA_files_directory)
             print("using the same aa_FASTA folder")
-
+            os.mkdir(aa_FASTA_files_directory)
  
         #Set up where files will be output to 
         output_filename = output_files_directory + "/" + split_starting_output[-1]
@@ -216,18 +222,22 @@ class readInput:
             try:
                 os.mkdir(backup_files_directory)
             except OSError:
+                shutil.rmtree(backup_files_directory)
                 print("using same backup folder")
+                os.mkdir(backup_files_directory)
             
             filenames [2] = backup_files_directory
         
         #Make folder for output and err files
         if(hpc):
-            slurm_directiory =  "/".join(split_starting_output[0:(len(split_starting_output)-1)]) + "/slurmOutput"
+            slurm_directory =  "/".join(split_starting_output[0:(len(split_starting_output)-1)]) + "/slurmOutput"
             try:
-                os.mkdir(slurm_directiory)
+                os.mkdir(slurm_directory)
             except OSError:
+                shutil.rmtree(slurm_directory)
                 print("using same slurm folder")
-            filenames [3] = slurm_directiory
+                os.mkdir(slurm_directory)
+            filenames [3] = slurm_directory
         
         
         return filenames
