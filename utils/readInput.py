@@ -14,7 +14,7 @@ class readInput:
             sys.exit(0)
             
         self.param_dict = self.make_param_dict(args)
-        self.param_dict["filenames"] = self.process_filenames(args.input_tree, args.backup)
+        self.param_dict["filenames"] = self.process_filenames(args.input_tree, args.backup, args.high_performance_computing)
         
         
 
@@ -169,7 +169,7 @@ class readInput:
         
     
     #Read input tree to make output file names
-    def process_filenames(self, tree_name, backup):
+    def process_filenames(self, tree_name, backup, hpc):
     
         # Find where data needs to be output to, set up documents and folders accordingly accordingly
         output_file_start = os.getcwd() + '/' + tree_name.split('.')[0]
@@ -202,12 +202,13 @@ class readInput:
         try:
            os.mkdir(aa_FASTA_files_directory)
         except OSError:
-            print("using the same  aa_FASTA folder")
+            print("using the same aa_FASTA folder")
 
  
         #Set up where files will be output to 
         output_filename = output_files_directory + "/" + split_starting_output[-1]
         
+        filenames = [output_filename, output_file_start, None, None]
         
         #Make backup folder
         if(backup):
@@ -217,9 +218,19 @@ class readInput:
             except OSError:
                 print("using same backup folder")
             
-            return((output_filename, output_file_start, backup_files_directory))
-        else:
-            return((output_filename, output_file_start, None))
+            filenames [2] = backup_files_directory
+        
+        #Make folder for output and err files
+        if(hpc):
+            slurm_directiory =  "/".join(split_starting_output[0:(len(split_starting_output)-1)]) + "/slurmOutput"
+            try:
+                os.mkdir(slurm_directiory)
+            except OSError:
+                print("using same slurm folder")
+            filenames [3] = slurm_directiory
+        
+        
+        return filenames
     
     
     

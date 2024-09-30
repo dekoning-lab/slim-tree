@@ -209,8 +209,8 @@ class testReadInput(unittest.TestCase):
         tree_name = "tests/testFiles/test_tree"
         
         #Test process with new directories, no backup, ensure folders created
-        processed_output = self.input_reader.process_filenames(tree_name + ".txt", False)
-        correct_output = (self.test_file_path + "/slimScripts/test_tree", self.test_file_path + "/test_tree", None)
+        processed_output = self.input_reader.process_filenames(tree_name + ".txt", False, False)
+        correct_output = [self.test_file_path + "/slimScripts/test_tree", self.test_file_path + "/test_tree", None, None]
         self.assertTrue(processed_output == correct_output)
         self.assertTrue(os.path.exists(self.test_file_path + "/slimScripts/"))
         self.assertTrue(os.path.exists(self.test_file_path + "/aa_FASTA/"))
@@ -219,9 +219,9 @@ class testReadInput(unittest.TestCase):
         #Test process with existing directories, no backup
         with mock.patch.object(builtins, 'input', lambda _: 'y'):
             with redirect_stdout(io.StringIO()) as sout:
-                processed_output2 = self.input_reader.process_filenames(tree_name + ".txt", False)
+                processed_output2 = self.input_reader.process_filenames(tree_name + ".txt", False, False)
  
-            sout_correct = sout.getvalue() == "using the same nuc_FASTA folder\nusing the same  aa_FASTA folder\n"
+            sout_correct = sout.getvalue() == "using the same nuc_FASTA folder\nusing the same aa_FASTA folder\n"
             sout.close()
             correct = processed_output2 == correct_output and sout_correct
             assert correct
@@ -233,8 +233,8 @@ class testReadInput(unittest.TestCase):
         os.rmdir(self.test_file_path + "/nuc_FASTA/") 
 
         #Test process with new directories, include backup, ensure folders created
-        processed_output3 = self.input_reader.process_filenames(tree_name + ".txt", True)
-        correct_output2 = (self.test_file_path + "/slimScripts/test_tree", self.test_file_path + "/test_tree", self.test_file_path + "/backupFiles")
+        processed_output3 = self.input_reader.process_filenames(tree_name + ".txt", True, False)
+        correct_output2 = [self.test_file_path + "/slimScripts/test_tree", self.test_file_path + "/test_tree", self.test_file_path + "/backupFiles", None]
         self.assertTrue(processed_output3 == correct_output2)
         self.assertTrue(os.path.exists(self.test_file_path + "/slimScripts/"))
         self.assertTrue(os.path.exists(self.test_file_path + "/aa_FASTA/"))
@@ -242,15 +242,32 @@ class testReadInput(unittest.TestCase):
         self.assertTrue(os.path.exists(self.test_file_path + "/backupFiles/"))
         
         
+        # Remove directories to test with a backup
+        os.rmdir(self.test_file_path + "/slimScripts/")
+        os.rmdir(self.test_file_path + "/aa_FASTA/")
+        os.rmdir(self.test_file_path + "/nuc_FASTA/") 
+        # os.rmdir(self.test_file_path + "/backupFiles/") 
+        
+        # Test process with new directories, include hpc, ensure folders created
+        processed_output5 = self.input_reader.process_filenames(tree_name + ".txt", False, True)
+        correct_output6 = [self.test_file_path + "/slimScripts/test_tree", self.test_file_path + "/test_tree", None, self.test_file_path + "/slurmOutput"]
+        self.assertTrue(processed_output3 == correct_output2)
+        self.assertTrue(os.path.exists(self.test_file_path + "/slimScripts/"))
+        self.assertTrue(os.path.exists(self.test_file_path + "/aa_FASTA/"))
+        self.assertTrue(os.path.exists(self.test_file_path + "/nuc_FASTA/"))
+        self.assertTrue(os.path.exists(self.test_file_path + "/slurmOutput/"))
+        
+        
         # Test process with existing directories, no backup
         with mock.patch.object(builtins, 'input', lambda _: 'y'):
             with redirect_stdout(io.StringIO()) as sout:
-                processed_output4 = self.input_reader.process_filenames(tree_name + ".txt", True)
+                processed_output4 = self.input_reader.process_filenames(tree_name + ".txt", True, True)
  
-            sout_correct = sout.getvalue() == "using the same nuc_FASTA folder\nusing the same  aa_FASTA folder\nusing same backup folder\n"
+            sout_correct = sout.getvalue() == "using the same nuc_FASTA folder\nusing the same aa_FASTA folder\nusing same backup folder\nusing same slurm folder\n"
             sout_val = sout.getvalue()
             sout.close()
-            correct = processed_output4 == correct_output2 and sout_correct
+            correct = processed_output4 == [self.test_file_path + "/slimScripts/test_tree", 
+                                self.test_file_path + "/test_tree",  self.test_file_path + "/backupFiles", self.test_file_path + "/slurmOutput"] and sout_correct
             assert correct
         
         # Remove directories
@@ -258,6 +275,7 @@ class testReadInput(unittest.TestCase):
         os.rmdir(self.test_file_path + "/aa_FASTA/")
         os.rmdir(self.test_file_path + "/nuc_FASTA/")
         os.rmdir(self.test_file_path + "/backupFiles/")
+        os.rmdir(self.test_file_path + "/slurmOutput/")
         
     def test_make_param_dict(self):
         
@@ -300,7 +318,7 @@ class testReadInput(unittest.TestCase):
     def test_save_input(self):
         #Make parameter dict and file outputs - already tested
         param_dict = self.input_reader.make_param_dict(self.arguments)
-        param_dict["filenames"] = self.input_reader.process_filenames("tests/testFiles/test_tree.txt", False)
+        param_dict["filenames"] = self.input_reader.process_filenames("tests/testFiles/test_tree.txt", False, False)
         
         #Test default
         self.input_reader.save_input(param_dict)
