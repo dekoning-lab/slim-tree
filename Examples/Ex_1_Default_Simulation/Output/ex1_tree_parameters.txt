@@ -1,0 +1,26 @@
+Simulation parameters
+
+mutation_rate:2.5e-06
+population_size:100
+recombination_rate:2.5e-08
+burn_in:1000
+sample_size:all
+fitness_profile_calc:True
+split_ratio:0.5
+partition:None
+time:None
+count_subs:True
+output_gens:True
+backup:True
+randomize_fitness_profiles:True
+polymorphisms:True
+user_provided_sequence:False
+fasta_file:None
+wf_model:True
+jukes_cantor:True
+haploidy:False
+gene_count:1
+coding_ratio:1.0
+genome_length:300
+coding_seqs:[[  0 300]]
+theta: 0.001

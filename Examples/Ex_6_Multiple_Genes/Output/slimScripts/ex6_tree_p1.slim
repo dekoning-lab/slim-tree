@@ -1,0 +1,816 @@
+initialize() {
+	setSeed(410844799);
+	initializeSLiMOptions(nucleotideBased=T);
+	defineConstant("codons", c(14, 10, 58, 35, 17, 58, 58, 3, 42, 33, 0, 38, 33, 61, 38, 51, 61, 53, 63, 29, 59, 19, 63, 34, 18, 35, 21, 28, 21, 18, 27, 63, 43, 36, 34, 35, 42, 58, 58, 31, 14, 35, 17, 31, 4, 51, 34, 35, 7, 56, 14, 43, 63, 59, 52, 20, 16, 21, 20, 32, 50, 12, 36, 61, 57, 3, 39, 16, 13, 52, 0, 45, 34, 7, 59, 57, 5, 39, 10, 18, 50, 44, 49, 23, 30, 17, 27, 37, 30, 10, 8, 1, 59, 18, 61, 57, 55, 11, 27, 51, 23, 3, 1, 41, 32, 58, 4, 50, 34, 16, 12, 32, 51, 61, 12, 47, 18, 31, 44, 58, 2, 14, 56, 2, 5, 14, 17, 3, 14, 39, 52, 21, 12, 17, 18, 18, 36, 61, 34, 25, 3, 51, 2, 29, 7, 13, 12, 40, 2, 7, 11, 26, 28, 21, 33, 58, 36, 58, 3, 13, 60, 51, 4, 38, 12, 35, 34, 2, 38, 3, 15, 33, 60, 18, 50, 10, 7, 3, 33, 20, 59, 19, 34, 60, 35, 36, 18, 13, 63, 39, 1, 35, 51, 62, 40, 57, 34, 58, 23, 42, 53, 63, 11, 2, 5, 16, 39, 40, 14, 9, 24, 29, 26, 40, 62, 58, 34, 37, 11, 57, 32, 39, 26, 1, 1, 35, 33, 49, 47, 63, 2, 48, 14, 23, 58, 2, 0, 39, 5, 2, 46, 1, 38, 39, 7, 25, 61, 38, 11, 14, 39, 27, 2, 38, 40, 12, 1, 36, 11, 3, 6, 1, 35, 36, 57, 60, 0, 37, 7, 4, 16, 25, 40, 37, 41, 8, 35, 51, 16, 13, 22, 27, 21, 41, 53, 16, 0, 49, 18, 46, 6, 2, 58, 29, 8, 19, 16, 35, 56, 13));
+	initializeAncestralNucleotides(codonsToNucleotides(codons, format="char"));
+	mm = mmJukesCantor(8.333333333333334e-07);
+	initializeMutationTypeNuc("m1", 0.5, "f", 0.0);
+	m1.convertToSubstitution = F;
+	initializeGenomicElementType("g1", m1, 1.0, mm);
+	initializeGenomicElementType("g2", m1, 1.0, mm);
+	initializeRecombinationRate(2.5e-08);
+	initializeGenomicElement(g1, 0, 149);
+	initializeGenomicElement(g2, 150, 374);
+	initializeGenomicElement(g1, 375, 524);
+	initializeGenomicElement(g2, 525, 746);
+	initializeGenomicElement(g1, 747, 896);
+	initializeGenomicElement(g2, 897, 899);
+}
+
+
+function (void) setup_fitness(void){
+	sim.setValue("A", c(0.987726681246825, 0.977616134964281, 0.983892134376715, 1.0, 0.848837722259293, 0.981590046102542, 0.994620599925951, 0.989837449664526, 0.996333791969413, 0.987241377716614, 0.986172751166112, 0.985664918668978, 0.98227942302891, 0.991587573967498, 0.983254368772565, 0.994578653260576, 1.0, 0.995394988277724, 1.0, 0.996059247937639, 0.990079963434694, 0.994368361846439, 0.993291367592121, 0.999262784868322, 0.994478820532166, 0.99581423392148, 0.993470284846506, 0.996953125393277, 0.994479192711096, 1.00173186544418, 0.995677024758145, 0.988184044237927, 0.995845119911837, 0.994958060940048, 1.0, 0.990221441052182, 0.988921508153472, 1.0, 0.989070873092546, 0.990995951234592, 0.997289980496458, 1.00174957874363, 1.0, 0.991240947756075, 0.992762106236779, 0.990465857660693, 0.991433310793732, 0.994793181854534, 0.996515912253369, 1.0, 1.0));
+	sim.setValue("C", c(0.837653020408896, 0.839442229749347, 0.84168684990466, 0.988065578356162, 0.980983543321104, 0.837903111871071, 0.987654237975734, 0.98779983544566, 0.983254522761422, 0.838123656406445, 0.986171405394839, 0.980144329355182, 0.982279579576859, 0.84231570455164, 0.986737835724551, 0.836490186793575, 0.988957134723329, 0.987306996576368, 0.988685913949901, 0.989763648101572, 0.985476192451412, 0.989763679731481, 0.839298002236942, 0.840591241963354, 0.840916737768157, 0.840182303252714, 0.989986753418545, 0.993469868589829, 0.986392237369136, 0.994765446990713, 0.839775497636192, 0.984701562870594, 0.841957249003777, 0.840773690884112, 0.992878613559134, 0.839613968037096, 0.98431705195755, 1.00236117455181, 0.987950234523623, 0.986391891757351, 0.990994035741551, 0.841372874293466, 0.840911797348274, 0.840068146407532, 0.841378704285732, 0.986981852986049, 0.840579388295176, 0.838898926246809, 0.994478387212655, 0.990592719497904, 1.0));
+	sim.setValue("D", c(0.996293270492131, 0.845582581515925, 0.846283206698977, 0.984581782611732, 0.838706581414541, 1.0, 0.991137441154601, 0.98779983694409, 0.98325445806101, 0.998812070411512, 0.84164217416779, 0.980144316276108, 0.982279595768626, 1.0, 0.840167243032697, 0.98382411642677, 0.994478392383082, 0.990790445721497, 0.99216935942185, 1.0008052213813, 1.0, 0.989763682280335, 0.994982223605647, 0.999999510456715, 1.00067055942988, 0.997505028591256, 0.989986741555676, 0.993469868578869, 0.995395506758362, 0.99128195663518, 0.992631139581101, 0.991667207709404, 0.996516130515274, 0.993357782213733, 0.839462623517788, 0.99482585858368, 0.841169080288701, 0.838947864144442, 0.984467506844747, 0.986391883384029, 0.997960950858684, 1.00203679040371, 0.996271225025701, 0.988429189911576, 0.99498235649156, 0.842271897282196, 1.0, 0.996676040456743, 0.990995091932762, 0.999596782680759, 1.0));
+	sim.setValue("E", c(0.992331161751014, 0.845582581509618, 0.846283206698571, 0.984582237092888, 0.845326737189086, 0.992039482139875, 0.987654235606413, 0.99128305570277, 0.983254527736868, 1.0, 0.841672025140966, 0.983627843749347, 0.98227959568486, 0.999999523026644, 0.842314334840745, 0.987307663740658, 0.997961601417258, 0.992827995427609, 0.995652575012615, 0.995284550123954, 0.999407978002262, 0.995284530004176, 1.0, 1.00274593544219, 1.00323755314785, 1.0, 0.996953429111171, 1.00043627717669, 0.991912320805642, 0.991281925423282, 0.996114257025004, 0.99166720770736, 1.00059117384583, 0.999280653863535, 0.985911213882003, 1.0, 0.84318413586782, 0.841079089552809, 0.984467506780534, 0.993357781302564, 0.996515259287734, 1.0020367903925, 1.0021162037612, 0.996995565530832, 0.99769096589749, 0.843903880172556, 0.998991498150026, 0.99600503118207, 0.994478379003502, 1.00264266240209, 1.0));
+	sim.setValue("F", c(0.845094282463257, 0.977617443605289, 0.992895764403186, 0.841815699529278, 0.999644961013884, 0.842379816775448, 0.837662901167753, 0.837400518016551, 0.836229476439199, 0.846080209087817, 0.993139192880328, 0.980144327846922, 0.99516856893725, 0.84343762975394, 1.00382945095188, 0.836691141188719, 0.988957190439351, 0.987307000504259, 0.840814769920426, 0.839811273611494, 0.988958718906915, 0.993246995332296, 0.98520451580555, 0.840559893872997, 0.842381916699711, 0.841644243040802, 0.993470205820423, 1.00391942770642, 0.998878539086934, 0.996803054118692, 0.840770267453063, 0.98470156290957, 0.842132147808485, 0.986392217991935, 0.838291112570325, 0.839912564275592, 0.982279588848215, 0.990790146812847, 0.999999739157955, 0.986391891447724, 0.994477673613199, 0.842214550798428, 0.841535751356558, 0.84036452951486, 0.842541518060933, 1.00059109037818, 0.841942069832861, 0.840726548956158, 0.999082850811912, 0.996113580392399, 1.0));
+	sim.setValue("G", c(1.0, 0.848046617105175, 0.848908258147334, 0.991548689305662, 0.846532547469938, 0.987110674993936, 0.989691854143674, 0.987799913916266, 1.0, 0.983758172264877, 0.845398689844453, 0.97666116669664, 0.978796395908386, 0.989550038290205, 0.84427214582859, 0.98586199979724, 0.990995239571496, 0.983823843871463, 0.99809244790181, 0.996730127854439, 0.9854755763039, 0.986280452307402, 0.981721345768335, 0.987949651909677, 0.990221126537686, 0.988847913327806, 0.843304425042146, 0.989986714274071, 0.992686834361932, 0.996803066078222, 0.987110453796449, 0.986738463786108, 0.989549780298546, 0.988429021374139, 0.987949805176951, 0.983255179431091, 0.975314241405917, 0.991911736444048, 0.980984467163905, 0.982908689300652, 0.994477792767328, 1.00144493026791, 0.990221142019841, 0.981463030896899, 0.989808616783909, 0.844900653631329, 0.989071507544461, 0.990831052823934, 0.987511975592195, 0.994076107714082, 1.0));
+	sim.setValue("H", c(0.987726474505137, 0.845552730688921, 0.845944615827636, 0.836620123616829, 0.984466843434964, 0.98711065068327, 0.987654233980478, 0.993320716408388, 0.837342225887455, 0.981722471675438, 0.837784202547482, 0.980144334937738, 0.998454658660012, 0.991587571899452, 0.841830085648502, 0.983824119145595, 0.992440819946303, 0.987307001287024, 0.992169377156264, 0.996730205837074, 0.992441762541104, 0.993246989562574, 0.988687072115649, 0.987949292033447, 0.988183046112442, 0.984243655100541, 0.993470205065987, 1.00504075582122, 0.996841016662423, 0.991281955732693, 0.990593622206082, 1.0, 0.99507047725177, 0.99191214951366, 0.843371568947324, 0.986738330840219, 0.841233008081037, 0.987306524597482, 0.991433447092894, 0.9898747265401, 0.997960950858819, 0.990994811840121, 0.988183539255516, 0.990466490302819, 0.990724781529021, 0.98698185699085, 0.984468108596866, 0.986226396344448, 1.00077368843969, 1.00104243471303, 1.0));
+	sim.setValue("I", c(0.841548148955292, 0.994239865773688, 1.00275343217381, 0.842745367656909, 0.978945444797, 0.842143954410584, 0.985616694921437, 0.985762320863596, 0.839877315429458, 0.842693119692478, 0.997397075951771, 0.992902975523695, 0.980242015448179, 0.844900792569892, 0.994479164024514, 0.981786615395508, 0.993886545718118, 0.996311167352464, 0.842939185786607, 0.987726136415231, 0.988958640997167, 0.995814006678306, 0.992944677483826, 0.985911707544007, 0.843692857804483, 0.843108992509048, 1.00274583428707, 0.998398764067682, 0.9843547246881, 0.998248702113362, 0.985072898004393, 0.982664130931725, 0.987512105770429, 0.987837234511967, 0.992878625644738, 0.981218094876051, 0.991555001846897, 0.98526815448497, 0.989395811399587, 0.995924727590088, 0.992440136085933, 0.988957298237316, 0.986146031655295, 0.986391487934898, 0.844133786899068, 1.0, 0.843350268573134, 0.841766810395525, 0.997961548000493, 0.988555206389897, 1.0));
+	sim.setValue("K", c(0.992331159644011, 0.841790977433667, 0.842497951786877, 0.836565676651175, 0.845356948762258, 0.985073166717817, 0.987654235625939, 1.00521576731315, 0.837318416336406, 0.987241325905791, 0.838997409121096, 0.980144326416004, 0.982279578838004, 0.998553889006445, 0.842084269982004, 0.987307663753532, 0.997045408424623, 0.990790444125311, 1.00025704869867, 0.996730209722137, 0.992441762546128, 1.00181360647061, 0.99498222796015, 0.993470193127349, 1.00023330425235, 0.991209742905325, 0.996953435100297, 1.00391942770715, 0.989874866274677, 0.99128191269606, 0.999999632148847, 0.994479325218031, 1.00243904515039, 0.995395314343938, 0.841115055697329, 0.995742056646468, 0.843078607446132, 0.839178674371489, 0.984467520622401, 1.0, 1.00203603014711, 0.996516088678708, 1.00107278304165, 1.0, 1.0, 0.842234161237883, 0.98998774331569, 0.994314254813671, 0.996515897554357, 0.997559259179048, 1.0));
+	sim.setValue("L", c(0.847763636984893, 0.982544940658094, 1.0, 0.847797101853582, 0.980983680133755, 0.848589074397468, 0.982133492280358, 0.985762398090428, 0.977733921581613, 0.847900036124067, 1.0, 0.985073013170884, 0.982279414186578, 0.980546385212908, 1.0, 0.981786959059693, 0.990403411620153, 0.993836405654458, 0.986648687519133, 0.984242985952803, 0.988042376235934, 1.0, 0.987770737077523, 0.985912163919595, 0.982662285623666, 0.978722988414597, 1.0, 1.0, 0.986391654065556, 1.0, 0.9871104750545, 0.982663355727885, 0.984028912043573, 0.993357794539763, 0.985912292062961, 0.981217666324089, 0.986884000101028, 0.987307021631987, 0.990516974855919, 0.990649212935814, 0.99525247010305, 0.985474146511465, 0.986146059156825, 0.986391485726747, 0.97968506427737, 0.996258316809903, 0.978947452571112, 0.980705752979478, 0.997045374575696, 0.993159938286961, 1.0));
+	sim.setValue("M", c(0.836214610253858, 0.984582532777661, 0.997824772095857, 0.838629366015694, 0.984466315163389, 0.837129817111503, 0.99113741904635, 0.991282986953316, 0.835338597101476, 0.837206057008318, 1.00445225737216, 0.990593718753945, 0.985762703989006, 0.838692226867402, 0.999999742808532, 0.830820541978248, 0.995923970547837, 0.99427357730671, 0.992169078304765, 0.993246798187932, 0.992441872802599, 1.00481781106621, 0.988687670126247, 0.834874501295086, 0.8372952258546, 0.836871378500242, 1.0004365448602, 1.00247377609197, 0.989875444160275, 1.00633638783717, 0.833671064952051, 0.988184796235615, 0.993032732188503, 0.997962260645814, 0.99287852791341, 0.986739627709708, 0.987800202513503, 0.994273293152071, 0.993470889549875, 0.993357911120712, 1.00144409499447, 0.835929564495646, 0.834881373677249, 0.988429295294519, 0.837570256708448, 0.997432160730852, 0.837269428242506, 0.835574044697733, 1.00144464173643, 0.994075871512435, 1.0));
+	sim.setValue("N", c(0.997132740142472, 0.841489839276908, 0.842336751493457, 0.984581782623888, 0.83875193319977, 0.997962356934471, 0.996658132500303, 0.993320716569289, 0.983254449061818, 0.988686944410614, 0.837974822681736, 0.983627404180444, 0.98924571224704, 0.999328504065338, 0.840066229495349, 0.98382412156167, 0.995924055091828, 0.987307000744425, 0.995652575500387, 1.00506302144215, 0.996516783894133, 0.993246989812948, 0.988687089790844, 0.991432751625358, 0.993704236583498, 0.98976410989492, 0.989986744598576, 0.996953106381313, 0.99684101679992, 0.994765445974104, 0.99059362245629, 0.998633511301417, 0.999328280208797, 0.99191214990412, 0.841086833631762, 0.990221418987918, 0.839556088603742, 0.990790094075477, 0.984467520642525, 0.989874726582151, 1.00203602751272, 0.999999250329012, 0.993704239889864, 0.988429189910746, 0.994982388281307, 0.840829308057509, 0.99491648972159, 0.994314254801913, 0.999999043970102, 0.996113580396922, 1.0));
+	sim.setValue("P", c(0.980760749554956, 0.843555255976635, 0.843980582347776, 0.984582371011379, 0.84744415525553, 0.978107064122772, 0.987654291017876, 0.984316685752809, 0.979771445216809, 0.978237842449953, 0.840717375506539, 0.97666117495492, 0.840964255138884, 0.982583880017101, 0.843400378877854, 1.0, 0.99099524105789, 1.0, 0.98520276570746, 0.986280497712425, 0.981993040929227, 0.986280523868711, 0.981721344220069, 1.0, 1.0, 0.980760489550821, 0.986503600070741, 0.989986714289543, 0.988429161645384, 0.987798804133797, 1.0, 0.981218513971277, 0.986066427552533, 0.982908927003652, 0.982427302149786, 0.84191567669483, 0.975314241406746, 0.983823196613444, 0.980984467166821, 0.982908690573578, 1.0, 0.994478657088706, 0.988183583471718, 0.981463031395508, 0.981722652055805, 0.843729069365333, 0.987950204044798, 1.0, 0.98751193927638, 0.990592897732948, 1.0));
+	sim.setValue("Q", c(0.989764175645807, 0.845522700558089, 0.845912666837198, 0.984582239344855, 0.83996821301016, 0.98507316845967, 0.987654233483933, 0.998249444050237, 0.838795459862678, 0.990724346396856, 0.986171614229901, 0.983627843750688, 0.987800062990828, 0.997108268040869, 0.845282766744677, 0.987307624125032, 0.995924055262286, 0.992827995264473, 0.997690100383689, 0.995284550119123, 0.993563024693889, 1.00080519994233, 0.996245097096462, 0.993470521282298, 0.99796202721445, 0.994021882202413, 0.998074782716764, 1.0032483977936, 0.989874863427693, 0.996803054432648, 0.996114253051009, 0.99675040919206, 0.999999299579611, 1.0, 0.841379957848049, 0.997187696701764, 0.843257307857995, 0.987306532734188, 0.984467544694488, 0.995395301283286, 1.0007731314191, 0.999083071863386, 0.999754370633065, 0.998878446712479, 0.997690965897743, 0.986981837894563, 0.991433358312757, 0.991747279993514, 0.99908284424414, 1.00163433006502, 1.0));
+	sim.setValue("R", c(0.984243507120495, 0.848866479269875, 0.849567104389234, 0.979061574544146, 0.848447508740279, 0.976069727982448, 0.982133492290513, 1.0, 0.841766851271317, 0.976201432925994, 0.844470103982147, 0.974623664015759, 0.982279414127223, 0.989550060469321, 0.847914717461657, 0.981786959895733, 0.990403383355878, 0.985269770244528, 0.995652551038461, 0.989763876225612, 0.985475490746705, 0.996730184591941, 0.986649465962954, 0.982428598742074, 0.98818356279715, 0.984243444053267, 0.991432728551462, 0.999999038893488, 0.984354218573133, 0.989244825958426, 0.993639506623273, 0.990751141066888, 0.995070509397277, 0.990649241887217, 0.844261224953876, 0.98673822486944, 0.844117196385583, 0.981785843741768, 0.978946906317092, 0.993759982951675, 0.995252467191443, 0.988957959379848, 0.993112341283924, 0.993357787227767, 0.992944918678168, 0.981461216915952, 0.982429662191525, 0.986226619034182, 0.992440809011929, 0.995521770084039, 1.0));
+	sim.setValue("S", c(0.986810509820359, 0.845612255451891, 0.846429844969062, 0.996153212156946, 0.847282850944514, 0.985073142161747, 1.0, 0.987800002669879, 0.988183818288664, 0.981720660528407, 0.980651711652241, 0.982711217954905, 0.980241911652498, 0.990324663693418, 0.844390728420103, 0.988753441321933, 0.996326338478261, 0.98875298793552, 0.996427290981961, 1.0, 0.988042387633299, 0.989763864560073, 0.985203834983734, 0.991432849416107, 0.990750544028029, 0.988501212449049, 0.984466087247711, 0.991432441368993, 0.992920624188253, 0.99680310363772, 0.990593553001108, 0.988184018020553, 0.996918375390651, 0.988958446203836, 0.990170102650379, 0.983255125088616, 0.976758924238235, 0.9965827420477, 0.984467071283162, 0.986391521437962, 0.996515373597881, 1.0, 0.993112351957239, 0.984945827773651, 0.988687086491948, 0.981461214902413, 0.99183554693481, 0.993595125804458, 0.996515909339703, 0.994076119429189, 1.0));
+	sim.setValue("T", c(0.980760749050907, 0.977616168010915, 0.983892134191413, 0.990877717733809, 0.848882565609039, 0.981590021228652, 1.00189159014671, 0.98983744969212, 0.979771441743803, 0.981720712770785, 0.986172750138209, 0.991185619780326, 0.978796395062853, 0.989550038551105, 0.983254346680793, 0.987307654667776, 0.998736252681479, 0.992828027518103, 0.993290759055438, 0.997851540096763, 0.990079961375344, 0.993247031452528, 0.992761954467297, 0.989987193153257, 0.990221126533875, 0.987726591211203, 0.993470286713073, 0.995507478024239, 0.989874773336877, 0.99884061366952, 0.991714907851191, 0.98673846417367, 1.0, 0.989874642707749, 0.994916064018792, 0.986738245543, 0.982279516049234, 0.994865415157418, 0.984467084527851, 0.994958034202851, 0.996515336587289, 0.997290738537313, 0.993704305884178, 0.989550320821451, 0.987241632014151, 0.989020173755855, 0.992025214431121, 0.99174724994789, 1.0, 0.995197448841846, 1.0));
+	sim.setValue("V", c(0.842384378225428, 0.841523464138935, 0.841826667690409, 0.84296324421477, 0.98446704323412, 0.843375806514518, 0.841538631363493, 0.841799395610684, 0.839105369701586, 0.843178938115526, 0.840511464077991, 0.842227555738564, 0.984316909481762, 0.846068095140246, 0.986738138646327, 0.839762972636279, 0.84404612297943, 0.842323525272619, 0.844921056530783, 0.843499268231477, 0.843653617134272, 0.986280606597924, 0.843705741150207, 0.843398241829025, 0.844600062423535, 0.843679387341783, 0.986503600062011, 0.995507478021711, 0.986391778016743, 0.987798804120494, 0.843016115063255, 0.843581817357637, 0.845131478521978, 0.844707854210741, 0.841871045903627, 0.842207937057222, 0.841566464957797, 0.983823196621569, 0.992026181112262, 0.845054140672376, 0.846171136561029, 0.844511471110303, 0.843887514862742, 0.84404156427846, 0.84533959699705, 0.986982562751961, 0.844254294838468, 0.842905730062045, 0.987511971622289, 0.990592897735906, 1.0));
+	sim.setValue("W", c(0.834214385065078, 1.0, 1.00591225757148, 0.993586207831107, 0.984466315162035, 0.835625734144722, 0.994620590234339, 0.991282986896102, 0.986737417005651, 0.985204361857368, 0.999434361919498, 1.0, 0.985762705232881, 0.989550158435563, 0.997187706236797, 0.992828304141429, 1.00348226890424, 1.00405216742674, 0.992169078303964, 0.993246797234397, 0.995924919814942, 1.00021332834042, 1.0015760961818, 0.996953514859285, 0.991666054929971, 0.991209763596039, 1.00799480372759, 1.0050407573208, 0.99335805027576, 1.00580691774412, 0.994076727450989, 0.988184796097636, 0.996516084151158, 0.995395321951068, 1.00576814174836, 0.990221482753075, 1.0, 0.999794277524075, 0.99603720755427, 1.00313621072583, 0.997960800069685, 0.99447796562639, 0.995149876100431, 0.993949643970731, 0.988688823412755, 1.00551987465145, 0.987951274421084, 0.989709600951654, 1.00492785626368, 1.00104241086234, 1.0));
+	sim.setValue("Y", c(0.837639415062509, 0.845582581887755, 0.846162718924027, 0.838407107198923, 1.0, 0.981590480290784, 0.838131180826667, 0.987799837193719, 0.837246299652579, 0.838357617006842, 0.986171405397238, 0.980144329149722, 1.0, 0.842703959250552, 0.994825836961616, 0.837812915888491, 0.988957134763559, 0.987307006103871, 0.988685914933087, 0.989763647785266, 0.990996155684484, 0.989763689382181, 0.985204515290432, 0.841567533664653, 0.84174846736832, 0.841059727382613, 0.989986749455865, 1.00551970318554, 1.0, 0.991281953006438, 0.840972315189742, 0.991667199720491, 0.843017645747065, 0.986392217989858, 0.843238389299844, 0.840512738880983, 0.978797802536047, 0.990790094065286, 1.0, 0.986391884201654, 0.994477673853195, 0.842488591993129, 0.842077893500604, 0.984946120265653, 0.842324370290644, 0.997432183640851, 0.841061689598291, 0.839902279741386, 0.999999087920858, 0.998680603262113, 1.0));
+	sim.setValue("X", c(0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 0.830820541978248, 1.0));
+
+	sim.setValue("fitness_profiles0",c(50, 18, 26, 9, 32, 18, 12, 0, 15, 46, 27, 37, 13, 4, 3, 29, 14, 11, 4, 10, 48, 48, 4, 33, 5, 19, 47, 45, 15, 33, 18, 14, 8, 3, 32, 25, 42, 15, 36, 14, 49, 12, 37, 21, 37, 4, 42, 19, 31, 31, 50));
+	sim.setValue("fitness_profiles1",c(50, 7, 18, 29, 34, 12, 40, 1, 39, 43, 35, 22, 4, 25, 44, 30, 12, 22, 10, 40, 36, 1, 18, 7, 19, 6, 19, 29, 40, 44, 49, 24, 49, 12, 23, 25, 7, 7, 29, 1, 23, 32, 39, 25, 11, 45, 25, 10, 43, 23, 50));
+	sim.setValue("fitness_profiles2",c(50, 44, 30, 32, 23, 40, 1, 18, 8, 37, 16, 22, 0, 25, 47, 48, 26, 13, 43, 3, 22, 21, 32, 37, 36, 25, 19, 6, 4, 33, 10, 32, 39, 15, 8, 37, 44, 24, 38, 20, 27, 1, 46, 17, 49, 32, 25, 9, 23, 38, 50));
+	defineConstant("start_stop_codon_positions",matrix(c(0, 150, 375, 525, 747, 897), ncol = 2, byrow = T));
+
+	defineConstant("seq_length", 300);
+	get_fitness();
+
+	sim.setValue("fixations_p1", sim.chromosome.ancestralNucleotides(format = "integer"));
+	sim.setValue("fixations_counted_p1", 0);
+}
+
+
+function (void) get_fitness (void){
+	poses = start_stop_codon_positions;
+
+	for (row_num in (0:(nrow(start_stop_codon_positions)-1))){
+		fitnesses = c();
+		aas = codonsToAminoAcids(sim.chromosome.ancestralNucleotides(drop(poses[row_num,0]), drop(poses[row_num, 1])+2, "codon"), paste = F);
+
+		sim.setValue("ancestral_aa_seq" + asString(row_num),aas); 
+
+		count = 0;
+		for (aa in aas){
+			fitnesses = c(fitnesses, sim.getValue(aa)[sim.getValue("fitness_profiles" + row_num)[count]]);
+			count = count + 1; 
+		}
+
+		sim.setValue("ancestral_fitnesses" + asString(row_num), fitnesses);
+		sim.setValue("ancestral_fitness_value" + asString(row_num), product(fitnesses));
+		sim.setValue("ancestral_aas" + asString(row_num), aas);
+
+	}
+}
+
+
+function (float) get_genome_fitness (object nucs){
+	fitness_value = 1.0;
+	for (row_num in (0:(nrow(start_stop_codon_positions) -1))){
+		starting_pos = drop(start_stop_codon_positions[row_num,0]);
+		ending_pos = drop(start_stop_codon_positions[row_num,1])+2;
+		aa_stop_pos = (ending_pos - starting_pos)/3;
+		aa_seq = codonsToAminoAcids(nucs.nucleotides(start = starting_pos, end = ending_pos, format = "codon"), paste = F);
+		poses = (aa_seq != sim.getValue("ancestral_aas" + row_num));
+
+		if(sum(poses) == 0){
+			fitness_value = fitness_value * sim.getValue("ancestral_fitness_value" + asString(row_num));
+			 next;
+		}
+
+		fitnesses = sim.getValue("ancestral_fitnesses"+row_num);
+		fitnesses[poses] = sapply(which(poses), "sim.getValue(aa_seq[applyValue]);")[sim.getValue("fitness_profiles" + row_num)[poses]];
+
+		if(any(poses[0] | poses[aa_stop_pos])){
+			fitness_value = fitness_value * product(0.830820541978248/fitnesses);
+			next;
+		}
+
+		if(any(aa_seq[poses] == "X")){
+			pos_stop = match("X", aa_seq[0:(length(aa_seq)-1)]);
+			if(pos_stop == 0){fitnesses = 0.830820541978248/fitnesses;}
+			else if (pos_stop + 1 < aa_stop_pos) {fitnesses[(pos_stop+1):aa_stop_pos] = 0.830820541978248/fitnesses[(pos_stop+1):aa_stop_pos];}
+		}
+
+		fitness_value = fitness_value * product(fitnesses);
+	}
+
+	return fitness_value;
+}
+
+
+fitness(NULL) {return(get_genome_fitness(genome1)*get_genome_fitness(genome2));//If error says total fitness < 0.0, mutation rate is lethal
+}
+
+
+1 early() {
+	setup_fitness();
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/ex6_tree_aa.fasta", "", append = F);
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/ex6_tree_nuc.fasta", "", append = F);
+	sim.addSubpop("p1", 100);
+	sim.setValue("fixations_p1", sim.chromosome.ancestralNucleotides(format = "integer"));
+	sim.setValue("fixations_counted_p1", 0);
+}
+
+
+1:1000late () {
+	if(length(sim.mutations)!= 0){
+		ancestral_genome = sim.getValue("fixations_p1");
+		row_num = p1.individualCount* 2;
+		muts_mat = integer(row_num*1500);
+		muts_mat = p1.genomes.nucleotides(NULL, NULL, "integer");
+		muts_mat = matrix(muts_mat, nrow = row_num, byrow = T);
+		compare_seq = c(muts_mat[0,]);
+
+		fixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = row_num), muts_mat)% row_num == 0);
+
+		different_muts = (ancestral_genome != compare_seq);
+		new_fixations = different_muts & fixed_nucs;
+		sim.setValue("fixations_counted_p1", sim.getValue("fixations_counted_p1") + sum(new_fixations));
+
+		ancestral_genome[new_fixations] = compare_seq[new_fixations];
+		sim.setValue("fixations_p1", ancestral_genome);
+	};
+
+	if (sim.generation%100 == 0) {
+		catn(sim.generation);
+	};
+
+	if (sim.generation%100 == 0) {
+		writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/backupFiles/p1.fasta",(">parent_ancestral_to_load\n" + sim.chromosome.ancestralNucleotides()));
+		sim.outputFull("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/backupFiles/p1.txt");
+	};
+}
+
+
+1000 late() {
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p1_fixed_mutation_counts.txt",asString(sim.getValue("fixations_counted_p1")));
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p1_fixed_mutations.txt", paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue("fixations_p1"))), sep = ""));
+	system(paste("Rscript /home/graceheemeryck/slim-tree/dNdSCalculations.R",100, 2.5e-06, "p1", "/home/graceheemeryck/slim-tree", "/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes", sep = " "));
+	dNdSFile = readFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p1_dNdSDistributions.csv");
+	dNdSValues = c();for (i in 1:(length(sim.getValue("X"))-1)){
+		dNdSValues = c(dNdSValues, asFloat(strsplit(dNdSFile[i], ",")[1]));}
+	values = c(sim.getValue("fitness_profiles0")[sim.getValue("fitness_profiles0") < max(sim.getValue("fitness_profiles0"))],sim.getValue("fitness_profiles1")[sim.getValue("fitness_profiles1") < max(sim.getValue("fitness_profiles1"))],sim.getValue("fitness_profiles2")[sim.getValue("fitness_profiles2") < max(sim.getValue("fitness_profiles2"))]);
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/ex6_tree_parameters.txt", paste("\np1 estimated dNdS: ", sum(dNdSValues[values])/length(values), sep = ""), append = T);
+	pop_seq = sample(p1.individuals.genomes, 1).nucleotides();
+	pop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = "");
+	polymorph_str = c();
+	fixed_str=c();
+	for (a in 0:(length(pop_seq)-1)) {
+		diffs = c();
+		for (g in p1.individuals.genomes.nucleotides()){
+			aa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = "");
+			diffs = c(diffs, aa_seq[a]);
+		}
+		unique_diffs = unique(diffs);
+		if (length(unique_diffs) > 1) {
+			polymorph_str = c(polymorph_str, a, ": ");
+			for (p in unique_diffs) {
+				polymorph_str = c(polymorph_str, p, ": ", length(which(diffs == p)) / length(diffs), " ");
+			}
+		polymorph_str = c(polymorph_str, "\n");
+		} else if (length(unique_diffs) == 1) {
+			fixed_str = c(fixed_str, a, ": ", unique_diffs, "\n");
+		}
+	}
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p1_polymorphisms.txt", paste(polymorph_str, sep = ""));
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p1_fixed_sites.txt", paste(fixed_str, sep = ""));
+}
+
+
+1001 { 
+	sim.addSubpopSplit("p2",100, p1);
+
+	sim.setValue("fixations_p2", sim.getValue("fixations_p1"));
+	sim.setValue("fixations_counted_p2", 0);
+}
+
+
+1001:5000late () {
+	if(length(sim.mutations)!= 0){
+		ancestral_genome = sim.getValue("fixations_p2");
+		row_num = p2.individualCount* 2;
+		muts_mat = integer(row_num*1500);
+		muts_mat = p2.genomes.nucleotides(NULL, NULL, "integer");
+		muts_mat = matrix(muts_mat, nrow = row_num, byrow = T);
+		compare_seq = c(muts_mat[0,]);
+
+		fixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = row_num), muts_mat)% row_num == 0);
+
+		different_muts = (ancestral_genome != compare_seq);
+		new_fixations = different_muts & fixed_nucs;
+		sim.setValue("fixations_counted_p2", sim.getValue("fixations_counted_p2") + sum(new_fixations));
+
+		ancestral_genome[new_fixations] = compare_seq[new_fixations];
+		sim.setValue("fixations_p2", ancestral_genome);
+	};
+
+	if (sim.generation%100 == 0) {
+		catn(sim.generation);
+	};
+
+	if (sim.generation%100 == 0) {
+		writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/backupFiles/p2.fasta",(">parent_ancestral_to_load\n" + sim.chromosome.ancestralNucleotides()));
+		sim.outputFull("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/backupFiles/p2.txt");
+	};
+}
+
+
+5000 late() {
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p2_fixed_mutation_counts.txt",asString(sim.getValue("fixations_counted_p2")));
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p2_fixed_mutations.txt", paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue("fixations_p2"))), sep = ""));
+	system(paste("Rscript /home/graceheemeryck/slim-tree/dNdSCalculations.R",100, 2.5e-06, "p2", "/home/graceheemeryck/slim-tree", "/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes", sep = " "));
+	dNdSFile = readFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p2_dNdSDistributions.csv");
+	dNdSValues = c();for (i in 1:(length(sim.getValue("X"))-1)){
+		dNdSValues = c(dNdSValues, asFloat(strsplit(dNdSFile[i], ",")[1]));}
+	values = c(sim.getValue("fitness_profiles0")[sim.getValue("fitness_profiles0") < max(sim.getValue("fitness_profiles0"))],sim.getValue("fitness_profiles1")[sim.getValue("fitness_profiles1") < max(sim.getValue("fitness_profiles1"))],sim.getValue("fitness_profiles2")[sim.getValue("fitness_profiles2") < max(sim.getValue("fitness_profiles2"))]);
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/ex6_tree_parameters.txt", paste("\np2 estimated dNdS: ", sum(dNdSValues[values])/length(values), sep = ""), append = T);
+	pop_seq = sample(p2.individuals.genomes, 1).nucleotides();
+	pop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = "");
+	polymorph_str = c();
+	fixed_str=c();
+	for (a in 0:(length(pop_seq)-1)) {
+		diffs = c();
+		for (g in p2.individuals.genomes.nucleotides()){
+			aa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = "");
+			diffs = c(diffs, aa_seq[a]);
+		}
+		unique_diffs = unique(diffs);
+		if (length(unique_diffs) > 1) {
+			polymorph_str = c(polymorph_str, a, ": ");
+			for (p in unique_diffs) {
+				polymorph_str = c(polymorph_str, p, ": ", length(which(diffs == p)) / length(diffs), " ");
+			}
+		polymorph_str = c(polymorph_str, "\n");
+		} else if (length(unique_diffs) == 1) {
+			fixed_str = c(fixed_str, a, ": ", unique_diffs, "\n");
+		}
+	}
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p2_polymorphisms.txt", paste(polymorph_str, sep = ""));
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p2_fixed_sites.txt", paste(fixed_str, sep = ""));
+}
+
+
+1001 { 
+	sim.addSubpopSplit("p9",100, p1);
+
+	sim.setValue("fixations_p9", sim.getValue("fixations_p1"));
+	sim.setValue("fixations_counted_p9", 0);
+	p1.setSubpopulationSize(0);
+}
+
+
+1001:41000late () {
+	if(length(sim.mutations)!= 0){
+		ancestral_genome = sim.getValue("fixations_p9");
+		row_num = p9.individualCount* 2;
+		muts_mat = integer(row_num*1500);
+		muts_mat = p9.genomes.nucleotides(NULL, NULL, "integer");
+		muts_mat = matrix(muts_mat, nrow = row_num, byrow = T);
+		compare_seq = c(muts_mat[0,]);
+
+		fixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = row_num), muts_mat)% row_num == 0);
+
+		different_muts = (ancestral_genome != compare_seq);
+		new_fixations = different_muts & fixed_nucs;
+		sim.setValue("fixations_counted_p9", sim.getValue("fixations_counted_p9") + sum(new_fixations));
+
+		ancestral_genome[new_fixations] = compare_seq[new_fixations];
+		sim.setValue("fixations_p9", ancestral_genome);
+	};
+
+	if (sim.generation%100 == 0) {
+		catn(sim.generation);
+	};
+
+	if (sim.generation%100 == 0) {
+		writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/backupFiles/p9.fasta",(">parent_ancestral_to_load\n" + sim.chromosome.ancestralNucleotides()));
+		sim.outputFull("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/backupFiles/p9.txt");
+	};
+}
+
+
+41000 late() {
+	genomes = p9.genomes;
+
+	for (g in genomes){
+		fasta_string_nuc = paste0(">", g.individual, ", p9: \n", g.nucleotides());
+		writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/ex6_tree_nuc.fasta", fasta_string_nuc,append = T);
+		fasta_string_prot = paste0(">", g.individual, ", p9: \n", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));
+		writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/ex6_tree_aa.fasta", fasta_string_prot,append = T);}
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p9_fixed_mutation_counts.txt",asString(sim.getValue("fixations_counted_p9")));
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p9_fixed_mutations.txt", paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue("fixations_p9"))), sep = ""));
+	system(paste("Rscript /home/graceheemeryck/slim-tree/dNdSCalculations.R",100, 2.5e-06, "p9", "/home/graceheemeryck/slim-tree", "/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes", sep = " "));
+	dNdSFile = readFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p9_dNdSDistributions.csv");
+	dNdSValues = c();for (i in 1:(length(sim.getValue("X"))-1)){
+		dNdSValues = c(dNdSValues, asFloat(strsplit(dNdSFile[i], ",")[1]));}
+	values = c(sim.getValue("fitness_profiles0")[sim.getValue("fitness_profiles0") < max(sim.getValue("fitness_profiles0"))],sim.getValue("fitness_profiles1")[sim.getValue("fitness_profiles1") < max(sim.getValue("fitness_profiles1"))],sim.getValue("fitness_profiles2")[sim.getValue("fitness_profiles2") < max(sim.getValue("fitness_profiles2"))]);
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/ex6_tree_parameters.txt", paste("\np9 estimated dNdS: ", sum(dNdSValues[values])/length(values), sep = ""), append = T);
+	pop_seq = sample(p9.individuals.genomes, 1).nucleotides();
+	pop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = "");
+	polymorph_str = c();
+	fixed_str=c();
+	for (a in 0:(length(pop_seq)-1)) {
+		diffs = c();
+		for (g in p9.individuals.genomes.nucleotides()){
+			aa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = "");
+			diffs = c(diffs, aa_seq[a]);
+		}
+		unique_diffs = unique(diffs);
+		if (length(unique_diffs) > 1) {
+			polymorph_str = c(polymorph_str, a, ": ");
+			for (p in unique_diffs) {
+				polymorph_str = c(polymorph_str, p, ": ", length(which(diffs == p)) / length(diffs), " ");
+			}
+		polymorph_str = c(polymorph_str, "\n");
+		} else if (length(unique_diffs) == 1) {
+			fixed_str = c(fixed_str, a, ": ", unique_diffs, "\n");
+		}
+	}
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p9_polymorphisms.txt", paste(polymorph_str, sep = ""));
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p9_fixed_sites.txt", paste(fixed_str, sep = ""));
+}
+
+
+5001 { 
+	sim.addSubpopSplit("p3",100, p2);
+
+	sim.setValue("fixations_p3", sim.getValue("fixations_p2"));
+	sim.setValue("fixations_counted_p3", 0);
+}
+
+
+5001:19400late () {
+	if(length(sim.mutations)!= 0){
+		ancestral_genome = sim.getValue("fixations_p3");
+		row_num = p3.individualCount* 2;
+		muts_mat = integer(row_num*1500);
+		muts_mat = p3.genomes.nucleotides(NULL, NULL, "integer");
+		muts_mat = matrix(muts_mat, nrow = row_num, byrow = T);
+		compare_seq = c(muts_mat[0,]);
+
+		fixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = row_num), muts_mat)% row_num == 0);
+
+		different_muts = (ancestral_genome != compare_seq);
+		new_fixations = different_muts & fixed_nucs;
+		sim.setValue("fixations_counted_p3", sim.getValue("fixations_counted_p3") + sum(new_fixations));
+
+		ancestral_genome[new_fixations] = compare_seq[new_fixations];
+		sim.setValue("fixations_p3", ancestral_genome);
+	};
+
+	if (sim.generation%100 == 0) {
+		catn(sim.generation);
+	};
+
+	if (sim.generation%100 == 0) {
+		writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/backupFiles/p3.fasta",(">parent_ancestral_to_load\n" + sim.chromosome.ancestralNucleotides()));
+		sim.outputFull("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/backupFiles/p3.txt");
+	};
+}
+
+
+19400 late() {
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p3_fixed_mutation_counts.txt",asString(sim.getValue("fixations_counted_p3")));
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p3_fixed_mutations.txt", paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue("fixations_p3"))), sep = ""));
+	system(paste("Rscript /home/graceheemeryck/slim-tree/dNdSCalculations.R",100, 2.5e-06, "p3", "/home/graceheemeryck/slim-tree", "/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes", sep = " "));
+	dNdSFile = readFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p3_dNdSDistributions.csv");
+	dNdSValues = c();for (i in 1:(length(sim.getValue("X"))-1)){
+		dNdSValues = c(dNdSValues, asFloat(strsplit(dNdSFile[i], ",")[1]));}
+	values = c(sim.getValue("fitness_profiles0")[sim.getValue("fitness_profiles0") < max(sim.getValue("fitness_profiles0"))],sim.getValue("fitness_profiles1")[sim.getValue("fitness_profiles1") < max(sim.getValue("fitness_profiles1"))],sim.getValue("fitness_profiles2")[sim.getValue("fitness_profiles2") < max(sim.getValue("fitness_profiles2"))]);
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/ex6_tree_parameters.txt", paste("\np3 estimated dNdS: ", sum(dNdSValues[values])/length(values), sep = ""), append = T);
+	pop_seq = sample(p3.individuals.genomes, 1).nucleotides();
+	pop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = "");
+	polymorph_str = c();
+	fixed_str=c();
+	for (a in 0:(length(pop_seq)-1)) {
+		diffs = c();
+		for (g in p3.individuals.genomes.nucleotides()){
+			aa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = "");
+			diffs = c(diffs, aa_seq[a]);
+		}
+		unique_diffs = unique(diffs);
+		if (length(unique_diffs) > 1) {
+			polymorph_str = c(polymorph_str, a, ": ");
+			for (p in unique_diffs) {
+				polymorph_str = c(polymorph_str, p, ": ", length(which(diffs == p)) / length(diffs), " ");
+			}
+		polymorph_str = c(polymorph_str, "\n");
+		} else if (length(unique_diffs) == 1) {
+			fixed_str = c(fixed_str, a, ": ", unique_diffs, "\n");
+		}
+	}
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p3_polymorphisms.txt", paste(polymorph_str, sep = ""));
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p3_fixed_sites.txt", paste(fixed_str, sep = ""));
+}
+
+
+5001 { 
+	sim.addSubpopSplit("p8",100, p2);
+
+	sim.setValue("fixations_p8", sim.getValue("fixations_p2"));
+	sim.setValue("fixations_counted_p8", 0);
+	p2.setSubpopulationSize(0);
+}
+
+
+5001:41000late () {
+	if(length(sim.mutations)!= 0){
+		ancestral_genome = sim.getValue("fixations_p8");
+		row_num = p8.individualCount* 2;
+		muts_mat = integer(row_num*1500);
+		muts_mat = p8.genomes.nucleotides(NULL, NULL, "integer");
+		muts_mat = matrix(muts_mat, nrow = row_num, byrow = T);
+		compare_seq = c(muts_mat[0,]);
+
+		fixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = row_num), muts_mat)% row_num == 0);
+
+		different_muts = (ancestral_genome != compare_seq);
+		new_fixations = different_muts & fixed_nucs;
+		sim.setValue("fixations_counted_p8", sim.getValue("fixations_counted_p8") + sum(new_fixations));
+
+		ancestral_genome[new_fixations] = compare_seq[new_fixations];
+		sim.setValue("fixations_p8", ancestral_genome);
+	};
+
+	if (sim.generation%100 == 0) {
+		catn(sim.generation);
+	};
+
+	if (sim.generation%100 == 0) {
+		writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/backupFiles/p8.fasta",(">parent_ancestral_to_load\n" + sim.chromosome.ancestralNucleotides()));
+		sim.outputFull("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/backupFiles/p8.txt");
+	};
+}
+
+
+41000 late() {
+	genomes = p8.genomes;
+
+	for (g in genomes){
+		fasta_string_nuc = paste0(">", g.individual, ", p8: \n", g.nucleotides());
+		writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/ex6_tree_nuc.fasta", fasta_string_nuc,append = T);
+		fasta_string_prot = paste0(">", g.individual, ", p8: \n", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));
+		writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/ex6_tree_aa.fasta", fasta_string_prot,append = T);}
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p8_fixed_mutation_counts.txt",asString(sim.getValue("fixations_counted_p8")));
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p8_fixed_mutations.txt", paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue("fixations_p8"))), sep = ""));
+	system(paste("Rscript /home/graceheemeryck/slim-tree/dNdSCalculations.R",100, 2.5e-06, "p8", "/home/graceheemeryck/slim-tree", "/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes", sep = " "));
+	dNdSFile = readFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p8_dNdSDistributions.csv");
+	dNdSValues = c();for (i in 1:(length(sim.getValue("X"))-1)){
+		dNdSValues = c(dNdSValues, asFloat(strsplit(dNdSFile[i], ",")[1]));}
+	values = c(sim.getValue("fitness_profiles0")[sim.getValue("fitness_profiles0") < max(sim.getValue("fitness_profiles0"))],sim.getValue("fitness_profiles1")[sim.getValue("fitness_profiles1") < max(sim.getValue("fitness_profiles1"))],sim.getValue("fitness_profiles2")[sim.getValue("fitness_profiles2") < max(sim.getValue("fitness_profiles2"))]);
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/ex6_tree_parameters.txt", paste("\np8 estimated dNdS: ", sum(dNdSValues[values])/length(values), sep = ""), append = T);
+	pop_seq = sample(p8.individuals.genomes, 1).nucleotides();
+	pop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = "");
+	polymorph_str = c();
+	fixed_str=c();
+	for (a in 0:(length(pop_seq)-1)) {
+		diffs = c();
+		for (g in p8.individuals.genomes.nucleotides()){
+			aa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = "");
+			diffs = c(diffs, aa_seq[a]);
+		}
+		unique_diffs = unique(diffs);
+		if (length(unique_diffs) > 1) {
+			polymorph_str = c(polymorph_str, a, ": ");
+			for (p in unique_diffs) {
+				polymorph_str = c(polymorph_str, p, ": ", length(which(diffs == p)) / length(diffs), " ");
+			}
+		polymorph_str = c(polymorph_str, "\n");
+		} else if (length(unique_diffs) == 1) {
+			fixed_str = c(fixed_str, a, ": ", unique_diffs, "\n");
+		}
+	}
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p8_polymorphisms.txt", paste(polymorph_str, sep = ""));
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p8_fixed_sites.txt", paste(fixed_str, sep = ""));
+}
+
+
+19401 { 
+	sim.addSubpopSplit("p4",100, p3);
+
+	sim.setValue("fixations_p4", sim.getValue("fixations_p3"));
+	sim.setValue("fixations_counted_p4", 0);
+}
+
+
+19401:26528late () {
+	if(length(sim.mutations)!= 0){
+		ancestral_genome = sim.getValue("fixations_p4");
+		row_num = p4.individualCount* 2;
+		muts_mat = integer(row_num*1500);
+		muts_mat = p4.genomes.nucleotides(NULL, NULL, "integer");
+		muts_mat = matrix(muts_mat, nrow = row_num, byrow = T);
+		compare_seq = c(muts_mat[0,]);
+
+		fixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = row_num), muts_mat)% row_num == 0);
+
+		different_muts = (ancestral_genome != compare_seq);
+		new_fixations = different_muts & fixed_nucs;
+		sim.setValue("fixations_counted_p4", sim.getValue("fixations_counted_p4") + sum(new_fixations));
+
+		ancestral_genome[new_fixations] = compare_seq[new_fixations];
+		sim.setValue("fixations_p4", ancestral_genome);
+	};
+
+	if (sim.generation%100 == 0) {
+		catn(sim.generation);
+	};
+
+	if (sim.generation%100 == 0) {
+		writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/backupFiles/p4.fasta",(">parent_ancestral_to_load\n" + sim.chromosome.ancestralNucleotides()));
+		sim.outputFull("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/backupFiles/p4.txt");
+	};
+}
+
+
+26528 late() {
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p4_fixed_mutation_counts.txt",asString(sim.getValue("fixations_counted_p4")));
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p4_fixed_mutations.txt", paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue("fixations_p4"))), sep = ""));
+	system(paste("Rscript /home/graceheemeryck/slim-tree/dNdSCalculations.R",100, 2.5e-06, "p4", "/home/graceheemeryck/slim-tree", "/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes", sep = " "));
+	dNdSFile = readFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p4_dNdSDistributions.csv");
+	dNdSValues = c();for (i in 1:(length(sim.getValue("X"))-1)){
+		dNdSValues = c(dNdSValues, asFloat(strsplit(dNdSFile[i], ",")[1]));}
+	values = c(sim.getValue("fitness_profiles0")[sim.getValue("fitness_profiles0") < max(sim.getValue("fitness_profiles0"))],sim.getValue("fitness_profiles1")[sim.getValue("fitness_profiles1") < max(sim.getValue("fitness_profiles1"))],sim.getValue("fitness_profiles2")[sim.getValue("fitness_profiles2") < max(sim.getValue("fitness_profiles2"))]);
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/ex6_tree_parameters.txt", paste("\np4 estimated dNdS: ", sum(dNdSValues[values])/length(values), sep = ""), append = T);
+	pop_seq = sample(p4.individuals.genomes, 1).nucleotides();
+	pop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = "");
+	polymorph_str = c();
+	fixed_str=c();
+	for (a in 0:(length(pop_seq)-1)) {
+		diffs = c();
+		for (g in p4.individuals.genomes.nucleotides()){
+			aa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = "");
+			diffs = c(diffs, aa_seq[a]);
+		}
+		unique_diffs = unique(diffs);
+		if (length(unique_diffs) > 1) {
+			polymorph_str = c(polymorph_str, a, ": ");
+			for (p in unique_diffs) {
+				polymorph_str = c(polymorph_str, p, ": ", length(which(diffs == p)) / length(diffs), " ");
+			}
+		polymorph_str = c(polymorph_str, "\n");
+		} else if (length(unique_diffs) == 1) {
+			fixed_str = c(fixed_str, a, ": ", unique_diffs, "\n");
+		}
+	}
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p4_polymorphisms.txt", paste(polymorph_str, sep = ""));
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p4_fixed_sites.txt", paste(fixed_str, sep = ""));
+}
+
+
+19401 { 
+	sim.addSubpopSplit("p7",100, p3);
+
+	sim.setValue("fixations_p7", sim.getValue("fixations_p3"));
+	sim.setValue("fixations_counted_p7", 0);
+	p3.setSubpopulationSize(0);
+}
+
+
+19401:41000late () {
+	if(length(sim.mutations)!= 0){
+		ancestral_genome = sim.getValue("fixations_p7");
+		row_num = p7.individualCount* 2;
+		muts_mat = integer(row_num*1500);
+		muts_mat = p7.genomes.nucleotides(NULL, NULL, "integer");
+		muts_mat = matrix(muts_mat, nrow = row_num, byrow = T);
+		compare_seq = c(muts_mat[0,]);
+
+		fixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = row_num), muts_mat)% row_num == 0);
+
+		different_muts = (ancestral_genome != compare_seq);
+		new_fixations = different_muts & fixed_nucs;
+		sim.setValue("fixations_counted_p7", sim.getValue("fixations_counted_p7") + sum(new_fixations));
+
+		ancestral_genome[new_fixations] = compare_seq[new_fixations];
+		sim.setValue("fixations_p7", ancestral_genome);
+	};
+
+	if (sim.generation%100 == 0) {
+		catn(sim.generation);
+	};
+
+	if (sim.generation%100 == 0) {
+		writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/backupFiles/p7.fasta",(">parent_ancestral_to_load\n" + sim.chromosome.ancestralNucleotides()));
+		sim.outputFull("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/backupFiles/p7.txt");
+	};
+}
+
+
+41000 late() {
+	genomes = p7.genomes;
+
+	for (g in genomes){
+		fasta_string_nuc = paste0(">", g.individual, ", p7: \n", g.nucleotides());
+		writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/ex6_tree_nuc.fasta", fasta_string_nuc,append = T);
+		fasta_string_prot = paste0(">", g.individual, ", p7: \n", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));
+		writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/ex6_tree_aa.fasta", fasta_string_prot,append = T);}
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p7_fixed_mutation_counts.txt",asString(sim.getValue("fixations_counted_p7")));
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p7_fixed_mutations.txt", paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue("fixations_p7"))), sep = ""));
+	system(paste("Rscript /home/graceheemeryck/slim-tree/dNdSCalculations.R",100, 2.5e-06, "p7", "/home/graceheemeryck/slim-tree", "/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes", sep = " "));
+	dNdSFile = readFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p7_dNdSDistributions.csv");
+	dNdSValues = c();for (i in 1:(length(sim.getValue("X"))-1)){
+		dNdSValues = c(dNdSValues, asFloat(strsplit(dNdSFile[i], ",")[1]));}
+	values = c(sim.getValue("fitness_profiles0")[sim.getValue("fitness_profiles0") < max(sim.getValue("fitness_profiles0"))],sim.getValue("fitness_profiles1")[sim.getValue("fitness_profiles1") < max(sim.getValue("fitness_profiles1"))],sim.getValue("fitness_profiles2")[sim.getValue("fitness_profiles2") < max(sim.getValue("fitness_profiles2"))]);
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/ex6_tree_parameters.txt", paste("\np7 estimated dNdS: ", sum(dNdSValues[values])/length(values), sep = ""), append = T);
+	pop_seq = sample(p7.individuals.genomes, 1).nucleotides();
+	pop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = "");
+	polymorph_str = c();
+	fixed_str=c();
+	for (a in 0:(length(pop_seq)-1)) {
+		diffs = c();
+		for (g in p7.individuals.genomes.nucleotides()){
+			aa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = "");
+			diffs = c(diffs, aa_seq[a]);
+		}
+		unique_diffs = unique(diffs);
+		if (length(unique_diffs) > 1) {
+			polymorph_str = c(polymorph_str, a, ": ");
+			for (p in unique_diffs) {
+				polymorph_str = c(polymorph_str, p, ": ", length(which(diffs == p)) / length(diffs), " ");
+			}
+		polymorph_str = c(polymorph_str, "\n");
+		} else if (length(unique_diffs) == 1) {
+			fixed_str = c(fixed_str, a, ": ", unique_diffs, "\n");
+		}
+	}
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p7_polymorphisms.txt", paste(polymorph_str, sep = ""));
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p7_fixed_sites.txt", paste(fixed_str, sep = ""));
+}
+
+
+26529 { 
+	sim.addSubpopSplit("p5",100, p4);
+
+	sim.setValue("fixations_p5", sim.getValue("fixations_p4"));
+	sim.setValue("fixations_counted_p5", 0);
+}
+
+
+26529:41000late () {
+	if(length(sim.mutations)!= 0){
+		ancestral_genome = sim.getValue("fixations_p5");
+		row_num = p5.individualCount* 2;
+		muts_mat = integer(row_num*1500);
+		muts_mat = p5.genomes.nucleotides(NULL, NULL, "integer");
+		muts_mat = matrix(muts_mat, nrow = row_num, byrow = T);
+		compare_seq = c(muts_mat[0,]);
+
+		fixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = row_num), muts_mat)% row_num == 0);
+
+		different_muts = (ancestral_genome != compare_seq);
+		new_fixations = different_muts & fixed_nucs;
+		sim.setValue("fixations_counted_p5", sim.getValue("fixations_counted_p5") + sum(new_fixations));
+
+		ancestral_genome[new_fixations] = compare_seq[new_fixations];
+		sim.setValue("fixations_p5", ancestral_genome);
+	};
+
+	if (sim.generation%100 == 0) {
+		catn(sim.generation);
+	};
+
+	if (sim.generation%100 == 0) {
+		writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/backupFiles/p5.fasta",(">parent_ancestral_to_load\n" + sim.chromosome.ancestralNucleotides()));
+		sim.outputFull("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/backupFiles/p5.txt");
+	};
+}
+
+
+41000 late() {
+	genomes = p5.genomes;
+
+	for (g in genomes){
+		fasta_string_nuc = paste0(">", g.individual, ", p5: \n", g.nucleotides());
+		writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/ex6_tree_nuc.fasta", fasta_string_nuc,append = T);
+		fasta_string_prot = paste0(">", g.individual, ", p5: \n", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));
+		writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/ex6_tree_aa.fasta", fasta_string_prot,append = T);}
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p5_fixed_mutation_counts.txt",asString(sim.getValue("fixations_counted_p5")));
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p5_fixed_mutations.txt", paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue("fixations_p5"))), sep = ""));
+	system(paste("Rscript /home/graceheemeryck/slim-tree/dNdSCalculations.R",100, 2.5e-06, "p5", "/home/graceheemeryck/slim-tree", "/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes", sep = " "));
+	dNdSFile = readFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p5_dNdSDistributions.csv");
+	dNdSValues = c();for (i in 1:(length(sim.getValue("X"))-1)){
+		dNdSValues = c(dNdSValues, asFloat(strsplit(dNdSFile[i], ",")[1]));}
+	values = c(sim.getValue("fitness_profiles0")[sim.getValue("fitness_profiles0") < max(sim.getValue("fitness_profiles0"))],sim.getValue("fitness_profiles1")[sim.getValue("fitness_profiles1") < max(sim.getValue("fitness_profiles1"))],sim.getValue("fitness_profiles2")[sim.getValue("fitness_profiles2") < max(sim.getValue("fitness_profiles2"))]);
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/ex6_tree_parameters.txt", paste("\np5 estimated dNdS: ", sum(dNdSValues[values])/length(values), sep = ""), append = T);
+	pop_seq = sample(p5.individuals.genomes, 1).nucleotides();
+	pop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = "");
+	polymorph_str = c();
+	fixed_str=c();
+	for (a in 0:(length(pop_seq)-1)) {
+		diffs = c();
+		for (g in p5.individuals.genomes.nucleotides()){
+			aa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = "");
+			diffs = c(diffs, aa_seq[a]);
+		}
+		unique_diffs = unique(diffs);
+		if (length(unique_diffs) > 1) {
+			polymorph_str = c(polymorph_str, a, ": ");
+			for (p in unique_diffs) {
+				polymorph_str = c(polymorph_str, p, ": ", length(which(diffs == p)) / length(diffs), " ");
+			}
+		polymorph_str = c(polymorph_str, "\n");
+		} else if (length(unique_diffs) == 1) {
+			fixed_str = c(fixed_str, a, ": ", unique_diffs, "\n");
+		}
+	}
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p5_polymorphisms.txt", paste(polymorph_str, sep = ""));
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p5_fixed_sites.txt", paste(fixed_str, sep = ""));
+}
+
+
+26529 { 
+	sim.addSubpopSplit("p6",100, p4);
+
+	sim.setValue("fixations_p6", sim.getValue("fixations_p4"));
+	sim.setValue("fixations_counted_p6", 0);
+	p4.setSubpopulationSize(0);
+}
+
+
+26529:41000late () {
+	if(length(sim.mutations)!= 0){
+		ancestral_genome = sim.getValue("fixations_p6");
+		row_num = p6.individualCount* 2;
+		muts_mat = integer(row_num*1500);
+		muts_mat = p6.genomes.nucleotides(NULL, NULL, "integer");
+		muts_mat = matrix(muts_mat, nrow = row_num, byrow = T);
+		compare_seq = c(muts_mat[0,]);
+
+		fixed_nucs = c(matrixMult(matrix(rep(1, row_num), ncol = row_num), muts_mat)% row_num == 0);
+
+		different_muts = (ancestral_genome != compare_seq);
+		new_fixations = different_muts & fixed_nucs;
+		sim.setValue("fixations_counted_p6", sim.getValue("fixations_counted_p6") + sum(new_fixations));
+
+		ancestral_genome[new_fixations] = compare_seq[new_fixations];
+		sim.setValue("fixations_p6", ancestral_genome);
+	};
+
+	if (sim.generation%100 == 0) {
+		catn(sim.generation);
+	};
+
+	if (sim.generation%100 == 0) {
+		writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/backupFiles/p6.fasta",(">parent_ancestral_to_load\n" + sim.chromosome.ancestralNucleotides()));
+		sim.outputFull("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/backupFiles/p6.txt");
+	};
+}
+
+
+41000 late() {
+	genomes = p6.genomes;
+
+	for (g in genomes){
+		fasta_string_nuc = paste0(">", g.individual, ", p6: \n", g.nucleotides());
+		writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/ex6_tree_nuc.fasta", fasta_string_nuc,append = T);
+		fasta_string_prot = paste0(">", g.individual, ", p6: \n", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));
+		writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/ex6_tree_aa.fasta", fasta_string_prot,append = T);}
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p6_fixed_mutation_counts.txt",asString(sim.getValue("fixations_counted_p6")));
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p6_fixed_mutations.txt", paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue("fixations_p6"))), sep = ""));
+	system(paste("Rscript /home/graceheemeryck/slim-tree/dNdSCalculations.R",100, 2.5e-06, "p6", "/home/graceheemeryck/slim-tree", "/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes", sep = " "));
+	dNdSFile = readFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p6_dNdSDistributions.csv");
+	dNdSValues = c();for (i in 1:(length(sim.getValue("X"))-1)){
+		dNdSValues = c(dNdSValues, asFloat(strsplit(dNdSFile[i], ",")[1]));}
+	values = c(sim.getValue("fitness_profiles0")[sim.getValue("fitness_profiles0") < max(sim.getValue("fitness_profiles0"))],sim.getValue("fitness_profiles1")[sim.getValue("fitness_profiles1") < max(sim.getValue("fitness_profiles1"))],sim.getValue("fitness_profiles2")[sim.getValue("fitness_profiles2") < max(sim.getValue("fitness_profiles2"))]);
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/ex6_tree_parameters.txt", paste("\np6 estimated dNdS: ", sum(dNdSValues[values])/length(values), sep = ""), append = T);
+	pop_seq = sample(p6.individuals.genomes, 1).nucleotides();
+	pop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = "");
+	polymorph_str = c();
+	fixed_str=c();
+	for (a in 0:(length(pop_seq)-1)) {
+		diffs = c();
+		for (g in p6.individuals.genomes.nucleotides()){
+			aa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = "");
+			diffs = c(diffs, aa_seq[a]);
+		}
+		unique_diffs = unique(diffs);
+		if (length(unique_diffs) > 1) {
+			polymorph_str = c(polymorph_str, a, ": ");
+			for (p in unique_diffs) {
+				polymorph_str = c(polymorph_str, p, ": ", length(which(diffs == p)) / length(diffs), " ");
+			}
+		polymorph_str = c(polymorph_str, "\n");
+		} else if (length(unique_diffs) == 1) {
+			fixed_str = c(fixed_str, a, ": ", unique_diffs, "\n");
+		}
+	}
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p6_polymorphisms.txt", paste(polymorph_str, sep = ""));
+	writeFile("/home/graceheemeryck/slim-tree/Ex_6_Multiple_Genes/p6_fixed_sites.txt", paste(fixed_str, sep = ""));
+}
+
+
