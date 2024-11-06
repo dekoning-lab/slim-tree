@@ -1,1 +1,0 @@
-python3 ../../slim-tree/ -i ex8_tree.txt -T SLiM-Tree -m ex8_mutation_matrix.csv

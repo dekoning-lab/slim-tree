@@ -1,1 +1,0 @@
-python3 ../../slim-tree/ -i ex5_tree.txt -T SLiM-Tree -w False

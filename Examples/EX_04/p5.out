@@ -1,0 +1,17 @@
+// Initial random seed:
+5792873236482
+
+// RunInitializeCallbacks():
+initializeSLiMOptions(nucleotideBased = T);
+initializeAncestralNucleotides("ATGATAGACAATATCCACAA...");
+initializeMutationTypeNuc(1, 0.5, "f", 0);
+initializeGenomicElementType(1, m1, 1);
+initializeGenomicElementType(2, m1, 1);
+initializeRecombinationRate(5e-07);
+initializeGenomicElement(g1, 0, 899);
+
+// Starting run at tick <start>:
+1500 
+
+#OUT: 1501 1501 F
+Mutations:

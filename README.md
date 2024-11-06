@@ -1,102 +1,97 @@
 # SLiM-Tree
 
-• Here, we present SLiM-Tree a flexible simulation tool which automates pure population genetics simulations over phylogenetic timescales under realistic models of sequence-fitness relationships. It is a simulation of across-species genome sequence datasets, including substitution histories and polymorphisms, without the standard suite of simplifying assumptions used in phylogenetics (e.g., mutation limited evolution/ weak mutation or infinite sites, limited mutation among competing allelic types between fixations, no polymorphism, etc.).
+• Here, we presents SLiM-Tree, a flexible software package developed to automate the use of SLiM (https://messerlab.org/slim/) to perform pure population genetics simulations along a phylogeny, using a realistic model of molecular evolution, without the standard suite of simplifying assumptions used in phylogenetics (e.g., mutation limited evolution/ weak mutation or infinite sites, limited mutation among competing allelic types between fixations, no polymorphism, etc.).
 
-• How it works: It Employs SLiM (https://messerlab.org/slim/) to create a platform which can evolve populations with or without using Wright-Fisher model, allowing users to explore by relaxing simplified assumptions and models.
 
-• Requirements: SLiMTree requires installation of Python3, R and SLiM. If using protein based fitness effects - java and c are also required.
-	
+• SLiM-Tree requires installation of SLiM (https://github.com/MesserLab/SLiM/releases/download/v3.7.1/SLiM_Manual.pdf, last version 4.0.1), python3 (version 3.10 or later) and R (version 4.2.2 or later). It is also important to avoid using "conda" for these installations, as it can cause significant issues with version compatibility.
+
+• For Python3 and R, their dependencies listed below should also be installed:
+
 	•Required python packages: sys, argparse, BioPython, matplotlib, random, pandas, numpy, os, json, string and math.
  	•Required R packages: dplyr, BB, data.table, optparse, seqinr, doParallel, Rfast.
- 
 
-• How to run SLiM_Tree: run the command python3 ../slim-tree/ <input_tree> <codon_stationary_distributions> 
+• The SLiM-Tree package can be installed by cloning the repository:
 
-For a full description of SLiM-Tree usage please refer to the user manual. 
+	$ git clone git@github.com:dekoning-lab/slim-tree.git
+	$ git checkout redev (will be dev by the time we want to publish)
 
-Additional arguments include:
+• How to run SLiM_Tree: run the command $python3 ../slim-tree/ <input_tree> <codon_stationary_distributions.csv> 
+• Additional parameters and flags are available and detailed in the Parameters section. For a full description of SLiM-Tree usage please refer to the user manual. 
+
+• Additional parameters include:
 	
-  	-h: --help  
-   		show this help message and exit
+  	-h: 
+   	Show this help message and exit
    	
-	-hpc: --high_performance_computing 
-     		boolean flag to turn on slim-tree high performance computing. Slurm is required
+	-hpc: 
+ 	Boolean flag to turn on slim-tree high performance computing. Slurm is required
 
-	-fd AA_FITNESS_DISTRIBUTIONS: --aa_fitness_distributions AA_FITNESS_DISTRIBUTIONS 
- 					file containing a amino acid fitnesses
+	-fd aa_fitness_distributions.csv:
+ 	The SLiM-Tree is designed to generate a table of amino acid fitness distributions using the provided stationary distributions. However, you also have the option to input your table of fitness distribution in .csv format using `-fd' flag.
 	  
-	-p PARTITION: --partition PARTITION 
- 			partition to run Slurm on - required if using high performance computing
+	-p partition_name:
+ 	Partition to run Slurm on - required if using high performance computing (-hpc)
 	  
-	-t TIME: --time TIME  
- 		maximum time to run each simulation for - suggested time is the maximum time available for a partition -required if using high
-   		performance computing.
+	-t time(00:00:00):
+ 	Maximum time to run each simulation for, required if using high performance computing (-hpc)
 
-   	-w: --nonWF           
-    	    boolean flag to specify that a non-wright-fisher model should be used in lieu of a wright-fisher model.
+   	-w --nonWF:
+    	Boolean flag to specify that a non-wright-fisher model should be used in lieu of the default wright-fisher model. 
   
- 	-n POPULATION_SIZE: --population_size POPULATION_SIZE 
-  			    starting population size for the simulation, default = 100
+ 	-n population_size (default = 100):
+  	Starting population size for the simulation. 
 
-  	-b BURN_IN_MULTIPLIER: --burn_in_multiplier BURN_IN_MULTIPLIER 
-   				value to multiply population size by for burn in, default = 10
+  	-b burn_in_multiplier (default = 10):
+   	Value to multiply population size by for burn in.
 
-	-r RECOMBINATION_RATE: --recombination_rate RECOMBINATION_RATE
- 				recombination rate, default = 2.5e-8
+	-r recombination_rate (default = 2.5e-8):
+ 	Recombination rate. 
 
- 	-v MUTATION_RATE: --mutation_rate MUTATION_RATE
-                          starting mutation rate for the simulation, default = 2.5e-6
+ 	-v mutation_rate (default =2.5e-6):
+        Starting mutation rate for the simulation.
 
-	-m MUTATION_MATRIX: --mutation_matrix MUTATION_MATRIX
-                            CSV file specifying a mutation rate matrix, matrix should be either 4 by 4 or 4 by 64 specifying rates from nucleotide
-                            to nucleotide and tri-nucleotide to nucleotide respectfully. Nucleotides and tri-nucleotides should be in alphabetical
-                            order with no headers. If mutation rate matrix is supplied, mutation rate will be ignored
+	-m mutation_matrix.csv
+	A file in .csv format, specifying a mutation rate matrix. Matrix should be either 4*4 or 4*64, specifying rates from nucleotide to nucleotide and tri-nucleotide to nucleotide respectfully. Nucleotides and tri-nucleotides should be in alphabetical order with no headers. If mutation rate matrix is supplied, mutation rate will be ignored
   
-   	-d TREE_DATA_FILE: --tree_data_file TREE_DATA_FILE
-                           file to change the population size for specific branches using YAML formatting. When using HPC, other parameters may
-                           also be changed.
+   	-d tree_data_file.yaml:
+        File to change the population size (-n) or mutation rate (-v) for specific branches using .yaml formatting. 
+	When using -hpc, other parameters may also be changed.
 			
-	-g GENOME_LENGTH: --genome_length GENOME_LENGTH
-                          length of the genome - amino acids, default = 300
+	-g genome_length (default = 300):
+        Length of the genome in amino acids.
 			
-  	-G GENE_COUNT: --gene_count GENE_COUNT
-                	number of genes to be simulated by the model, default = 1
+  	-G gene_count (default = 1):
+        Number of genes to be simulated by the model
 			
-  	-C CODING_RATIO: --coding_ratio CODING_RATIO
-                        ratio of the genome which is coding, default = 1.0
+  	-C coding_ratio (default = 1.0):
+        Ratio of the genome which is coding.
 			
-  	-f FASTA_FILE: --fasta_file FASTA_FILE
-                        fasta file containing ancestral sequence (amino acids), replaces random creation of ancestral sequence. Fitness
-                        profiles for each amino acid are required
+  	-f fasta_file.fasta:
+        Fasta file containing ancestral sequence (amino acids), replaces random creation of ancestral sequence. Fitness profiles for each amino acid are required
 			
-  	-k SAMPLE_SIZE: --sample_size SAMPLE_SIZE
-                        size of sample obtained from each population at a tree tip at the end of the simulations.Input 'all' for the every
-                        member of the tree tip samples and consensus for the consensus sequence of the population at each tip. default = all
+  	-k sampling_method (default = all):
+        Size of sample obtained from each population at a tree tip at the end of the simulations.Input "consensus" for the consensus sequence of the population at each tip. 
 			
- 	-sr SPLIT_RATIO: --split_ratio SPLIT_RATIO
-                         proportion of a population that goes into the first daughter branch at a tree branching point in non-wright fisher
-                         models. must be ratio between 0 and 1.0. default = 0.5
+ 	-sr split_ratio (default = 0.5):
+        Proportion of a population that goes into the first daughter branch at a tree branching point in non-wright fisher models. must be ratio between 0 and 1.0. 
 			
-  	-c: --count_subs      
-   	    boolean flag to turn on substitution counting. This will slow down simulations
+  	-c:      
+   	Boolean flag to turn on substitution counting. This will slow down simulations
    
-  	-o: --output_gens
-   	    boolean flag to output every 100th generation. This can be helpful in tracking simulation progression
+  	-o:
+   	Boolean flag to output every 100th generation. This can be helpful in tracking simulation progression
    
-  	-B: --backup
-   	    boolean flag to turn on backups of the simulations, allowing a restart of simulations if required. This will increase space and 
-	    time complexity
+  	-B: 
+   	Boolean flag to turn on backups of the simulations, allowing a restart of simulations if required. This will increase space and time complexity. 
 			
-  	-P: --polymorphisms
-   	    boolean flag to turn on the creation of file specifying all polymorphic and fixed states at the end of a branch
+  	-P:
+   	Boolean flag to turn on the creation of file specifying all polymorphic and fixed states at the end of a branch
    
-  	-S: --calculate_selection
-            boolean flag that turns on calculations of selection by counting synonymous and non-synonymous fixed substitutions
+  	-S:
+        Boolean flag that turns on calculations of selection by counting synonymous and non-synonymous fixed substitutions
 
 
-• Usage: slim-tree [-h] [-fd AA_FITNESS_DISTRIBUTIONS] [-hpc] [-p PARTITION] [-t TIME] [-w] [-n POPULATION_SIZE] [-b BURN_IN_MULTIPLIER]
-                 [-r RECOMBINATION_RATE] [-v MUTATION_RATE] [-m MUTATION_MATRIX] [-d TREE_DATA_FILE] [-g GENOME_LENGTH] [-G GENE_COUNT]
-                 [-C CODING_RATIO] [-f FASTA_FILE] [-k SAMPLE_SIZE] [-sr SPLIT_RATIO] [-c] [-o] [-B] [-P] [-S]
-                 input_tree codon_stationary_distributions
+• Usage: slim-tree <input_tree> <codon_stationary_distributions.csv> [-h] [-fd aa_fitness_distributions.csv] [-hpc] [-p partition] [-t time] [-w --nonWF] [-n population_size] [-b burn_in_multiplier] [-r recombination_rate] [-v mutation_rate] [-m mutation_matrix] [-d tree_data_file.yaml] [-g genome_length] [-G gene_count] [-C coding_ratio] [-f fasta_file.fasta] [-k sampling_method] [-sr split_ratio] [-c count_substitutions] [-o output_gene] [-B backup] [-P polymorphisms] [-S calculate_selection_dn/ds]
+
 
 The folder DataPostProcessing contains scripts that can be used for post processing of the output data and the folder. 

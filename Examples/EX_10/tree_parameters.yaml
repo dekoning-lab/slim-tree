@@ -1,0 +1,28 @@
+aa_fitness_distributions: table_fitness_dists.csv
+average_theta: 0.002839
+backup: false
+burn_in: 1000
+calculate_selection: false
+coding_ratio: 1.0
+codon_stationary_distributions: table_stationary_distributions.csv
+count_subs: false
+fasta_file: null
+gene_count: 1
+genome_length: 300
+high_performance_computing: true
+input_tree: tree
+jukes_cantor: false
+mean_mutation_rate: 7.0975e-06
+mutation_matrix: matrix(c(0.0, 3.5e-07, 3e-06, 2.5e-05, 4e-08, 0.0, 3e-06, 2.5e-05,
+  4e-08, 3.5e-07, 0.0, 2.5e-05, 4e-08, 3.5e-07, 3e-06, 0.0), ncol = 4, byrow = T)
+neutral_evolution: false
+nonWF: false
+output_gens: false
+partition: apophis
+polymorphisms: false
+population_size: 100
+recombination_rate: 2.5e-08
+sample_size: all
+split_ratio: 0.5
+time: 04:00:00
+tree_data_file: null

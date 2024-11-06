@@ -501,8 +501,8 @@ class writeSLiM:
     def write_terminal_output(self, population_parameters, pop = "p1"):
 
         #Set up the names of the 3 fasta files to be output to
-        #nuc_filename = self.start_params["filenames"][1] + "_nuc.fasta"
-        #aa_filename =  self.start_params["filenames"][1] + "_aa.fasta"
+        nuc_filename = self.start_params["filenames"][1] + "_nuc.fasta"
+        aa_filename =  self.start_params["filenames"][1] + "_aa.fasta"
         ancestral_filename = self.start_params["filenames"][1] + "_fixed.fasta"
 
 

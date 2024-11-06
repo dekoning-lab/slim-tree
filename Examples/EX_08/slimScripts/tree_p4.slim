@@ -1,0 +1,53 @@
+initialize() {
+	setSeed(923475467);
+	initializeSLiMOptions(nucleotideBased=T);
+	initializeAncestralNucleotides("p3.fasta");
+	mm = mmJukesCantor(0.0005);
+	initializeMutationTypeNuc("m1", 0.5, "f", 0.0);
+	m1.convertToSubstitution = F;
+	initializeGenomicElementType("g1", m1, 1.0, mm);
+	initializeGenomicElementType("g2", m1, 1.0, mm);
+	initializeRecombinationRate(2.5e-08);
+	initializeGenomicElement(g1, 0, 899);
+}
+
+
+function (void) setup_fitness(void){
+
+	sim.setValue("fixations_p1", sim.chromosome.ancestralNucleotides(format = "integer"));
+	sim.setValue("fixations_counted_p1", 0);
+	sim.setValue("dN_p1", 0);
+	sim.setValue("dS_p1", 0);
+	sim.setValue("subs_p1", "\n\nSubstitutions:");
+}
+
+
+1500 late() {
+	setup_fitness();
+	sim.readFromPopulationFile("p3.txt");
+	p1.setSubpopulationSize(100);
+
+	sim.setValue("fixations_p1", codonsToNucleotides(nucleotidesToCodons(readFile("p3_fixed_mutations.txt")), format = "integer"));
+	sim.setValue("fixations_counted_p1", 0);
+	sim.setValue("dN_p1", 0);
+	sim.setValue("dS_p1", 0);
+	sim.setValue("subs_p1", "\n\nSubstitutions:");
+}
+
+
+1500:1500late () {
+}
+
+
+1501 late() {
+	genomes = p1.genomes;
+
+	for (g in genomes){
+		fasta_string_nuc = "";
+		fasta_string_nuc = paste0(">", g.individual, ", p4: \n", g.nucleotides());
+		writeFile("/work/dk_lab/work/afarinesh/SLiM_Tree_paper_MBE/EX_08/nuc_FASTA/p4_nuc.fasta", fasta_string_nuc,append = T);
+		fasta_string_prot = paste0(">", g.individual, ", p4: \n", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));
+		writeFile("/work/dk_lab/work/afarinesh/SLiM_Tree_paper_MBE/EX_08/aa_FASTA/p4_aa.fasta", fasta_string_prot,append = T);}
+	writeFile("/work/dk_lab/work/afarinesh/SLiM_Tree_paper_MBE/EX_08/p4_fixed_mutations.txt", paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue("fixations_p1"))), sep = ""));
+	sim.outputFixedMutations();
+}

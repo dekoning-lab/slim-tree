@@ -1,1 +1,0 @@
-python3 ../../slim-tree/ -i ex3_tree.txt -T SLiM-Tree -n 500
