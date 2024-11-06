@@ -7,8 +7,8 @@
 
 • For Python3 and R, their dependencies listed below should also be installed:
 
-	•Required python packages: sys, argparse, BioPython, matplotlib, random, pandas, numpy, os, json, string and math.
- 	•Required R packages: dplyr, BB, data.table, optparse, seqinr, doParallel, Rfast.
+	•Required python packages: sys, argparse, BioPython, matplotlib, random, pandas, numpy, os, json, string, Pyyaml, math, statistics, collections, copy, subprocess, re, time, shutil, builtins, filecmp, contextlib, unittest, io and csv.
+ 	•Required R packages:  dplyr, BB, data.table, optparse, seqinr, doParallel and Rfast.
 
 • The SLiM-Tree package can be installed by cloning the repository:
 
