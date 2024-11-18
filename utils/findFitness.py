@@ -202,11 +202,11 @@ class findFitness:
                             random.choices(range(neut_fitness_pos),k=coding_poses[coding_pos,1] - coding_poses[coding_pos,0] - 1))
 
                 if (coding_pos != len(coding_poses) - 1):
-                    fitness_profile_nums = fitness_profile_nums + list(np.repeat(neut_fitness_pos, coding_poses[coding_pos+1,0] - 
-                                    coding_poses[coding_pos,1] ))
+                    fitness_profile_nums = fitness_profile_nums + [neut_fitness_pos]* (coding_poses[coding_pos+1,0] - 
+                                    coding_poses[coding_pos,1])
                 else:
-                    fitness_profile_nums = fitness_profile_nums + list(np.repeat(neut_fitness_pos, genome_length - 
-                                    coding_poses[coding_pos,1]))
+                    fitness_profile_nums = fitness_profile_nums + [neut_fitness_pos]* (genome_length - 
+                                    coding_poses[coding_pos,1])
         
         else: #Use user provided fitness profiles either provided or taken from the stationary dists
             
@@ -335,7 +335,7 @@ class findFitness:
             stationary = stationary_dists.iloc[:,num_dist]
             fitness = self.fitness_mat.iloc[:,num_dist]
             for num_profile in range(len(fitness)-1):
-                mean += stationary[num_profile] * fitness[num_profile]
+                mean += stationary.iloc[num_profile] * fitness.iloc[num_profile]
 
             expected_fitness_profiles.append(mean)
 

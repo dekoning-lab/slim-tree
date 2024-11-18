@@ -10,11 +10,13 @@ class testCladeReader(unittest.TestCase):
 
     def setUp(self):
         self.test_file_path = os.path.dirname(os.path.realpath(__file__))  + "/testFiles/"
-        
+        print(self.test_file_path)
         with open(self.test_file_path + "correct_parameters.yaml", 'r') as yaml_file:
             starting_params = yaml.safe_load(yaml_file)
         yaml_file.close()
-            
+        starting_params["input_tree"] = self.test_file_path + starting_params["input_tree"]
+        self.input_tree = starting_params["input_tree"]
+
         self.read_clades = cladeReader.cladeReader(starting_params)
         
 
@@ -134,6 +136,7 @@ class testCladeReader(unittest.TestCase):
         #Check a tree with all possible changed values mu, not mutation matrix - hpc
         with open(self.test_file_path + "correct_parameters_hpc.yaml", 'r') as yaml_file:
             starting_params = yaml.safe_load(yaml_file)
+            starting_params["input_tree"] = self.input_tree
         yaml_file.close()
         self.read_clades.start_params = starting_params
         self.read_clades.start_params["tree_data_file"] = self.read_clades.read_clade_data([self.test_file_path + "good_yaml_abbr_hpc.yaml"])
@@ -161,9 +164,9 @@ class testCladeReader(unittest.TestCase):
         mut_mat = tree_output[1]['mutation_matrix']
         self.assertEqual([0.0e+00, 3.5e-07, 3.5e-07, 3.5e-07,3.5e-07, 0.0e+00, 3.5e-07, 3.5e-07,
                         3.5e-07, 3.5e-07, 0.0e+00, 3.5e-07, 3.5e-07, 3.5e-07, 3.5e-07, 0.0e+00], mut_mat[0].flatten().tolist())
-        self.assertEqual('matrix(c(0.0, 3.5e-07, 3.5e-07, 3.5e-07, 3.5e-07, 0.0, ' +
-                        '3.5e-07, 3.5e-07, 3.5e-07, 3.5e-07, 0.0, 3.5e-07, ' +
-                        '3.5e-07, 3.5e-07, 3.5e-07, 0.0), ncol = 4, byrow = T)', mut_mat[1])
+        self.assertEqual('matrix(c(0.0e+00, 3.5e-07, 3.5e-07, 3.5e-07, 3.5e-07, 0.0e+00, ' +
+                        '3.5e-07, 3.5e-07,\n 3.5e-07, 3.5e-07, 0.0e+00, 3.5e-07, ' +
+                        '3.5e-07, 3.5e-07, 3.5e-07, 0.0e+00), ncol = 4, byrow = T)', mut_mat[1])
         tree_output[1].pop("mutation_matrix")
         self.assertEqual([{'pop_name': 'p1', 'population_size': 100, 'recombination_rate': 2.5e-08, 'sample_size': 'all', 
                 'split_ratio': 0.5, 'partition': 'apophis', 'time': '12:00:00', 'count_subs': False, 'output_gens': False,

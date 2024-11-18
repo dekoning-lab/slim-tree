@@ -130,8 +130,8 @@ class readInput:
 
 
         #Make and return string of the mutational matrix
-        mut_mat_str = "matrix(c(" + str(list(mut_mat.flatten()))[1:-1] + "), ncol = 4, byrow = T)"
-        return (mut_mat, mut_mat_str)    
+        mut_mat_str = "matrix(c(" + np.array2string(mut_mat.flatten(), separator=', ', max_line_width = None, floatmode = 'maxprec')[1:-1] + "), ncol = 4, byrow = T)"
+        return (mut_mat, mut_mat_str)
         
         
    #Go through arguments and make sure that the user hasn't provided any arguments that cannot be processed     
