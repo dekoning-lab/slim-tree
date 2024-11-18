@@ -58,7 +58,7 @@ class testReadInput(unittest.TestCase):
         [[0.0e+00, 3.5e-03, 3.0e-02, 2.5e-02],[4.0e-04, 0.0e+00, 3.0e-02, 2.5e-03], [4.0e-04, 3.5e-03, 0.0e+00, 2.5e-04], [4.0e-04, 3.5e-03, 3.0e-02, 0.0e+00]])
        
         self.assertEqual(diff_vals[1], 
-        'matrix(c(0.0, 0.0035, 0.03, 0.025, 0.0004, 0.0, 0.03, 0.0025, 0.0004, 0.0035, 0.0, 0.00025, 0.0004, 0.0035, 0.03, 0.0), ncol = 4, byrow = T)')
+        'matrix(c(0.     , 0.0035 , 0.03   , 0.025  , 0.0004 , 0.     , 0.03   , 0.0025 ,\n 0.0004 , 0.0035 , 0.     , 0.00025, 0.0004 , 0.0035 , 0.03   , 0.     ), ncol = 4, byrow = T)')
        
        
         #Check that mutation matrices with same values can be processed
@@ -67,7 +67,7 @@ class testReadInput(unittest.TestCase):
         [[0.0e+00, 3.5e-07, 3.5e-07, 3.5e-07],[3.5e-07, 0.0e+00,3.5e-07, 3.5e-07], [3.5e-07, 3.5e-07, 0.0e+00, 3.5e-07], [3.5e-07, 3.5e-07, 3.5e-07, 0.0e+00]])
        
         self.assertEqual(same_vals[1], 
-        'matrix(c(0.0, 3.5e-07, 3.5e-07, 3.5e-07, 3.5e-07, 0.0, 3.5e-07, 3.5e-07, 3.5e-07, 3.5e-07, 0.0, 3.5e-07, 3.5e-07, 3.5e-07, 3.5e-07, 0.0), ncol = 4, byrow = T)')
+        'matrix(c(0.0e+00, 3.5e-07, 3.5e-07, 3.5e-07, 3.5e-07, 0.0e+00, 3.5e-07, 3.5e-07,\n 3.5e-07, 3.5e-07, 0.0e+00, 3.5e-07, 3.5e-07, 3.5e-07, 3.5e-07, 0.0e+00), ncol = 4, byrow = T)')
        
         #Check that system correctly closes when mutational matrix is not 4 by 4
         with self.assertRaises(SystemExit) as cm:
@@ -319,7 +319,9 @@ class testReadInput(unittest.TestCase):
         #Make parameter dict and file outputs - already tested
         param_dict = self.input_reader.make_param_dict(self.arguments)
         param_dict["filenames"] = self.input_reader.process_filenames("tests/testFiles/test_tree.txt", False, False)
-        
+        param_dict["input_tree"] = "test_tree.txt"
+        param_dict["codon_stationary_distributions"] = "table_stationary_dists_full.csv"
+
         #Test default
         self.input_reader.save_input(param_dict)
         self.assertTrue(filecmp.cmp(self.test_file_path + "/test_tree_parameters.yaml",self.test_file_path + "/correct_parameters.yaml"))

@@ -135,7 +135,7 @@ class writeSLiM:
     
     
             #List of start and stop codons, remove first and last parts of strings (the brackets) and add parentheses
-            start_stop_codons = list(self.start_params["coding_seqs"].flatten())
+            start_stop_codons = np.ravel(self.start_params["coding_seqs"]).tolist()
             start_stop_codons = str(start_stop_codons)
             set_up_fitness += ("\n\tdefineConstant(\"start_stop_codon_positions\",c(" + start_stop_codons[1:len(start_stop_codons)-1] +"));\n")
     

@@ -3,13 +3,13 @@ backup: false
 burn_in: 1000
 calculate_selection: false
 coding_ratio: 1.0
-codon_stationary_distributions: /mnt/c/Users/ebrin/Documents/BioinformaticsSoftware/slim-tree/tests/testFiles/table_stationary_distributions
+codon_stationary_distributions: table_stationary_dists_full.csv
 count_subs: false
 fasta_file: null
 gene_count: 1
 genome_length: 500
 high_performance_computing: false
-input_tree: /mnt/c/Users/ebrin/Documents/BioinformaticsSoftware/slim-tree/tests/testFiles/test_tree.txt
+input_tree: test_tree.txt
 jukes_cantor: true
 mutation_matrix: null
 mutation_rate: 2.5e-06

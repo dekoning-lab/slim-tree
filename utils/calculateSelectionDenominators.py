@@ -103,7 +103,7 @@ class calculateSelectionDenominators:
             for j in range(self.ncodons):
             
                 Qij = self.mu_mat[i][j]
-                pi_Qij = stationary_dist[i]*Qij*profile_quantity
+                pi_Qij = stationary_dist.iloc[i]*Qij*profile_quantity
                 if(syn_subs[i][j]):
                     denom_ds += pi_Qij
                 else:
