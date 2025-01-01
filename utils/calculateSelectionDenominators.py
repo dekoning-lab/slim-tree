@@ -127,7 +127,7 @@ class calculateSelectionDenominators:
 
         
         #Sum to get the denominators of dn and ds
-        return (sum(ds_dn)/3)
+        return (sum(ds_dn)*3)
         
         
     #Return dn to public

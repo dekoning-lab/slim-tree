@@ -24,7 +24,7 @@ class writeSLiM:
    
         #Set up the initialize and fitness functions for the new script
         self.write_initialize(population_parameters)
-        self.write_fitness()
+        self.write_fitness(population_parameters)
         
         
         #Write reproduction callback if this is a non-WF model
@@ -103,7 +103,7 @@ class writeSLiM:
 
 
     #Write the fitness callback for the SLiM script according to the distribution of fitness effects
-    def write_fitness(self):
+    def write_fitness(self, population_parameters):
         
         set_up_fitness = "function (void) setup_fitness(void){\n"
     
@@ -128,7 +128,7 @@ class writeSLiM:
             textfile.close()
     
             #Write out fitness profiles
-            fitness_vector = str(self.start_params["fitness_profile_nums"])
+            fitness_vector = str(population_parameters["fitness_profile_nums"])
             fitness_vector = "c(" + fitness_vector[1:len(fitness_vector)-1] + ")"
             set_up_fitness += "\n\tsim.setValue(\"fitness_profiles\"," + fitness_vector + ");"
     
@@ -150,10 +150,14 @@ class writeSLiM:
 
 
         #At the start of the sim there are no fixations counted and no non-synonymous or synonymous mutations
-        set_up_fitness += "\n\tsim.setValue(\"fixations_counted_p1\", 0);"
-        set_up_fitness += "\n\tsim.setValue(\"dN_p1\", 0);"
-        set_up_fitness += "\n\tsim.setValue(\"dS_p1\", 0);"
-        set_up_fitness += "\n\tsim.setValue(\"subs_p1\", \"\\n\\nSubstitutions:\");"
+        if (self.start_params["count_subs"] | self.start_params["calculate_selection"]):
+            set_up_fitness += "\n\tsim.setValue(\"fixations_counted_p1\", 0);"
+            
+            if(self.start_params["calculate_selection"]):
+                set_up_fitness += "\n\tsim.setValue(\"dN_p1\", 0);"
+                set_up_fitness += "\n\tsim.setValue(\"dS_p1\", 0);"
+                
+            set_up_fitness += "\n\tsim.setValue(\"subs_p1\", \"\\n\\nSubstitutions:\");"
         set_up_fitness += "\n}\n\n\n"
 
 
@@ -306,7 +310,7 @@ class writeSLiM:
                                 "\n\t\t\t\tnew_AA = codonsToAminoAcids(nucleotidesToCodons(new_nucs));" +
                                 "\n\t\t\t\tif (old_AA !=  \"X\" & new_AA != \"X\"){" +
                                 "\n\t\t\t\t\tif (old_AA == new_AA & new_AA != \"X\"){" +
-                                "\n\t\t\t\t\t\tsim.setValue(dS_name, sim.getValue(dS_name) + 1);" +
+                                "\n\t\t\t\t\t\tsim.setValue(dS_name, sim.getValue(dS_name) + 1);" + 
                                 "\n\t\t\t\t\t} else {" +
                                 "\n\t\t\t\t\t\tsim.setValue(dN_name, sim.getValue(dN_name) + 1);" +
                                 "\n\t\t\t\t\t}" +
@@ -449,7 +453,6 @@ class writeSLiM:
                 "\"\\ndS: \", sim.getValue(\"dS_" + population_parameters["pop_name"] + "\"), \" / " + str(self.start_params["ds_denom"]) + " = \", " +
                 "sim.getValue(\"dS_" + population_parameters["pop_name"] + "\") / " + str(self.start_params["ds_denom"]) + ", " +
                 "sim.getValue(\"subs_" + population_parameters["pop_name"] + "\")));" )
-
 
         #Write files containing polymorphisms in each population and relative proportions
         if(population_parameters["polymorphisms"]):

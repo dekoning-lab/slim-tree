@@ -9,12 +9,18 @@ class SLiMTree:
     def __init__(self):
 
         start_params = self.read_input()
-        start_params = self.process_fitness(start_params)
         
+        run_random_process = True
         
-        #Get the data for each clade in the tree
-        clades = utils.cladeReader.cladeReader(start_params)
-        clade_dict_list = clades.get_clade_dict_list()
+        #While loop prevents anscestral sequence from having the amino acid which is to be shifted to in case of a fitness shift
+        while(run_random_process):
+            start_params = self.process_fitness(start_params)
+        
+            #Get the data for each clade in the tree
+            clades = utils.cladeReader.cladeReader(start_params)
+            clade_dict_list = clades.get_clade_dict_list()
+            run_random_process = clades.redo_random
+                        
 
         #Write and run the slim code
         self.write_slim_code(clade_dict_list, start_params)

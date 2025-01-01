@@ -12,12 +12,14 @@ import numpy as np
 class cladeReader:
     
     def __init__(self, start_params):     
-        self.start_params = start_params
+        self.redo_random = False #Flag is old genome has same value as shift
+        self.start_params = copy.deepcopy(start_params)
         
         if (self.start_params["tree_data_file"] != None):
             self.start_params["tree_data_file"] = self.read_clade_data(self.start_params["tree_data_file"])
         
         self.clade_dict_list = self.read_input_tree()
+
 
 
 
@@ -47,7 +49,8 @@ class cladeReader:
             'v': 'mutation_rate',
             'm': 'mutation_matrix',
             'k': 'sample_size',
-            'sr': 'split_ratio'
+            'sr': 'split_ratio',
+            'ps': 'profile_shift' #start of implementation
         }
         
         possible_hpc_changes = list(data_translation.keys()) + list(data_translation.values())
@@ -78,13 +81,79 @@ class cladeReader:
                 new_dict['jukes_cantor'] = False
                 
             
-            
-            yaml_data[dat] = new_dict
+            #If the profile is shifting - add to the dictionary that it is occuring
+            if('profile_shift' in new_dict.keys()):
+                new_dict['shift'] = True
+                new_dict['fitness_profile_nums'] = self.process_profile_shift(new_dict)
+                
 
+            yaml_data[dat] = new_dict   
             
         return(yaml_data)
 
 
+    #Process data from a profile shift and make sure that the user provides the correct information
+    def process_profile_shift(self, new_dict):
+
+        #Ensure that formatting of profiles and profile numbers are correct
+        if('profile_positions' not in new_dict['profile_shift'].keys() or 
+            'new_profile_nums' not in new_dict['profile_shift'].keys()):
+                print("When shifting profiles, ensure that you include a list of profiles to change as <profile_positions> and new profile numbers to change to as <new_profile_nums>. Exiting.")
+                sys.exit(0)
+                
+        #Ensure that given profile positions to shift are possible to shift
+        shift_pos = new_dict['profile_shift']['profile_positions']
+        if(type (shift_pos) != list):
+            print("Please include profiles to shift as a list of integer profile numbers")
+            sys.exit(0)
+            
+        for listed_shift_pos in shift_pos:
+            if(type(listed_shift_pos) != int):
+                print("Please include profiles to shift as a list of integer profile numbers")
+                sys.exit(0)
+            
+            outside_coding_seq = True
+            for coding_seq in self.start_params["coding_seqs"]:
+                if(listed_shift_pos > coding_seq[0] and listed_shift_pos < coding_seq[1]):
+                    outside_coding_seq = False
+                    
+            if(listed_shift_pos >= self.start_params["genome_length"]):
+                print("Please ensure that all your profiles to shift are within the genome. Exiting.")
+                sys.exit(0)
+                
+                    
+            if (outside_coding_seq):
+                print("Please ensure that all your profiles to shift are within coding regions of your given genome and are not in start or stop codon positions. Exiting.")
+                sys.exit(0)
+                
+        #Ensure that shifts are possible
+        shifts = new_dict['profile_shift']['new_profile_nums']
+        if(type (shifts) != list):
+            print("Please include new profile numbers as a list of integer new profile numbers")
+            sys.exit(0) 
+            
+        if(len(shifts) != len(shift_pos)):
+            print("Please ensure that you provide the same number of new profile numbers as profiles. Exiting.")
+            sys.exit(0)
+
+
+        #Place shifts in vector of fitness shifts
+        profiles = self.start_params["fitness_profile_nums"].copy()
+        for list_pos in range(len(shifts)):
+            #Need to ensure list is integers
+            if(type(shift_pos[list_pos]) != int):
+                print("Please include profiles shifts as a list of integer profile numbers to shift to. Exiting.")
+                sys.exit(0)
+            
+            #If the old profile has the shift position return None to restart creation of old genome
+            if(profiles[shift_pos[list_pos]] == shifts[list_pos]):
+                self.redo_random = True
+            
+            #Make shift
+            profiles[shift_pos[list_pos]] = shifts[list_pos]
+            
+        return(profiles)   
+  
 
     #Read the phylogenetic tree data given by the user 
     def read_input_tree(self):
@@ -118,6 +187,7 @@ class cladeReader:
             "jukes_cantor": self.start_params["jukes_cantor"],
             "calculate_selection": self.start_params["calculate_selection"],
             "end_dist" : 0,
+            "fitness_profile_nums": self.start_params["fitness_profile_nums"]
         }
 
         if(self.start_params["jukes_cantor"]):
@@ -175,6 +245,7 @@ class cladeReader:
             clade_name = clade.name
             if(clade_name in clade_data.keys()):
                 current_clade_data = self.start_params["tree_data_file"][clade_name]
+
                 for keyname in current_clade_data.keys():
                     if(keyname == 'mutation_matrix'):
                         input_reader = readInput.readInput()
