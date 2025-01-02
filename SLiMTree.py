@@ -97,14 +97,18 @@ class SLiMTree:
             # Find the scaling factor for mostly neutral fitnesses
             start_params["scaling_value"] = fitness_finder.find_fitness_scaling(start_params["fitness_profile_nums"], 
                         start_params["coding_ratio"] != 1)
+            start_params["stat_mat"] = fitness_finder.get_stationary_mat()
                             
                             
         #If dN/dS is being calculated find the denominators
         if(start_params["calculate_selection"]):
-            sel_denom = utils.calculateSelectionDenominators.calculateSelectionDenominators(fitness_finder.get_stationary_mat(),
+            sel_denom = utils.calculateSelectionDenominators.calculateSelectionDenominators(start_params["stat_mat"],
                         start_params["fitness_profile_nums"], start_params["mutation_rate"], start_params["mutation_matrix"])
             start_params["dn_denom"] = sel_denom.get_dn()
             start_params["ds_denom"] = sel_denom.get_ds()
+            
+        
+        start_params["fitness_finder"] = fitness_finder
         
         return(start_params)
 

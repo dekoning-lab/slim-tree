@@ -5,7 +5,7 @@ import copy
 import math
 import yaml
 import sys
-from utils import readInput
+from utils import readInput, calculateSelectionDenominators, findFitness
 import numpy as np
 
 
@@ -50,7 +50,7 @@ class cladeReader:
             'm': 'mutation_matrix',
             'k': 'sample_size',
             'sr': 'split_ratio',
-            'ps': 'profile_shift' #start of implementation
+            'ps': 'profile_shift'
         }
         
         possible_hpc_changes = list(data_translation.keys()) + list(data_translation.values())
@@ -86,7 +86,20 @@ class cladeReader:
                 new_dict['shift'] = True
                 new_dict['fitness_profile_nums'] = self.process_profile_shift(new_dict)
                 
-
+                #Recalculate fitness scaling denominators with the new fitness shift
+                new_dict["scaling_value"] = self.start_params["fitness_finder"].find_fitness_scaling(new_dict["fitness_profile_nums"], 
+                    self.start_params["coding_ratio"] != 1)
+                
+                
+                #Need to calculate a new denominator for scaling with the new fitness profiles
+                if(self.start_params["calculate_selection"]):                    
+                    sel_denom = calculateSelectionDenominators.calculateSelectionDenominators(self.start_params["stat_mat"],
+                        new_dict["fitness_profile_nums"], self.start_params["mutation_rate"], self.start_params["mutation_matrix"])
+                    new_dict["dn_denom"] = sel_denom.get_dn()
+                    new_dict["ds_denom"] = sel_denom.get_ds()
+        
+                
+           
             yaml_data[dat] = new_dict   
             
         return(yaml_data)
@@ -140,6 +153,7 @@ class cladeReader:
         #Place shifts in vector of fitness shifts
         profiles = self.start_params["fitness_profile_nums"].copy()
         for list_pos in range(len(shifts)):
+        
             #Need to ensure list is integers
             if(type(shift_pos[list_pos]) != int):
                 print("Please include profiles shifts as a list of integer profile numbers to shift to. Exiting.")
@@ -154,6 +168,8 @@ class cladeReader:
             
         return(profiles)   
   
+
+
 
     #Read the phylogenetic tree data given by the user 
     def read_input_tree(self):
@@ -187,13 +203,19 @@ class cladeReader:
             "jukes_cantor": self.start_params["jukes_cantor"],
             "calculate_selection": self.start_params["calculate_selection"],
             "end_dist" : 0,
-            "fitness_profile_nums": self.start_params["fitness_profile_nums"]
+            "fitness_profile_nums": self.start_params["fitness_profile_nums"],
+            "scaling_value": self.start_params["scaling_value"]
         }
+        
 
         if(self.start_params["jukes_cantor"]):
             starting_parameter_dict["mutation_rate"] = self.start_params["mutation_rate"]
         else:
             starting_parameter_dict["mutation_matrix"] = self.start_params["mutation_matrix"]
+
+        if(self.start_params["calculate_selection"]):
+            starting_parameter_dict["dn_denom"] = self.start_params["dn_denom"],
+            starting_parameter_dict["ds_denom"] = self.start_params["ds_denom"],
 
         try:
             clade_dict_list = self.recurse_through_clades(phylogeny.get_nonterminals()[0],
@@ -204,9 +226,8 @@ class cladeReader:
 
         #Sort clade dict list by the distance from the start of the simulation so that it works properly
         #in SLiM
-
+        # print(clade_dict_list)
         clade_dict_list = sorted(clade_dict_list, key=lambda k: k["dist_from_start"])
-
 
         return (clade_dict_list)
 
