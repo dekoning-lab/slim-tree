@@ -321,12 +321,15 @@ class testReadInput(unittest.TestCase):
         param_dict["filenames"] = self.input_reader.process_filenames("tests/testFiles/test_tree.txt", False, False)
         param_dict["input_tree"] = "test_tree.txt"
         param_dict["codon_stationary_distributions"] = "table_stationary_dists_full.csv"
+        param_dict["fitness_profile_nums"] =  [50, 6, 12, 35, 1, 5, 30, 42, 6, 50]
+        param_dict["scaling_value"] = None
+
 
         #Test default
         self.input_reader.save_input(param_dict)
         self.assertTrue(filecmp.cmp(self.test_file_path + "/test_tree_parameters.yaml",self.test_file_path + "/correct_parameters.yaml"))
             
-        #Test with different mutation rate
+        # Test with different mutation rate
         old_mu = param_dict["mutation_rate"]
         param_dict["mutation_rate"] = 1.0e-4
         self.input_reader.save_input(param_dict)
@@ -334,14 +337,14 @@ class testReadInput(unittest.TestCase):
         param_dict["mutation_rate"] = old_mu
         
         
-        #Test with different population size
+        # Test with different population size
         old_pop = param_dict["population_size"]
         param_dict["population_size"] = 50
         self.input_reader.save_input(param_dict)
         self.assertTrue(filecmp.cmp(self.test_file_path + "/test_tree_parameters.yaml",self.test_file_path + "/correct_parameters_change_pop.yaml"))
         param_dict["population_size"] = old_pop
         
-        #Test with mutation matrix - same value
+        # Test with mutation matrix - same value
         param_dict["mutation_matrix"] =  [numpy.array([[0.0e+00, 3.5e-06, 3.5e-06, 3.5e-06],
                     [3.5e-06, 0.0e+00, 3.5e-06, 3.5e-06], 
                     [3.5e-06, 3.5e-06, 0.0e+00, 3.5e-06], 
@@ -352,7 +355,7 @@ class testReadInput(unittest.TestCase):
         self.assertTrue(filecmp.cmp(self.test_file_path + "/test_tree_parameters.yaml",self.test_file_path + "/correct_parameters_same_mu_matrix.yaml"))
         
         
-        #Test with mutation matrix - different values
+        # Test with mutation matrix - different values
         param_dict["mutation_matrix"] =  [numpy.array([[0.0e+00, 2.5e-06, 3.5e-06, 3.5e-04],
                     [6.5e-06, 0.0e+00, 3.5e-03, 1.5e-06], 
                     [0.5e-06, 9.0e-06, 0.0e+00, 3.5e-02], 

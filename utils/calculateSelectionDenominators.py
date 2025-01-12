@@ -126,7 +126,7 @@ class calculateSelectionDenominators:
         ds_dn = np.array(list(map(lambda x: self.get_dist_ds_dn(x, num_each_profile.loc[x,1], syn_subs), range(len(num_each_profile)))))
 
         
-        #Sum to get the denominators of dn and ds
+        #Sum to get the denominators of dn and ds - multiply for 3 areas
         return (sum(ds_dn)*3)
         
         

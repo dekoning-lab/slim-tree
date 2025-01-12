@@ -102,17 +102,17 @@ class testCalculateSelectionDenominators(unittest.TestCase):
                                 [False,False,False,False,True]]
                                 
         test_dn_ds = self.denom_calculator.calculate_selection_denominators([0,0,0,0,0], correct_syn_codons)
-        self.assertEqual(list(test_dn_ds), [8.838288916666669e-07/3, 3.3669679583333337e-07/3])
+        self.assertEqual(list(test_dn_ds), [8.838288916666669e-07*3, 3.3669679583333337e-07*3])
         
         
         # Test with 2 different profiles
         test_dn_ds = self.denom_calculator.calculate_selection_denominators([0,1,1,1,0], correct_syn_codons)
-        self.assertEqual(list(test_dn_ds),[3.535315566667927e-07/3, 1.3467871833337535e-07/3])
+        self.assertEqual(list(test_dn_ds),[3.535315566667927e-07*3, 1.3467871833337535e-07*3])
         
         
         # Test with all 3 profiles
         test_dn_ds = self.denom_calculator.calculate_selection_denominators([0,0,1,1,2,2], correct_syn_codons)
-        self.assertEqual(list(test_dn_ds), [3.5353155666683473e-07/3, 1.3467871833338936e-07/3])
+        self.assertEqual(list(test_dn_ds), [3.5353155666683473e-07*3, 1.3467871833338936e-07*3])
         
         # Test calculation of dn/ds when mutation rate varies
         self.denom_calculator.mu_mat = numpy.array(
@@ -122,7 +122,7 @@ class testCalculateSelectionDenominators(unittest.TestCase):
                             [7e-6, 2e-5, 3e-5, 0.0, 0.0],
                             [0.0, 0.0, 0.0, 0.0, 0.0]])
         test_dn_ds = self.denom_calculator.calculate_selection_denominators([0,0,0,0,0], correct_syn_codons)
-        self.assertEqual(list(test_dn_ds), [2.303004757e-06*5/3, 2.87875642e-07*5/3])
+        self.assertEqual(list(test_dn_ds), [2.303004757e-06*5*3, 2.87875642e-07*5*3])
     
     
    
