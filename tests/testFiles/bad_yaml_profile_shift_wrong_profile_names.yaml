@@ -1,0 +1,6 @@
+A:
+    ps:
+        profile_positions:
+            - 2
+            - 3
+        new_profile_nums: 15

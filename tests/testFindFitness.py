@@ -144,7 +144,7 @@ class testCladeReader(unittest.TestCase):
         self.fit.stationary_dist_file = self.test_file_path + "/table_stationary_dists_full.csv"
         good_fitness_file = self.test_file_path + "table_fitness_dists_full.csv"
         correct_fitness_mat = pd.read_csv(good_fitness_file, header = None, index_col = 0).values.tolist()
-        self.fit.process_existing_fitness_file(self.test_file_path +  "table_fitness_dists_full.csv")
+        self.fit.process_existing_fitness_file(good_fitness_file)
         
         #Compare output of process_fitness_dists
         profile_process_output = self.fit.process_fitness_dists()
@@ -304,7 +304,7 @@ class testCladeReader(unittest.TestCase):
         self.fit.stationary_dist_file = self.test_file_path + "/table_stationary_dists_full.csv"
         good_fitness_file = self.test_file_path + "table_fitness_dists_full.csv"
         correct_fitness_mat = pd.read_csv(good_fitness_file, header = None, index_col = 0).values.tolist()
-        self.fit.process_existing_fitness_file(self.test_file_path +  "table_fitness_dists_full.csv")
+        self.fit.process_existing_fitness_file(good_fitness_file)
         profile_process_output = self.fit.process_fitness_dists()
         
         

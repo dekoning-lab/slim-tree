@@ -116,13 +116,14 @@ class cladeReader:
                 
         #Ensure that given profile positions to shift are possible to shift
         shift_pos = new_dict['profile_shift']['profile_positions']
+
         if(type (shift_pos) != list):
-            print("Please include profiles to shift as a list of integer profile numbers")
+            print("Please include profiles to shift as a list of integer profile numbers. Exiting.")
             sys.exit(0)
             
         for listed_shift_pos in shift_pos:
             if(type(listed_shift_pos) != int):
-                print("Please include profiles to shift as a list of integer profile numbers")
+                print("Please include profiles to shift as a list of integer profile numbers. Exiting.")
                 sys.exit(0)
             
             outside_coding_seq = True
@@ -142,7 +143,7 @@ class cladeReader:
         #Ensure that shifts are possible
         shifts = new_dict['profile_shift']['new_profile_nums']
         if(type (shifts) != list):
-            print("Please include new profile numbers as a list of integer new profile numbers")
+            print("Please include new profile numbers as a list of integer new profile numbers. Exiting.")
             sys.exit(0) 
             
         if(len(shifts) != len(shift_pos)):
@@ -154,9 +155,9 @@ class cladeReader:
         profiles = self.start_params["fitness_profile_nums"].copy()
         for list_pos in range(len(shifts)):
         
-            #Need to ensure list is integers
-            if(type(shift_pos[list_pos]) != int):
-                print("Please include profiles shifts as a list of integer profile numbers to shift to. Exiting.")
+            #Need to ensure profile position is integers
+            if(type(shifts[list_pos]) != int):
+                print("Please include new profile numbers as a list of integer new profile numbers. Exiting.")
                 sys.exit(0)
             
             #If the old profile has the shift position return None to restart creation of old genome
