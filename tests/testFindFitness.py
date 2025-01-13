@@ -108,34 +108,6 @@ class testCladeReader(unittest.TestCase):
         self.assertEqual(sout.getvalue(), ("Fitness data files must be in terms of amino acids. There should be the 20 amino acids and stops (ie. 21 rows). Exiting.\n"))
         sout.close()
         
-    
-    # def test_find_optimal_fitness(self):
-        
-        # #Run test with a smaller stationary distribution that totals 1
-        # self.fit.stationary_dist_file = self.test_file_path + "table_stationary_dists_partial_total_1.csv"
-        # self.fit.find_optimal_fitnesses(8e-4, 100, False, None, None)
-        
-        # #Test that stationary distribution file is created
-        # path = pathlib.Path(os.getcwd() + "/table_fitness_dists.csv")
-        # self.assertEqual((str(path), path.is_file()), (str(path), True))
-        # os.remove(path)
-        
-        # #Test that desired output is obtained
-        # self.assertEqual(self.fit.fitness_mat.round(6).values.tolist(),  
-                    # [[0.986429, 0.837947, 0.837947, 0.994507],
-                    # [0.989663, 0.843440, 0.843440, 1.000000],
-                    # [1.000000, 1.000000, 1.000000, 0.994507],
-                    # [0.986429, 0.837947, 0.837947, 0.994507]])
-
-    
-    
-    def test_find_optimal_fitness_mu_mat(self):
-    
-        #Run test with a smaller stationary distribution that totals 1, with mutation matrix
-        mutation_matrix = pd.read_csv(self.test_file_path + "/mut_mat_different.csv", header = None)
-        ave_mu = self.fit.find_optimal_fitnesses_mu_mat(mutation_matrix, 5, False, None, None, True)
-        self.assertEqual(1.07875e-2, ave_mu)
-        
       
       
     def test_process_fitness_dists(self):

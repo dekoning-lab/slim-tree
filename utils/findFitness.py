@@ -115,33 +115,16 @@ class findFitness:
             
     #Function which finds fitnesses from stationary distributions using R script if fitness file not given.
     #Writes fitnesses to new file so they may be reused in the future
-    def find_optimal_fitnesses(self, mutation_rate, population_size, hpc, partition, time_p):
+    def find_optimal_fitnesses(self, population_size, hpc):
         print("Finding fitnesses for stationary distributions")
 
-        self.fitness_mat = pd.DataFrame(calculateFitnesses.Find_fitnesses(self.stationary_dist_file, population_size, True))
+        self.fitness_mat = pd.DataFrame(calculateFitnesses.Find_fitnesses(self.stationary_dist_file, population_size, hpc))
         self.fitness_mat.columns=["A","C","D","E","F","G","H","I","K","L","M","N","P","Q","R","S","T","V","W","Y"]
         self.fitness_mat["X"] = self.fitness_mat.min(axis = 'columns')
         self.fitness_mat = self.fitness_mat.transpose()
         
         #Write fitness matrix to csv for future use
         self.fitness_mat.to_csv("table_fitness_dists.csv",  header=False)
- 
-        
-    
-    #Function to find fitnesses if a non-jukes-cantor matrix is supplied - uses the average mutation rate of the matrix
-    def find_optimal_fitnesses_mu_mat(self, mutation_matrix, population_size, hpc, partition, time_p, test = False):
-        #Find mean of all non-diagonal elements
-        sum_all = mutation_matrix.values.sum()
-        nrow = mutation_matrix.shape[0]
-        
-        mu =  (sum_all - np.diag(mutation_matrix).sum())/(nrow**2 - nrow)
-
-        #Find the fitnesses if not a test, if a test just return the mean to test
-        if(test):
-            return(mu)
-        else:
-            self.find_optimal_fitnesses(mu, population_size, hpc, partition, time_p)
-
 
 
 
