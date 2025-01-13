@@ -6,6 +6,7 @@ from Bio.Seq import Seq
 from Bio.Seq import CodonTable
 from Bio import SeqIO
 from copy import deepcopy
+from utils import calculateFitnesses
 
 class findFitness:
 
@@ -116,40 +117,15 @@ class findFitness:
     #Writes fitnesses to new file so they may be reused in the future
     def find_optimal_fitnesses(self, mutation_rate, population_size, hpc, partition, time_p):
         print("Finding fitnesses for stationary distributions")
-        fitness_mat =  os.getcwd() + "/table_fitness_dists.csv"
+
+        self.fitness_mat = pd.DataFrame(calculateFitnesses.Find_fitnesses(self.stationary_dist_file, population_size, True))
+        self.fitness_mat.columns=["A","C","D","E","F","G","H","I","K","L","M","N","P","Q","R","S","T","V","W","Y"]
+        self.fitness_mat["X"] = self.fitness_mat.min(axis = 'columns')
+        self.fitness_mat = self.fitness_mat.transpose()
         
-        #If existing fitness mat exists remove it, ensures HPC waits if file is already there
-        if(os.path.isfile(fitness_mat)): os.remove(fitness_mat) 
-        
-        
-        #If hpc make file to run R script to find fitness profiles and run batch file
-        if (hpc):
-            batch_file = open("find_fitness.sh", "w")
-            batch_file.write(("#!/bin/sh\n\n#SBATCH -J find_fitness \n#SBATCH -t " + str(time_p) +
-                "\n#SBATCH -p "  + str(partition) + 
-                "\n#SBATCH -o fitness.out\n#SBATCH -e fitness.err" +
-                "\n#SBATCH -n 10" + 
-                "\nRscript " + os.path.dirname(os.path.realpath(__file__)) + "/fitness_profile_finder.R" +
-                " -f " + self.stationary_dist_file + " -N " + str(population_size) + " -v " + str(mutation_rate)+ " -o " + fitness_mat))
-            batch_file.close()
-            
-            subprocess.run(["sbatch",  "find_fitness.sh"])
-            
-            #Waits until batch file finished before continuing - need to throw message if R script fails
-            while not (os.path.isfile(fitness_mat) and os.path.getsize("fitness.err") == 0): 
-                time.sleep(1)
-            
-        else:      
-            #Run R script to find fitness profiles
-            subprocess.call(["Rscript", os.path.dirname(os.path.realpath(__file__)) + "/fitness_profile_finder.R", 
-                    "-f", self.stationary_dist_file, "-N", str(population_size), "-v", str(mutation_rate), "-o", fitness_mat])
-        
-        #Check if fitness matrix exists, if it does not exist error is in R script
-        if(os.path.isfile(fitness_mat)):
-            self.fitness_mat = pd.read_csv(fitness_mat, header = None, index_col = 0)
-        else:
-            print("There seems to be a bug in running the R script to get fitnesses. Check your packages. Closing program.")
-            sys.exit(0)
+        #Write fitness matrix to csv for future use
+        self.fitness_mat.to_csv("table_fitness_dists.csv",  header=False)
+ 
         
     
     #Function to find fitnesses if a non-jukes-cantor matrix is supplied - uses the average mutation rate of the matrix
