@@ -261,10 +261,8 @@ class cladeReader:
         #Set up the default parameters based on the parent dictionary
         clade_dict = copy.deepcopy(parent_clade_dict)
 
-
         #Change parameters if specified by user for a specific clade
         if(clade_data != None):
-            clade_name = clade.name
             if(clade_name in clade_data.keys()):
                 current_clade_data = self.start_params["tree_data_file"][clade_name]
 
@@ -282,11 +280,11 @@ class cladeReader:
         self.pop_num += 1
         pop_name = "p" + str(self.pop_num)
 
-        if(clade.name != None):
-            clade.name = pop_name + ": "+ clade.name
+        if(clade.name == None):
+            clade.name = "unnamed_population_" + pop_name
         else:
-            clade.name = pop_name
-
+            clade.name = "population_" + clade.name
+            
         #Figure out when the population needs to be formed
         dist_from_start = parent_clade_dict["end_dist"]
         
@@ -309,6 +307,7 @@ class cladeReader:
         #Update some values of clade
         clade_dict['parent_pop_name'] = clade_dict['pop_name']
         clade_dict['pop_name'] = pop_name 
+        clade_dict['clade_name'] = clade.name
         clade_dict['child_clades'] = clade.clades
         clade_dict['dist_from_start'] = dist_from_start
         clade_dict['pop_end'] = pop_end

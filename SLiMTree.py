@@ -61,6 +61,7 @@ class SLiMTree:
             
             #All neutral so fitness profile nums are also neutral
             start_params["fitness_profile_nums"] = [0] * start_params["genome_length"]
+            start_params["scaling_value"] = 1
         
         else:
             #Read in the stationary distributions, processes fitness profiles and find ancestral sequences
@@ -91,7 +92,8 @@ class SLiMTree:
             # Find the scaling factor for mostly neutral fitnesses
             start_params["scaling_value"] = fitness_finder.find_fitness_scaling(start_params["fitness_profile_nums"], 
                         start_params["coding_ratio"] != 1)
-            start_params["stat_mat"] = fitness_finder.get_stationary_mat()
+        
+        start_params["stat_mat"] = fitness_finder.get_stationary_mat()
                             
                             
         #If dN/dS is being calculated find the denominators

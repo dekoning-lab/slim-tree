@@ -34,8 +34,6 @@ class writeSLiM:
         #Make the population and set up fitness effects
         pop_string = ("1 early() {" +
                     "\n\tsetup_fitness();" +
-                    #"\n\twriteFile(\"" + self.start_params["filenames"][1] + "_aa.fasta\", \"\", append = F);" +
-                    #"\n\twriteFile(\"" + self.start_params["filenames"][1] + "_nuc.fasta\", \"\", append = F);" +
                     "\n\tsim.addSubpop(\"p1\", " + str(population_parameters["population_size"]) + ");" + 
                     "\n\tsim.setValue(\"fixations_p1\", sim.chromosome.ancestralNucleotides(format = \"integer\"));" +    #Write code to start a fixed state from the starting nucleotide sequence
                     "\n\tsim.setValue(\"fixations_counted_p1\", 0);" + #At the start of the sim there are no fixations counted
@@ -439,14 +437,12 @@ class writeSLiM:
 
         #Write file with the substitution counts
         if(population_parameters["count_subs"]):
-            end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_fixed_mutation_counts.txt\"," +
-                "asString(sim.getValue(\"fixations_counted_" + population_parameters["pop_name"] + "\")));" +
-                "\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_fixed_mutations.txt\"," +
-                " paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue(\"fixations_" + population_parameters["pop_name"] + "\"))), sep = \"\"));")
+            end_population_string += ("\n\twriteFile(\"" + self.start_params["filenames"][5] +"/"+ population_parameters["clade_name"] + 
+                "_num_subs.txt\"," + "asString(sim.getValue(\"fixations_counted_" + population_parameters["pop_name"] + "\")));")
 
         #Write file with the number of synonymous and synonymous substitutions
         if(population_parameters["calculate_selection"]):
-            end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_dNdS.txt\"," +
+            end_population_string += ("\n\twriteFile(\"" + self.start_params["filenames"][4] +"/"+ population_parameters["clade_name"] + "_dNdS.txt\"," +
                 "paste0(\"dN: \", sim.getValue(\"dN_" + population_parameters["pop_name"] + "\"), \" / " + str(self.start_params["dn_denom"]) + " = \", " +
                 "sim.getValue(\"dN_" + population_parameters["pop_name"] + "\") / " + str(self.start_params["dn_denom"]) + ", " +
                 "\"\\ndS: \", sim.getValue(\"dS_" + population_parameters["pop_name"] + "\"), \" / " + str(self.start_params["ds_denom"]) + " = \", " +
@@ -471,9 +467,9 @@ class writeSLiM:
                                         "\n\t\t\t}\n\t\tpolymorph_str = c(polymorph_str, \"\\n\");\n\t\t}" +
                                         " else if (length(unique_diffs) == 1) {" +
                                         "\n\t\t\tfixed_str = c(fixed_str, a, \": \", unique_diffs, \"\\n\");\n\t\t}" +
-                                        "\n\t}\n\twriteFile(\"" + os.getcwd() + "/" + population_parameters["pop_name"] + "_polymorphisms.txt\", " +
+                                        "\n\t}\n\twriteFile(\"" + self.start_params["filenames"][6]  + "/" + population_parameters["clade_name"] + "_polymorphisms.txt\", " +
                                         "paste(polymorph_str, sep = \"\"));" +
-                                        "\n\twriteFile(\"" + os.getcwd() + "/" + population_parameters["pop_name"] + 
+                                        "\n\twriteFile(\"" + self.start_params["filenames"][6] +"/" + population_parameters["clade_name"] + 
                                         "_fixed_sites.txt\", paste(fixed_str, sep = \"\"));")
 
 
@@ -492,38 +488,31 @@ class writeSLiM:
     #Write code to write the output for terminal populations after they have reached their population
     def write_terminal_output(self, population_parameters, pop = "p1"):
 
-        #Set up the names of the 3 fasta files to be output to
-        #nuc_filename = self.start_params["filenames"][1] + "_nuc.fasta"
-        #aa_filename =  self.start_params["filenames"][1] + "_aa.fasta"
-        ancestral_filename = self.start_params["filenames"][1] + "_fixed.fasta"
-
 
         #Set up sampling of the population
-        pop_name = population_parameters["pop_name"]
+        clade_name = population_parameters["clade_name"]
         pop_size = population_parameters["population_size"]
         samp_size = population_parameters["sample_size"]
 
 
-        #Sample according to number given by user
-        terminal_output_string = ""
 
         #Formulate and output consensus sequence
         if (samp_size == "consensus"):
-            terminal_output_string += ("\n\n\tconsensus = \"\";" +
+            terminal_output_string = ("\n\n\tconsensus = \"\";" +
                                     "\n\tfor (i in 0:" + str(self.start_params["genome_length"] * 3 - 1) + "){" +
                                     "\n\t\tconsensus = consensus+ c(\"A\", \"C\", \"G\", \"T\")[whichMax(nucleotideCounts(paste0(matrix(sapply(" + pop +
                                     ".genomes.nucleotides(), \"strsplit(applyValue, sep = '');\"), ncol = " + str(self.start_params["genome_length"] * 3) + 
                                     ", byrow = T)[,i])))];\n\t}" +
-                                    "\n\n\tfasta_string_nuc = paste0(\">" + pop_name + ": \\n\", consensus);" +
-                                    "\n\twriteFile(\"" + nuc_filename + "\", fasta_string_nuc,append = T);" +
-                                    "\n\n\tfasta_string_prot = paste0(\">" + pop_name + ": \\n\", codonsToAminoAcids(nucleotidesToCodons(consensus)));" +
-                                        "\n\twriteFile(\"" + aa_filename + "\", fasta_string_prot,append = T);")
+                                    "\n\n\tfasta_string_nuc = paste0(\">" + clade_name + ": \\n\", consensus);" +
+                                    "\n\twriteFile(\"" +  os.getcwd()+ "/nuc_FASTA/nuc.fasta" + "\", fasta_string_nuc,append = T);" +
+                                    "\n\n\tfasta_string_prot = paste0(\">" + clade_name + ": \\n\", codonsToAminoAcids(nucleotidesToCodons(consensus)));" +
+                                        "\n\twriteFile(\"" + os.getcwd()+ "/aa_FASTA/AA.fasta" +  "\", fasta_string_prot,append = T);")
 
         else:
             if(samp_size == "all"):
-                terminal_output_string += "\n\tgenomes = " + pop + ".genomes;"
+                terminal_output_string = "\n\tgenomes = " + pop + ".genomes;"
             else:
-                terminal_output_string += ("\n\tgenomes = sample(" + pop + ".genomes, min(" + str(int(samp_size)) +
+                terminal_output_string = ("\n\tgenomes = sample(" + pop + ".genomes, min(" + str(int(samp_size)) +
                                     ", 2*" + pop + ".individualCount), replace=F);")
 
 
@@ -531,11 +520,11 @@ class writeSLiM:
             #Iterate through each random sample to write script to output samples of amino acids and nucleotides to fasta files
             terminal_output_string += ("\n\n\tfor (g in genomes){" +
                                         "\n\t\tfasta_string_nuc = \"\";" +
-                                        "\n\t\tfasta_string_nuc = paste0(\">\", g.individual, \", " + pop_name + ": \\n\", g.nucleotides());" +
-                                        "\n\t\twriteFile(\"" + os.getcwd()+ "/nuc_FASTA/" + population_parameters["pop_name"] + "_nuc.fasta" + "\", fasta_string_nuc,append = T);" +
-                                        "\n\t\tfasta_string_prot = paste0(\">\", g.individual, \", " + pop_name +
+                                        "\n\t\tfasta_string_nuc = paste0(\">\", g.individual, \", " + clade_name + ": \\n\", g.nucleotides());" +
+                                        "\n\t\twriteFile(\"" + os.getcwd()+ "/nuc_FASTA/" + clade_name + "_nuc.fasta" + "\", fasta_string_nuc,append = T);" +
+                                        "\n\t\tfasta_string_prot = paste0(\">\", g.individual, \", " + clade_name +
                                         ": \\n\", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));" +
-                                        "\n\t\twriteFile(\"" + os.getcwd()+ "/aa_FASTA/" + population_parameters["pop_name"] + "_aa.fasta" + "\", fasta_string_prot,append = T);}" )            
+                                        "\n\t\twriteFile(\"" + os.getcwd()+ "/aa_FASTA/" + clade_name + "_aa.fasta" + "\", fasta_string_prot,append = T);}" )            
 
 
         return terminal_output_string

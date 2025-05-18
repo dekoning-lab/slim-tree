@@ -173,12 +173,12 @@ class writeSLiMHPC(writeSLiM):
         
         #Write file with the substitution counts
         if(population_parameters["count_subs"]):
-            end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_fixed_mutation_counts.txt\"," +
+            end_population_string += ("\n\twriteFile(\"" + self.start_params["filenames"][5] + "/" + population_parameters["clade_name"] + "_num_subs.txt\"," +
                 "asString(sim.getValue(\"fixations_counted_p1\")));" )
 
         #Write file with the number of synonymous and synonymous substitutions
         if(population_parameters["calculate_selection"]):
-            end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_dNdS.txt\"," +
+            end_population_string += ("\n\twriteFile(\"" + self.start_params["filenames"][4] + "/" + population_parameters["clade_name"] + "_dNdS.txt\"," +
                 "paste0(\"dN: \", sim.getValue(\"dN_p1\"), \" / " + str(population_parameters["dn_denom"]) + " = \", " +
                 "sim.getValue(\"dN_p1\") / " + str(population_parameters["dn_denom"]) + ", " +
                 "\"\\ndS: \", sim.getValue(\"dS_p1\"), \" / " + str(population_parameters["ds_denom"]) + " = \", " +
@@ -203,9 +203,9 @@ class writeSLiMHPC(writeSLiM):
                                     "\n\t\t\t}\n\t\tpolymorph_str = c(polymorph_str, \"\\n\");\n\t\t}" +
                                     " else if (length(unique_diffs) == 1) {" +
                                     "\n\t\t\tfixed_str = c(fixed_str, a, \": \", unique_diffs, \"\\n\");\n\t\t}" +
-                                    "\n\t}\n\twriteFile(\"" + os.getcwd() + "/" + population_parameters["pop_name"] + "_polymorphisms.txt\", " +
+                                    "\n\t}\n\twriteFile(\"" + self.start_params["filenames"][6] + "/" + population_parameters["clade_name"] + "_polymorphisms.txt\", " +
                                     "paste(polymorph_str, sep = \"\"));" +
-                                    "\n\twriteFile(\"" + os.getcwd() + "/" + population_parameters["pop_name"] + 
+                                    "\n\twriteFile(\"" + self.start_params["filenames"][6] + "/" + population_parameters["clade_name"] + 
                                     "_fixed_sites.txt\", paste(fixed_str, sep = \"\"));")
 
 

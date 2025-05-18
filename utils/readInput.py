@@ -14,7 +14,7 @@ class readInput:
             sys.exit(0)
             
         self.param_dict = self.make_param_dict(args)
-        self.param_dict["filenames"] = self.process_filenames(args.input_tree, args.backup, args.high_performance_computing)
+        self.param_dict["filenames"] = self.process_filenames(args.input_tree, args.backup, args.high_performance_computing, args.calculate_selection, args.count_subs, args.polymorphisms)
         
         
 
@@ -169,7 +169,7 @@ class readInput:
         
     
     #Read input tree to make output file names
-    def process_filenames(self, tree_name, backup, hpc):
+    def process_filenames(self, tree_name, backup, hpc, calculate_selection, count_subs, polymorphisms):
     
         # Find where data needs to be output to, set up documents and folders accordingly accordingly
         output_file_start = os.getcwd() + '/' + tree_name.split('.')[0]
@@ -192,7 +192,6 @@ class readInput:
             shutil.rmtree(output_files_directory)
             os.mkdir(output_files_directory)
             
-        #Afarinesh_Make FASTA file directories
         #nuc
         nuc_FASTA_files_directory = "/".join(split_starting_output[0:(len(split_starting_output)-1)]) + "/nuc_FASTA"
         try:
@@ -214,7 +213,7 @@ class readInput:
         #Set up where files will be output to 
         output_filename = output_files_directory + "/" + split_starting_output[-1]
         
-        filenames = [output_filename, output_file_start, None, None]
+        filenames = [output_filename, output_file_start, None, None, None, None, None]
         
         #Make backup folder
         if(backup):
@@ -238,7 +237,39 @@ class readInput:
                 print("using same slurm folder")
                 os.mkdir(slurm_directory)
             filenames [3] = slurm_directory
+            
+        #Make folder for selection denominators
+        if(calculate_selection):
+            slurm_directory =  "/".join(split_starting_output[0:(len(split_starting_output)-1)]) + "/selectionCalculationOutput"
+            try:
+                os.mkdir(slurm_directory)
+            except OSError:
+                shutil.rmtree(slurm_directory)
+                print("using same selection folder")
+                os.mkdir(slurm_directory)
+            filenames [4] = slurm_directory
         
+        #Make folder for substitution counting
+        if(count_subs):
+            slurm_directory =  "/".join(split_starting_output[0:(len(split_starting_output)-1)]) + "/substitutionCountingOutput"
+            try:
+                os.mkdir(slurm_directory)
+            except OSError:
+                shutil.rmtree(slurm_directory)
+                print("using same substitution counting folder")
+                os.mkdir(slurm_directory)
+            filenames [5] = slurm_directory
+        
+        #Make folder for polymorphic sites
+        if(polymorphisms):
+            slurm_directory =  "/".join(split_starting_output[0:(len(split_starting_output)-1)]) + "/polymorphicSites"
+            try:
+                os.mkdir(slurm_directory)
+            except OSError:
+                shutil.rmtree(slurm_directory)
+                print("using same polymorphisms folder")
+                os.mkdir(slurm_directory)
+            filenames [6] = slurm_directory
         
         return filenames
     
