@@ -212,7 +212,8 @@ class writeSLiMHPC(writeSLiM):
         #If this is the last clade from a certain parent, write script to destroy that parent's temporary files
         if(population_parameters["last_child_clade"]):
            end_population_string += ("\n\n\tsystem(\"rm " + population_parameters["parent_pop_name"] + ".txt\");" +
-                                     "\n\tsystem(\"rm " + population_parameters["parent_pop_name"] + ".fasta\");")
+                                     "\n\tsystem(\"rm " + population_parameters["parent_pop_name"] + ".fasta\");" + 
+                                     "\n\tsystem(\"rm " + population_parameters["parent_pop_name"] + "_fixed_mutations.txt\");")
 
 
         
