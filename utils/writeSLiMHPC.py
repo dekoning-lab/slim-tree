@@ -179,10 +179,10 @@ class writeSLiMHPC(writeSLiM):
         #Write file with the number of synonymous and synonymous substitutions
         if(population_parameters["calculate_selection"]):
             end_population_string += ("\n\twriteFile(\"" + self.start_params["filenames"][4] + "/" + population_parameters["clade_name"] + "_dNdS.txt\"," +
-                "paste0(\"dN: \", sim.getValue(\"dN_p1\"), \" / " + str(population_parameters["dn_denom"]) + " = \", " +
-                "sim.getValue(\"dN_p1\") / " + str(population_parameters["dn_denom"]) + ", " +
-                "\"\\ndS: \", sim.getValue(\"dS_p1\"), \" / " + str(population_parameters["ds_denom"]) + " = \", " +
-                "sim.getValue(\"dS_p1\") / " + str(population_parameters["ds_denom"]) + ", " +
+                "paste0(\"dN: \", sim.getValue(\"dN_p1\"), \" / " + str(self.start_params["dn_denom"]) + " = \", " +
+                "sim.getValue(\"dN_p1\") / " + str(self.start_paramss["dn_denom"]) + ", " +
+                "\"\\ndS: \", sim.getValue(\"dS_p1\"), \" / " + str(self.start_params["ds_denom"]) + " = \", " +
+                "sim.getValue(\"dS_p1\") / " + str(self.start_params["ds_denom"]) + ", " +
                 "sim.getValue(\"subs_p1\")));" )
 
 
