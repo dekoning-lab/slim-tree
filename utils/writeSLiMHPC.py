@@ -167,9 +167,9 @@ class writeSLiMHPC(writeSLiM):
             end_population_string += ("\n\twriteFile(\"" + population_parameters["pop_name"] +
                                       ".fasta\", (\">parent_ancestral_to_load\\n\" + sim.chromosome.ancestralNucleotides()));")
         
-        #Write out the fixed mutations - this is different than in single computer because we need the old fixations to run the next pop
-        end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_fixed_mutations.txt\"," +
-                " paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue(\"fixations_p1\"))), sep = \"\"));")
+            #Write out the fixed mutations - this is different than in single computer because we need the old fixations to run the next pop
+            end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_fixed_mutations.txt\"," +
+                    " paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue(\"fixations_p1\"))), sep = \"\"));")
         
         #Write file with the substitution counts
         if(population_parameters["count_subs"]):
