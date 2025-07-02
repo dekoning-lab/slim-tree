@@ -263,8 +263,8 @@ class cladeReader:
 
         #Change parameters if specified by user for a specific clade
         if(clade_data != None):
-            if(clade_name in clade_data.keys()):
-                current_clade_data = self.start_params["tree_data_file"][clade_name]
+            if(clade.name in clade_data.keys()):
+                current_clade_data = self.start_params["tree_data_file"][clade.name]
 
                 for keyname in current_clade_data.keys():
                     if(keyname == 'mutation_matrix'):
