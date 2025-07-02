@@ -1,6 +1,7 @@
 import numpy as np
-import scipy.optimize as sp
+import scipy as sp
 import csv
+import warnings
 
 #parallel library
 import multiprocessing
@@ -8,6 +9,7 @@ import multiprocessing
 #USED IN TESTING!
 import time
 
+warnings.filterwarnings("ignore")
 
 def KLD(truth, est):
     '''
@@ -81,33 +83,6 @@ def Get_amino_acid(codon_idx):
                     14:5}
     return(aminoAcidMap[codon_idx])
 
-def Get_codons(amino_acid_idx):
-    '''
-    :param codon_idx: Int, Codon idx used in MutSel model
-    :return: Int,
-    '''
-    codonMap = {0:[0,1,2,3],
-                1:[4,5],
-                2:[6,7],
-                3:[8,9],
-                4:[10,11],
-                5:[12,13,14,15],
-                6:[16,17],
-                7:[18,19,20],
-                8:[21,22],
-                9:[23,24,25,26,27,28],
-                10:[29],
-                11:[30,31],
-                12:[32,33,34,35],
-                13:[36,37],
-                14:[38,39,40,41,42,43],
-                15:[44,45,46,47,48,49],
-                16:[50,51,52,53],
-                17:[54,55,56,57],
-                18:[58],
-                19:[59,60]}
-
-    return(codonMap[amino_acid_idx])
 
 def Read_frequency_file(file_name):
     '''
@@ -148,7 +123,7 @@ def Calc_stationary_KLD(A):
             raise Exception("Large negative frequency detected" + str(pi[idx]) +"\n" + ",".join(str(y) for y in pi))
     return(pi/sum(pi))
 
-def Compute_matrix(fitness, pop, mu = 1.0):
+def Compute_matrix(fitness, pop):
     '''
     NO MUTATION RATE NEEDED FOR THIS APPLICATION!!!
     :param fitness: List of Float, the expected number of offspring for an individual with a particular amino acid.
@@ -173,299 +148,95 @@ def Compute_matrix(fitness, pop, mu = 1.0):
             if(hamm == 1):
                 #syn
                 if(abs(fit_j - fit_i) <= 1e-30):
-                    rates_matrix[i,j] = mu
+                    rates_matrix[i,j] = 1.0
                 else:
-                    rates_matrix[i,j] = mu * 2 * pop * ((1 - np.exp(-2 * (fit_j - fit_i))) / (1 - np.exp(-4 *pop * (fit_j - fit_i))))
+                    rates_matrix[i,j] = 1.0 * 2 * pop * ((1 - np.exp(-2 * (fit_j - fit_i))) / (1 - np.exp(-4 *pop * (fit_j - fit_i))))
         rates_matrix[i,i] = -1 * rates_matrix[i,].sum()
     return(rates_matrix)
 
 
-
-
-def Compute_matrix_w_HKY(fitness, pop, nuc_freqs, kappa,  mu = 1.0):
+def Frequency_distance(fits, true_freqs, pop, fixed_idx):
     '''
-    NO MUTATION RATE NEEDED FOR THIS APPLICATION!!!
-    :param fitness: List of Float, the expected number of offspring for an individual with a particular amino acid.
-                                    (Amino Acids in alphabetic order)
+    This is the function called by the optimizer
+    :param fits: List of Float, the expected number of offspring for an individual with a particular amino acid.
+                                (Amino Acids in alphabetic order, 0.0 <= fitness <= 2.0 ) ***ONE MISSING***
+    :param true_freqs: List of Float, the TRUE stationary distribution of codons
     :param pop: Float, the population size (0 <= pop).
-    :return: Numpy array, instantaneous rates matrix for a mutation selection model.
+    :param fixed_idx: Int, value of the index of the amino acid with a fixed fitness value.
+    :return: Float, KLD between the true stationary distribution and the MutSel stationary distribution.
     '''
-
-    nuc_to_idx = {'A':0, 'C':1, 'G':2, 'T':3}
-    idx_to_nuc = {0:'A', 1:'C', 2:'G', 3:'T'}
-    transversion_dic = {(0,2):False, (2,0):False, (1,3):False, (3,1):False,
-                        (0,1): True, (1,0): True, (0,3): True, (3,0): True,
-                        (2,1): True, (1,2): True, (2,3): True, (3,2): True}
-    hky_matrix = np.zeros((4,4))
-    for i in range(4):
-        for j in range(4):
-            if(i != j):
-                if(transversion_dic[(i,j)]):
-                    hky_matrix[i,j] = nuc_freqs[j] * kappa * mu
-                else:
-                    hky_matrix[i,j] = nuc_freqs[j] * mu
-        hky_matrix[i,i] = -1 * hky_matrix[i,].sum()
-
-    rates_matrix = np.zeros((61,61))
+    fits = np.insert(fits, fixed_idx, 1.0)
+    est_freqs = Calc_stationary_KLD(Compute_matrix(fits, pop))
+    return(KLD(true_freqs, est_freqs))
+def Inital_fits(freqs, pop):
+    '''
+    :param freqs: List of Float, the TRUE stationary distribution of codons
+    :param pop: Float, the population size (0 <= pop).
+    :return: List of Float, the initial fitness values from analytical solution.
+    '''
+    pi = freqs
+    epsilon = np.finfo(float).eps
+    Ne = 2 * pop
+    pi = [epsilon if x < epsilon else x for x in pi]
+    pi = [x/sum(pi) for x in pi]
+    pi = [(np.log(x) - np.log(max(pi)) + Ne) / Ne for x in pi]
+    fits = np.zeros(20)
+    map_count = [0] * 20
     for i in range(61):
-        for j in range(61):
-            #get Hamming distance
-            nucs_i = Get_nucleotide_from_idx(i)
-            nucs_j = Get_nucleotide_from_idx(j)
-            hamm = 0
-            dif_idx = -1
-            for bp  in range(3):
-                if(nucs_i[bp] != nucs_j[bp]):
-                    hamm += 1
-                    dif_idx = bp
+        fits[Get_amino_acid(i)] += pi[i]
+        map_count[Get_amino_acid(i)] += 1
+    for i in range(20):
+        fits[i] /= map_count[i]
+    return(fits)
 
-            fit_i = fitness[Get_amino_acid(i)]
-            fit_j = fitness[Get_amino_acid(j)]
-
-            if(hamm == 1):
-                x = nuc_to_idx[nucs_i[dif_idx]]
-                y = nuc_to_idx[nucs_j[dif_idx]]
-
-                #syn
-                if(abs(fit_j - fit_i) <= 1e-30):
-                    rates_matrix[i,j] = hky_matrix[x,y]
-                else:
-                    rates_matrix[i,j] = hky_matrix[x,y] * 2 * pop * ((1 - np.exp(-2 * (fit_j - fit_i))) / (1 - np.exp(-4 *pop * (fit_j - fit_i))))
-        rates_matrix[i,i] = -1 * rates_matrix[i,].sum()
-    return(rates_matrix)
-
-
-
-def opt_ratio(selection, pop, ratio):
+def Find_max_freq_AA(codon_distribution):
     '''
-    This is the objective function of the optimization algorithm.
-    :param selection: selection coefficient between amino acids
-    :param pop: The number of individuals in the population
-    :param ratio: Ratio pre-computed in the prior function
-    :return:
+    :param codon_distribution: List of Float, the TRUE stationary distribution of codons
+    :return: Int, index of the maximum frequency amino acid.
     '''
-    numerator = ((1 - np.exp(2 * selection)) / (1 - np.exp(4 * pop * selection)))
-    denominator = ((1 - np.exp(-2 * selection)) / (1 - np.exp(-4 * pop * selection)))
+    AA_freq = [0.0] * 20
+    AA_reps = [0] * 20
+    for idx in range(0,61):
+        AA_freq[Get_amino_acid(idx)] += codon_distribution[idx]
+        AA_reps[Get_amino_acid(idx)] += 1
 
-    if(denominator <= 0):
-        denominator = np.finfo(float).eps
-    if(numerator <= 0):
-        numerator = np.finfo(float).eps
-    return(abs((numerator/denominator) - ratio))
+    #norm amino acid frequency based of number of codons
+    for idx in range(20):
+        AA_freq[idx] /= AA_reps[idx]
 
-def ratio_func(pi_i, pi_j, c_aa_i, c_aa_j, pop,  mu_ij = 0.0, mu_ji = 0.0):
-    '''
-    :param pi_i: proportion stationary frequency of codon i wrt to amino acid AA(i) under a neutral model(0 < pi_i < 1.0)
-    :param pi_j:  proportion stationary frequency of codon j wrt to amino acid AA(j) under a neutral model (0 < pi_j < 1.0)
-    :param c_aa_i: correction factor for frequency of codon i based on amino acid frequency that i maps to
-    :param c_aa_j: correction factor for frequency of codon j based on amino acid frequency that j maps to
-    :param pop: the population size (0 <= pop)
-    :param mu_ij: mutation rate from i to j under nucleotide mode (default assumed mu_ij = mu_ji)
-    :param mu_ji: mutation rate from j to i under nucleotide mode (default assumed mu_ij = mu_ji)
-    :return: selection coefficient between i and j, s_ij
-    '''
-    ratio_const = 0.0
-    if(mu_ij == 0.0 or mu_ji == 0.0):
-        ratio_const = (pi_i * c_aa_i) / (pi_j * c_aa_j)
-    else:
-        ratio_const = (pi_i * c_aa_i * mu_ij) / (pi_j * c_aa_j * mu_ji)
-
-    #catch cases that are neutral
-    if(abs(ratio_const - 1.0 ) < 1e-5):
-        return(0.0)
-
-    if(ratio_const < 1.0):
-        invert = True
-        ratio_const = 1.0 / ratio_const
-    else:
-        invert = False
-
-    #solve for negative coeff (NUMERICALLY MORE STABLE!)
-    sel = sp.minimize(opt_ratio, -1e-7, args = (pop, ratio_const), bounds=[(-1.0, -1e-7)], method = 'L-BFGS-B', tol = 1e-7)
-
-    if(invert):
-        sel = sel.x[0] * -1.0
-    else:
-        sel = sel.x[0]
-    return(sel)
-
-def Find_nuc_freqs(true_distribution, pop):
-    """
-    :param true_distribution: Codon distribution we want to compute the HKY parameters for. Kappa is NON-IDENTIFYABLE!
-    :return: Neutral stationary frequencies, the mutation matrix
-    """
-    nuc_dic = {'A':0, 'C':1, 'G':2, 'T':3}
-    #Check if amino acids have non uniform frequecies for codon rep
-    same_freq = True
-    aa_freqs = [[] for i in range(20)]
-
-    for i in range(61):
-        aa_freqs[Get_amino_acid(i)].append(true_distribution[i])
-    for aa in aa_freqs:
-        for codon in aa:
-            if(abs(codon - (sum(aa)/len(aa))) > 1e-5):
-                same_freq = False
-
-    if(same_freq):
-        return(([1.0/61.0] * 61, np.ones((4,4)))) #NO BIAS JK69
-    else:
-        #find syn codons to find mutation/representation bias
-        ratios = []
-        nuc_tally = [0,0,0,0]
-        for i in range(61):
-            for j in range(i,61):
-                if(i != j):
-                    #get Hamming distance
-                    nucs_i = Get_nucleotide_from_idx(i)
-                    nucs_j = Get_nucleotide_from_idx(j)
-                    hamm = 0
-                    dif_idx = -1
-                    for bp  in range(3):
-                        if(nucs_i[bp] != nucs_j[bp]):
-                            hamm += 1
-                            dif_idx = bp
-                    aa_i = Get_amino_acid(i)
-                    aa_j = Get_amino_acid(j)
-
-                    if(hamm == 1) and (aa_i == aa_j):
-                        if(abs(true_distribution[i] - true_distribution[j]) > 1e-5):
-                            if(true_distribution[i] < true_distribution[j]):
-                                ratios.append((true_distribution[j]/ true_distribution[i], nuc_dic[nucs_i[dif_idx]], nuc_dic[nucs_j[dif_idx]]))
-                                nuc_tally[nuc_dic[nucs_j[dif_idx]]] += 1
-                            elif(true_distribution[i] > true_distribution[j]):
-                                ratios.append((true_distribution[i]/ true_distribution[j], nuc_dic[nucs_j[dif_idx]], nuc_dic[nucs_i[dif_idx]]))
-                                nuc_tally[nuc_dic[nucs_i[dif_idx]]] += 1
-
-        nuc_freqs = [1.0, 1.0, 1.0, 1.0]
-        nucs_infered = [0,0,0,0] #counts the most common nuc
-        #fix the most frequent nuc
-        nucs_infered[max(range(len(nuc_tally)), key=nuc_tally.__getitem__)] = 1
-        for frac in ratios:
-            (ratio, i, j) = frac
-            if(nucs_infered[j] == 1 ):
-                nuc_freqs[i] = nuc_freqs[j] / ratio
-                nucs_infered[i] = 1
-            if(sum(nucs_infered) == 4):
-                break
-        nuc_freqs /= sum(nuc_freqs)
-
-    #make HKY85 NO KAPPA :(
-    hky_matrix = np.zeros((4,4))
-    for i in range(4):
-        for j in range(4):
-            if(i != j):
-                hky_matrix[i,j] = nuc_freqs[j]
-        hky_matrix[i,i] = -1 * hky_matrix[i,].sum()
-
-    stationary = Calc_stationary_KLD(Compute_matrix_w_HKY([1.0]*20, pop, nuc_freqs, 1.0, 1.0))
-    return((stationary,hky_matrix))
-
+    max_val = max(AA_freq)
+    max_idx = AA_freq.index(max_val)
+    return(max_idx)
 def Find_fits(true_distribution, pop, eps=1e-5):
     '''
-    NUMERICALLY STABLE FOR FREQUENCIES DOWN TO 1e-10
-    :param true_distribution: the frequency of each codon
-    :param pop: the population size (0 <= pop)
-    :param mu: the mutation rate (default we ignore mutational bias)
-    :param eps: the epsilon value (default 1e-5)
-    :return:
+    :param true_distribution: List of Float, the TRUE stationary distribution of codons
+    :param pop: Float, the population size (0 <= pop).
+    :param eps: Float, the allowable error in the KLD of the model.
+    :return: List of Float, the fitness values from optimized solution.
     '''
+    #find the fitness value held constant
+    max_freq = Find_max_freq_AA(true_distribution)
+    fitness_values = Inital_fits(true_distribution, pop)
+    fitness_values = np.delete(fitness_values, max_freq)
 
-    #get amino acid frequencies
-    codon_pi = true_distribution
-    epsilon = 1e-10
-    codon_pi = [epsilon if x < epsilon else x for x in codon_pi]
-    codon_pi = [x/sum(codon_pi) for x in codon_pi] #ideal stationary distribution!
+    bounds = [(np.finfo(float).eps, 2.0) for n in range(19)]
+    fits = sp.optimize.minimize(Frequency_distance, fitness_values, args=(true_distribution, pop, max_freq), bounds=bounds, method='L-BFGS-B', tol = 10e-7)
+    fits = np.insert(fits.x, max_freq, 1.0)
 
-    aa_pi = np.zeros(20)
-    aa_pi_neutral = np.zeros(20)
-    aa_fitness_key = np.zeros(20)
+    #check solution is accurate enough
+    KLDerr = KLD(true_distribution, Calc_stationary_KLD(Compute_matrix(fits, pop)))
+    if(KLDerr <= eps):
+        return(fits)
+    else:
+        print("Changing method, checking if a better solution can be found.")
+        fits2 = sp.optimize.minimize(Frequency_distance, fitness_values, args=(true_distribution, pop, max_freq), bounds=bounds, method='TNC', tol = 10e-7)
+        fits2 = np.insert(fits2.x, max_freq, 1.0)
+        KLDerr2 = KLD(true_distribution, Calc_stationary_KLD(Compute_matrix(fits2, pop)))
+        if(KLDerr2 <= KLDerr):
+            print("Better solution found!")
+            return(fits2)
+    return(fits)
 
-    for i in range(61):
-        aa_pi[Get_amino_acid(i)] += codon_pi[i]
-    aa_pi /= sum(aa_pi)
-
-    #fix the most frequent amino acid
-    max_aa_idx = np.argmax(aa_pi)
-    aa_fitness_key[max_aa_idx] = 1.0
-
-    #find the neutral stationary distribution
-    neutral_freqs, mu_matrix = Find_nuc_freqs(true_distribution, pop)
-    nuc_dic = {'A':0, 'C':1, 'G':2, 'T':3}
-
-    #this is used to account for how much each codon contributes to amino acid frequency under a neutral model
-    for i in range(61):
-        aa_pi_neutral[Get_amino_acid(i)] += neutral_freqs[i]
-    aa_pi_neutral /= sum(aa_pi_neutral)
-
-    #Find codons that have different amino acids
-    for i in Get_codons(max_aa_idx):
-        for j in range(61):
-            #get Hamming distance
-            nucs_i = Get_nucleotide_from_idx(i)
-            nucs_j = Get_nucleotide_from_idx(j)
-            hamm = 0
-            diff_idx = -1
-            for bp  in range(3):
-                if(nucs_i[bp] != nucs_j[bp]):
-                    hamm += 1
-                    diff_idx = bp
-            aa_i = Get_amino_acid(i)
-            aa_j = Get_amino_acid(j)
-
-            #make sure the codons differ by one BP
-            if(hamm == 1):
-                if(aa_i == max_aa_idx and aa_j != max_aa_idx):
-                    if(aa_fitness_key[aa_j] == 0):
-
-                        c_aa_i =  aa_pi[aa_i] #desired frequency of amino acid associated with codon i
-                        c_aa_j =  aa_pi[aa_j] #desired frequency of amino acid associated with codon j
-                        proption_i = neutral_freqs[i] / aa_pi_neutral[aa_i] #proportion of amino acid represented by codon i when selection is not a factor
-                        proption_j = neutral_freqs[j] / aa_pi_neutral[aa_j] #proportion of amino acid represented by codon j when selection is not a factor
-                        mu_ij = mu_matrix[nuc_dic[nucs_i[diff_idx]],nuc_dic[nucs_j[diff_idx]]] #probability of mutation from i to j
-                        mu_ji = mu_matrix[nuc_dic[nucs_j[diff_idx]],nuc_dic[nucs_i[diff_idx]]] #probability of mutation from j to i
-                        aa_fitness_key[aa_j] = 1.0 + ratio_func(proption_i,proption_j, c_aa_i, c_aa_j, pop, mu_ij, mu_ji)
-
-    #find missing fitness codons
-    missing_fits = []
-    for aa_idx in range(20):
-        if(aa_fitness_key[aa_idx] == 0):
-            missing_fits.extend(Get_codons(aa_idx))
-
-    #Keep going until all fits are found
-    while len(missing_fits) > 0:
-        for i in missing_fits:
-            aa_i = Get_amino_acid(i)
-            if(aa_fitness_key[aa_i] != 0.0):
-                continue
-            for j in range(61):
-                aa_j = Get_amino_acid(j)
-                if(aa_fitness_key[aa_j] == 0.0):
-                    continue
-
-                #get Hamming distance
-                nucs_i = Get_nucleotide_from_idx(i)
-                nucs_j = Get_nucleotide_from_idx(j)
-                hamm = 0
-                diff_idx = -1
-                for bp  in range(3):
-                    if(nucs_i[bp] != nucs_j[bp]):
-                        hamm += 1
-                        diff_idx = bp
-
-                if(hamm == 1):
-                    c_aa_i =  aa_pi[aa_i] #desired frequency of amino acid associated with codon i
-                    c_aa_j =  aa_pi[aa_j] #desired frequency of amino acid associated with codon j
-                    proption_i = neutral_freqs[i] / aa_pi_neutral[aa_i] #proportion of amino acid represented by codon i when selection is not a factor
-                    proption_j = neutral_freqs[j] / aa_pi_neutral[aa_j] #proportion of amino acid represented by codon j when selection is not a factor
-                    mu_ij = mu_matrix[nuc_dic[nucs_i[diff_idx]],nuc_dic[nucs_j[diff_idx]]] #probability of mutation from i to j
-                    mu_ji = mu_matrix[nuc_dic[nucs_j[diff_idx]],nuc_dic[nucs_i[diff_idx]]] #probability of mutation from j to i
-                    #run it backwards since we know the fitness of j not i
-                    aa_fitness_key[aa_i] = aa_fitness_key[aa_j] + ratio_func(proption_j,proption_i, c_aa_j, c_aa_i, pop, mu_ji, mu_ij)
-                    #remove the codons for the fitness we found
-                    for x in Get_codons(aa_i):
-                        missing_fits.remove(x)  #allow for stopping condition
-                    break
-    return(aa_fitness_key)
 def Find_fits_parallel_boilerplate(params):
     '''
     :param params: List of Tuple, (Codon distribution, population size)
@@ -526,8 +297,28 @@ def Find_fitnesses(filename, population_size, is_parallel, thread_count=10):
 
 
 
+
+
+
+
+
+
+
+
 #MULTI THREAD GAURD! HARDCODED SECURITY IN MULTITHRED LIB TO STOP FORK BOMB ACCIDENTS!
 if __name__ == '__main__':
+
+    #Speed of transition does not effect stationary distribtuion
+    #the relative rates are all we are concerned with
+    #THUS NO MUTATION RATE NEEDED
+
+    #BASIC EXAMPLE
+    pop = 1000
+    print(Find_fitnesses('table_stationary_distributions2.csv', pop, False))
+
+    #PARALLEL EXAMPLE
+    print(Find_fitnesses('table_stationary_distributions3.csv', pop, True))
+
 
 
     #TEST CASES BELOW
@@ -541,10 +332,9 @@ if __name__ == '__main__':
     case8 = False   #Contrived Basic
     case9 = False   #Real Case
     case10 = False  #Real Case
-    case11 = False  #HKY TEST CASE
-    case12 = False  #Serial Time Case
-    case13 = True  #Parallel Time Case
-    case14 = False  #Real Challenging Case
+    case11 = False  #Serial Time Case
+    case12 = False  #Parallel Time Case
+    case13 = False  #Real Challenging Case
 
 
     #TEST CASE1
@@ -556,6 +346,7 @@ if __name__ == '__main__':
         Pop = 100
 
         freqs = Calc_stationary_KLD(Compute_matrix(true_fits, Pop))
+
         est_fits = Find_fits(freqs, Pop)
         est_freqs = Calc_stationary_KLD(Compute_matrix(est_fits, Pop))
         print(true_fits, "\n",est_fits)
@@ -670,39 +461,25 @@ if __name__ == '__main__':
     if(case9):
         freqs = Read_frequency_file('table_stationary_distributions.csv')
         Pop = 100
-        freqs = freqs[0]
-        est_fits = Find_fits(freqs, Pop)
+
+        est_fits = Find_fits(freqs[0], Pop)
         est_freqs = Calc_stationary_KLD(Compute_matrix(est_fits, Pop))
-        print(freqs, "\n",est_freqs)
-        print("KLD: ", KLD(freqs, est_freqs))
+        print(freqs[0], "\n",est_freqs)
+        print("KLD: ", KLD(freqs[0], est_freqs))
 
     #REAL CASE2
     if(case10):
         freqs = Read_frequency_file('table_stationary_distributions.csv')
         Pop = 100
 
-        freqs = freqs[1]
+        freqs = freqs[2]
         est_fits = Find_fits(freqs, Pop)
         est_freqs = Calc_stationary_KLD(Compute_matrix(est_fits, Pop))
         print(freqs, "\n",est_freqs)
         print("KLD: ", KLD(freqs, est_freqs))
 
-    #HKY TEST
-    if(case11):
-        freqs = Read_frequency_file('table_stationary_distributions.csv')
-        Pop = 100
-        freqs = freqs[2]
-        est_fits = Find_fits(freqs, Pop)
-        est_freqs = Calc_stationary_KLD(Compute_matrix(est_fits, Pop))
-
-        est_freqs2 = Calc_stationary_KLD(Compute_matrix_w_HKY(est_fits, Pop, [0.1,0.5,0.15,0.25], 10.0))
-        est_fits2 = Find_fits(est_freqs2, Pop)
-
-        print(est_fits,"\n", est_fits2 )
-
-
     #Sequential TIME Test
-    if(case12):
+    if(case11):
         freqs = Read_frequency_file('table_stationary_distributions.csv')
         pops = [100]*50
         Total_time = 0.0
@@ -716,7 +493,7 @@ if __name__ == '__main__':
         print("TOTAL TIME: ", Total_time)
 
     #Parallel TIME Test
-    if(case13):
+    if(case12):
         freqs = Read_frequency_file('table_stationary_distributions.csv')
         pops = [100]*50
         start = time.time()
@@ -725,7 +502,7 @@ if __name__ == '__main__':
         print("TOTAL TIME: ", (end - start))
 
     #Challenging real case
-    if(case14):
+    if(case13):
         freqs = Read_frequency_file('table_stationary_distributions.csv')
         pop = 100
         freqs = freqs[24]
