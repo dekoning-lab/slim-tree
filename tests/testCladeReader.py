@@ -167,40 +167,40 @@ class testCladeReader(unittest.TestCase):
     
         #Check a correct tree
         tree_output = copy.deepcopy(self.read_clades.read_input_tree())
-        self.assertEqual(str([Phylo.BaseTree.Clade(branch_length=200.0, name='p2: A')]), str(tree_output[0]['child_clades']))
+        self.assertEqual(str([Phylo.BaseTree.Clade(branch_length=200.0, name='population_A')]), str(tree_output[0]['child_clades']))
         tree_output[0].pop("child_clades")
-        
         
         self.assertEqual([{'pop_name': 'p1', 'population_size': 100, 'recombination_rate': 2.5e-08, 'sample_size': 'all', 
                 'split_ratio': 0.5, 'partition': 'apophis', 'time': '12:00:00', 'count_subs': False, 'output_gens': False, 
                 'backup': False, 'polymorphisms': False, 'jukes_cantor': True, 'calculate_selection': False, 'end_dist': 1000,
                 'fitness_profile_nums': [50, 6, 12, 35, 1, 5, 30, 42, 6, 50], 'scaling_value': None, 
-                'mutation_rate': 2.5e-06, 'parent_pop_name': None, 'dist_from_start': 0, 'pop_end': 1000, 
-                'terminal_clade': False, 'last_child_clade': False}, {'pop_name': 'p2', 'child_clades': [], 
+                'mutation_rate': 2.5e-06, 'parent_pop_name': None, 'clade_name': 'unnamed_population_p1', 'dist_from_start': 0, 
+                'pop_end': 1000, 'terminal_clade': False, 'last_child_clade': False}, {'pop_name': 'p2', 'child_clades': [], 
                 'population_size': 100, 'recombination_rate': 2.5e-08, 'sample_size': 'all', 'split_ratio': 0.5, 
                 'partition': 'apophis', 'time': '12:00:00', 'count_subs': False, 'output_gens': False, 
                 'backup': False, 'polymorphisms': False, 'jukes_cantor': True, 'calculate_selection': False, 'end_dist': 1200.0,
                 'fitness_profile_nums': [50, 6, 12, 35, 1, 5, 30, 42, 6, 50], 'scaling_value': None, 'backup': False,
-                'mutation_rate': 2.5e-06, 'parent_pop_name': 'p1', 'dist_from_start': 1000, 'pop_end': 1200.0, 
-                'terminal_clade': True, 'last_child_clade': True}], tree_output)
-        
+                'mutation_rate': 2.5e-06, 'parent_pop_name': 'p1', 'clade_name': 'population_A', 'dist_from_start': 1000,
+                'pop_end': 1200.0, 'terminal_clade': True, 'last_child_clade': True}], tree_output)
+                
+                
         #Check a tree with a changed value - not hpc
         self.read_clades.start_params["tree_data_file"] = self.read_clades.read_clade_data([self.test_file_path + "good_yaml_abbr.yaml"])
         tree_output = copy.deepcopy(self.read_clades.read_input_tree())
-        self.assertEqual(str([Phylo.BaseTree.Clade(branch_length=200.0, name='p2: A')]), str(tree_output[0]['child_clades']))
+        self.assertEqual(str([Phylo.BaseTree.Clade(branch_length=200.0, name='population_A')]), str(tree_output[0]['child_clades']))
         tree_output[0].pop("child_clades")
         self.assertEqual([{'pop_name': 'p1', 'population_size': 100, 'recombination_rate': 2.5e-08, 'sample_size': 'all', 
                 'split_ratio': 0.5, 'partition': 'apophis', 'time': '12:00:00', 'count_subs': False, 'output_gens': False,
                 'fitness_profile_nums': [50, 6, 12, 35, 1, 5, 30, 42, 6, 50], 'scaling_value': None, 
                 'backup': False, 'polymorphisms': False, 'jukes_cantor': True, 'calculate_selection': False, 'end_dist': 1000, 
-                'mutation_rate': 2.5e-06, 'parent_pop_name': None, 'dist_from_start': 0, 'pop_end': 1000, 
-                'terminal_clade': False, 'last_child_clade': False}, {'pop_name': 'p2', 'child_clades': [], 
+                'mutation_rate': 2.5e-06, 'parent_pop_name': None,  'clade_name': 'unnamed_population_p1','dist_from_start': 0, 
+                'pop_end': 1000, 'terminal_clade': False, 'last_child_clade': False}, {'pop_name': 'p2', 'child_clades': [], 
                 'population_size': 50, 'recombination_rate': 2.5e-08, 'sample_size': 'all', 'split_ratio': 0.5, 
                 'partition': 'apophis', 'time': '12:00:00', 'count_subs': False, 'output_gens': False, 
                 'fitness_profile_nums': [50, 6, 12, 35, 1, 5, 30, 42, 6, 50], 'scaling_value': None, 'backup': False, 
                 'polymorphisms': False, 'jukes_cantor': True, 'calculate_selection': False, 'end_dist': 1200.0, 
-                'mutation_rate': 2.5e-06, 'parent_pop_name': 'p1', 'dist_from_start': 1000, 'pop_end': 1200.0, 
-                'terminal_clade': True, 'last_child_clade': True}], tree_output)
+                'mutation_rate': 2.5e-06, 'parent_pop_name': 'p1',  'clade_name': 'population_A', 'dist_from_start': 1000, 
+                'pop_end': 1200.0, 'terminal_clade': True, 'last_child_clade': True}], tree_output)
         
         #Check a tree that is not in nexus format
         self.read_clades.start_params["input_tree"] = self.test_file_path + "nexus_tree.txt"
@@ -231,19 +231,19 @@ class testCladeReader(unittest.TestCase):
         self.read_clades.start_params["tree_data_file"] = self.read_clades.read_clade_data([self.test_file_path + "good_yaml_abbr_hpc.yaml"])
         
         tree_output = copy.deepcopy(self.read_clades.read_input_tree())
-        self.assertEqual(str([Phylo.BaseTree.Clade(branch_length=200.0, name='p2: A')]), str(tree_output[0]['child_clades']))
+        self.assertEqual(str([Phylo.BaseTree.Clade(branch_length=200.0, name='population_A')]), str(tree_output[0]['child_clades']))
         tree_output[0].pop("child_clades")
         self.assertEqual([{'pop_name': 'p1', 'population_size': 100, 'recombination_rate': 2.5e-08, 'sample_size': 'all', 
                 'split_ratio': 0.5, 'partition': 'apophis', 'time': '12:00:00', 'count_subs': False, 'output_gens': False,
                 'fitness_profile_nums': [50, 6, 12, 35, 1, 5, 30, 42, 6, 50], 'scaling_value': None, 
                 'backup': False, 'polymorphisms': False, 'jukes_cantor': True, 'calculate_selection': False, 'end_dist': 1000, 
-                'mutation_rate': 2.5e-06, 'parent_pop_name': None, 'dist_from_start': 0, 'pop_end': 1000, 
-                'terminal_clade': False, 'last_child_clade': False}, {'pop_name': 'p2', 'child_clades': [], 
+                'mutation_rate': 2.5e-06, 'parent_pop_name': None,  'clade_name': 'unnamed_population_p1','dist_from_start': 0,
+                'pop_end': 1000, 'terminal_clade': False, 'last_child_clade': False}, {'pop_name': 'p2', 'child_clades': [], 
                 'partition': 'anothernode', 'population_size': 50, 'recombination_rate': 0.05, 'sample_size': '30', 'split_ratio': 0.4, 
                 'time': '7200', 'count_subs': False, 'output_gens': False, 
                 'fitness_profile_nums': [50, 6, 12, 35, 1, 5, 30, 42, 6, 50], 'scaling_value': None, 'backup': False, 
                 'polymorphisms': False, 'jukes_cantor': True, 'calculate_selection': False, 'end_dist': 1200.0, 
-                'mutation_rate': 0.0025, 'parent_pop_name': 'p1', 'dist_from_start': 1000, 'pop_end': 1200.0, 
+                'mutation_rate': 0.0025, 'parent_pop_name': 'p1', 'clade_name': 'population_A', 'dist_from_start': 1000, 'pop_end': 1200.0, 
                 'terminal_clade': True, 'last_child_clade': True}], tree_output)
         
         self.maxDiff = None
@@ -252,7 +252,7 @@ class testCladeReader(unittest.TestCase):
         #Check a tree with all possible changed values mutation matrix, not mu - hpc
         self.read_clades.start_params["tree_data_file"] = self.read_clades.read_clade_data([self.test_file_path + "good_yaml_abbr_hpc_mut_mat.yaml"])
         tree_output = copy.deepcopy(self.read_clades.read_input_tree())
-        self.assertEqual(str([Phylo.BaseTree.Clade(branch_length=200.0, name='p2: A')]), str(tree_output[0]['child_clades']))
+        self.assertEqual(str([Phylo.BaseTree.Clade(branch_length=200.0, name='population_A')]), str(tree_output[0]['child_clades']))
         tree_output[0].pop("child_clades")
         mut_mat = tree_output[1]['mutation_matrix']
         self.assertEqual([0.0e+00, 3.5e-07, 3.5e-07, 3.5e-07,3.5e-07, 0.0e+00, 3.5e-07, 3.5e-07,
@@ -265,13 +265,13 @@ class testCladeReader(unittest.TestCase):
                 'split_ratio': 0.5, 'partition': 'apophis', 'time': '12:00:00', 'count_subs': False, 'output_gens': False,
                 'backup': False, 'polymorphisms': False, 'jukes_cantor': True, 'calculate_selection': False, 'end_dist': 1000,
                 'fitness_profile_nums': [50, 6, 12, 35, 1, 5, 30, 42, 6, 50], 'scaling_value': None,  
-                'mutation_rate': 2.5e-06, 'parent_pop_name': None, 'dist_from_start': 0, 'pop_end': 1000, 
+                'mutation_rate': 2.5e-06, 'parent_pop_name': None, 'clade_name': 'unnamed_population_p1', 'dist_from_start': 0, 'pop_end': 1000, 
                 'terminal_clade': False, 'last_child_clade': False}, {'pop_name': 'p2', 'child_clades': [], 
                 'partition': 'anothernode', 'population_size': 50, 'recombination_rate': 0.05, 'sample_size': '30', 'split_ratio': 0.4, 
                 'time': '7200', 'count_subs': False, 'output_gens': False, 
                 'fitness_profile_nums': [50, 6, 12, 35, 1, 5, 30, 42, 6, 50], 'scaling_value': None, 'backup': False, 
                 'polymorphisms': False, 'jukes_cantor': False, 'calculate_selection': False, 'end_dist': 1200.0,
-                'parent_pop_name': 'p1', 'dist_from_start': 1000, 'pop_end': 1200.0,
+                'parent_pop_name': 'p1','clade_name': 'population_A', 'dist_from_start': 1000, 'pop_end': 1200.0,
                 'terminal_clade': True, 'last_child_clade': True}], tree_output)
 
         

@@ -209,8 +209,8 @@ class testReadInput(unittest.TestCase):
         tree_name = "tests/testFiles/test_tree"
         
         #Test process with new directories, no backup, ensure folders created
-        processed_output = self.input_reader.process_filenames(tree_name + ".txt", False, False)
-        correct_output = [self.test_file_path + "/slimScripts/test_tree", self.test_file_path + "/test_tree", None, None]
+        processed_output = self.input_reader.process_filenames(tree_name + ".txt", False, False, False, False, False)
+        correct_output = [self.test_file_path + "/slimScripts/test_tree", self.test_file_path + "/test_tree", None, None, None, None, None]
         self.assertTrue(processed_output == correct_output)
         self.assertTrue(os.path.exists(self.test_file_path + "/slimScripts/"))
         self.assertTrue(os.path.exists(self.test_file_path + "/aa_FASTA/"))
@@ -219,7 +219,7 @@ class testReadInput(unittest.TestCase):
         #Test process with existing directories, no backup
         with mock.patch.object(builtins, 'input', lambda _: 'y'):
             with redirect_stdout(io.StringIO()) as sout:
-                processed_output2 = self.input_reader.process_filenames(tree_name + ".txt", False, False)
+                processed_output2 = self.input_reader.process_filenames(tree_name + ".txt", False, False, False, False, False)
  
             sout_correct = sout.getvalue() == "using the same nuc_FASTA folder\nusing the same aa_FASTA folder\n"
             sout.close()
@@ -233,8 +233,8 @@ class testReadInput(unittest.TestCase):
         os.rmdir(self.test_file_path + "/nuc_FASTA/") 
 
         #Test process with new directories, include backup, ensure folders created
-        processed_output3 = self.input_reader.process_filenames(tree_name + ".txt", True, False)
-        correct_output2 = [self.test_file_path + "/slimScripts/test_tree", self.test_file_path + "/test_tree", self.test_file_path + "/backupFiles", None]
+        processed_output3 = self.input_reader.process_filenames(tree_name + ".txt", True, False, False, False, False)
+        correct_output2 = [self.test_file_path + "/slimScripts/test_tree", self.test_file_path + "/test_tree", self.test_file_path + "/backupFiles", None, None, None, None]
         self.assertTrue(processed_output3 == correct_output2)
         self.assertTrue(os.path.exists(self.test_file_path + "/slimScripts/"))
         self.assertTrue(os.path.exists(self.test_file_path + "/aa_FASTA/"))
@@ -249,9 +249,9 @@ class testReadInput(unittest.TestCase):
         # os.rmdir(self.test_file_path + "/backupFiles/") 
         
         # Test process with new directories, include hpc, ensure folders created
-        processed_output5 = self.input_reader.process_filenames(tree_name + ".txt", False, True)
-        correct_output6 = [self.test_file_path + "/slimScripts/test_tree", self.test_file_path + "/test_tree", None, self.test_file_path + "/slurmOutput"]
-        self.assertTrue(processed_output3 == correct_output2)
+        processed_output5 = self.input_reader.process_filenames(tree_name + ".txt", False, True, False, False, False)
+        correct_output6 = [self.test_file_path + "/slimScripts/test_tree", self.test_file_path + "/test_tree", None, self.test_file_path + "/slurmOutput", None, None, None]
+        self.assertTrue(processed_output5 == correct_output6)
         self.assertTrue(os.path.exists(self.test_file_path + "/slimScripts/"))
         self.assertTrue(os.path.exists(self.test_file_path + "/aa_FASTA/"))
         self.assertTrue(os.path.exists(self.test_file_path + "/nuc_FASTA/"))
@@ -261,14 +261,31 @@ class testReadInput(unittest.TestCase):
         # Test process with existing directories, no backup
         with mock.patch.object(builtins, 'input', lambda _: 'y'):
             with redirect_stdout(io.StringIO()) as sout:
-                processed_output4 = self.input_reader.process_filenames(tree_name + ".txt", True, True)
+                processed_output4 = self.input_reader.process_filenames(tree_name + ".txt", True, True, False, False, False)
  
             sout_correct = sout.getvalue() == "using the same nuc_FASTA folder\nusing the same aa_FASTA folder\nusing same backup folder\nusing same slurm folder\n"
             sout_val = sout.getvalue()
             sout.close()
             correct = processed_output4 == [self.test_file_path + "/slimScripts/test_tree", 
-                                self.test_file_path + "/test_tree",  self.test_file_path + "/backupFiles", self.test_file_path + "/slurmOutput"] and sout_correct
+                                self.test_file_path + "/test_tree",  self.test_file_path + "/backupFiles", self.test_file_path + "/slurmOutput", None, None, None] and sout_correct
             assert correct
+            
+            
+        os.rmdir(self.test_file_path + "/slimScripts/")
+        os.rmdir(self.test_file_path + "/aa_FASTA/")
+        os.rmdir(self.test_file_path + "/nuc_FASTA/") 
+        
+        
+        #Test making folders for selection denominators, substitution counting and polymorphic sites
+        processed_output6 = self.input_reader.process_filenames(tree_name + ".txt", False, False, True, True, True)
+        correct_output7 = [self.test_file_path + "/slimScripts/test_tree", self.test_file_path + "/test_tree", None, None, 
+                self.test_file_path + "/selectionCalculationOutput", self.test_file_path + "/substitutionCountingOutput", 
+                self.test_file_path + "/polymorphicSites"]
+        self.assertTrue(processed_output6 == correct_output7)
+        self.assertTrue(os.path.exists(self.test_file_path + "/slimScripts/"))
+        self.assertTrue(os.path.exists(self.test_file_path + "/selectionCalculationOutput"))
+        self.assertTrue(os.path.exists(self.test_file_path + "/substitutionCountingOutput"))
+        self.assertTrue(os.path.exists(self.test_file_path + "/polymorphicSites"))
         
         # Remove directories
         os.rmdir(self.test_file_path + "/slimScripts")
@@ -276,6 +293,9 @@ class testReadInput(unittest.TestCase):
         os.rmdir(self.test_file_path + "/nuc_FASTA/")
         os.rmdir(self.test_file_path + "/backupFiles/")
         os.rmdir(self.test_file_path + "/slurmOutput/")
+        os.rmdir(self.test_file_path + "/selectionCalculationOutput")
+        os.rmdir(self.test_file_path + "/substitutionCountingOutput")
+        os.rmdir(self.test_file_path + "/polymorphicSites")
         
     def test_make_param_dict(self):
         
@@ -318,7 +338,7 @@ class testReadInput(unittest.TestCase):
     def test_save_input(self):
         #Make parameter dict and file outputs - already tested
         param_dict = self.input_reader.make_param_dict(self.arguments)
-        param_dict["filenames"] = self.input_reader.process_filenames("tests/testFiles/test_tree.txt", False, False)
+        param_dict["filenames"] = self.input_reader.process_filenames("tests/testFiles/test_tree.txt", False, False, False, False, False)
         param_dict["input_tree"] = "test_tree.txt"
         param_dict["codon_stationary_distributions"] = "table_stationary_dists_full.csv"
         param_dict["fitness_profile_nums"] =  [50, 6, 12, 35, 1, 5, 30, 42, 6, 50]
