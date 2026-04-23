@@ -1,1 +1,1 @@
-python3 ../../slim-tree/ -i ex6_tree.txt -T SLiM-Tree -G 3 -C 0.5
+slim-tree ex6_tree.txt stationary_distributions.csv -G 3 -C 0.5

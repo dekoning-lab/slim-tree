@@ -2,6 +2,7 @@
 
 import argparse, sys, os, yaml, pandas, copy, shutil
 import numpy as np
+from utils import convertTree
 
 class readInput:
     def __init__(self):
@@ -11,10 +12,20 @@ class readInput:
     def process_input(self):
         args = self.read_user_input()
         if(not self.check_arguments(args)):
-            sys.exit(0)
+            sys.exit(1)
             
         self.param_dict = self.make_param_dict(args)
         self.param_dict["filenames"] = self.process_filenames(args.input_tree, args.backup, args.high_performance_computing, args.calculate_selection, args.count_subs, args.polymorphisms)
+
+        if args.substitutions:
+            with open(args.input_tree, 'r') as f:
+                tree_str = f.read()
+            if args.mutation_matrix is not None:
+                mu = float(args.mutation_matrix[0].sum().sum()) / 12
+            else:
+                mu = args.mutation_rate
+            self.param_dict["input_tree_string"] = convertTree.substitutions_to_generations(
+                tree_str, args.population_size, mu)
         
         
 
@@ -55,8 +66,8 @@ class readInput:
                                     'for burn in, default = 10')
         parser.add_argument('-r','--recombination_rate', help = 'recombination rate, default = 2.5e-8', type=float, default = 2.5e-8)
         parser.add_argument('-v','--mutation_rate', help = 'starting mutation rate for the simulation, default = 2.5e-6', type=float, default = 2.5e-6)
-        parser.add_argument('-m', '--mutation_matrix',  type = self.make_mutation_matrix, help = 'CSV file specifying a mutation ' +
-                                    'rate matrix, matrix should be either 4 by 4 or 4 by 64 specifying rates from nucleotide to nucleotide and tri-nucleotide to nucleotide respectfully. Nucleotides and tri-nucleotides should be in alphabetical order with no headers. If mutation rate matrix is supplied, mutation rate will be ignored')
+        parser.add_argument('-m', '--mutation_matrix',  type = self.make_mutation_matrix, help = 'CSV file specifying a 4 by 4 mutation ' +
+                                    'rate matrix specifying rates from nucleotide to nucleotide. Nucleotides should be in alphabetical order (A, C, G, T) with no headers. Diagonal must be 0. If mutation rate matrix is supplied, mutation rate will be ignored')
         
         
         #Specify population parameters for specific branches
@@ -95,7 +106,10 @@ class readInput:
         parser.add_argument('-S', '--calculate_selection', action='store_true', default=False, help = 'boolean flag that turns on calculations ' +
                                     'of selection by counting synonymous and non-synonymous fixed substitutions')
         parser.add_argument('-N', '--neutral_evolution', action='store_true', default=False, help = 'boolean flag to run neutral evolution ' +
-                                    'instead of fitness based evolution')                            
+                                    'instead of fitness based evolution')
+        parser.add_argument('-s', '--substitutions', action='store_true', default=False, help = 'boolean flag to indicate that the input tree ' +
+                                    'has branch lengths in substitutions per site; slim-tree will convert them to generations using the ' +
+                                    'provided population size and mutation rate before running the simulation')
 
 
         #Get arguments from user
@@ -114,8 +128,8 @@ class readInput:
         #Check that mutational matrices is 4 by 4
         if (nrow != 4 or ncol != 4):
             print("Mutational matrices must be 4 by 4. Representing mutations from " +
-                "nucleotide to nucleotide.")
-            sys.exit(0)
+                "nucleotide to nucleotide.", file=sys.stderr)
+            sys.exit(1)
 
         
         mut_mat.columns = ["A","C","G","T"]
@@ -125,8 +139,8 @@ class readInput:
         diag_sum = sum(np.diag(mut_mat))
 
         if(diag_sum != 0):
-            print("All mutations from a nucleotide to itself must be 0.")
-            sys.exit(0)
+            print("All mutations from a nucleotide to itself must be 0.", file=sys.stderr)
+            sys.exit(1)
 
 
         #Make and return string of the mutational matrix
@@ -142,23 +156,23 @@ class readInput:
         #Check to see if user has selected high performance computing. If using ensure that time and partition are given
         hpc = arguments.high_performance_computing
         if (hpc and (arguments.partition == None or arguments.time == None)):
-            print("When using high performance computing, partition and time data must be provided. Closing program.")
+            print("When using high performance computing, partition and time data must be provided. Closing program.", file=sys.stderr)
             arguments_pass = False
 
         #Check to make sure gene count and coding ratio are valid
-        if (arguments.gene_count < 0 or arguments.gene_count > arguments.genome_length):
-            print("Number of genes must be greater than 0 and less than the length of the genome. Closing program.")
+        if (arguments.gene_count <= 0 or arguments.gene_count > arguments.genome_length):
+            print("Number of genes must be greater than 0 and less than the length of the genome. Closing program.", file=sys.stderr)
             arguments_pass = False;
 
-        if (arguments.coding_ratio < 0 or arguments.coding_ratio > 1.0):
-            print("Coding ratio must be greater than 0 and less than or equal to 1. Please re-enter as a ratio (0, 1]. Closing program.")
+        if (arguments.coding_ratio <= 0 or arguments.coding_ratio > 1.0):
+            print("Coding ratio must be greater than 0 and less than or equal to 1. Please re-enter as a ratio (0, 1]. Closing program.", file=sys.stderr)
             arguments_pass = False;
 
 
         #Ensure that if users the user has only one gene present if using a fasta file
         if (arguments.fasta_file != None and (arguments.coding_ratio != 1.0 or arguments.gene_count != 1)):
             print("When specifying an ancestral sequence with a fasta file, the sequence of only one fully coding gene should be provided. " +
-                    "Closing program.")
+                    "Closing program.", file=sys.stderr)
             arguments_pass = False;            
             
         return(arguments_pass)
@@ -172,7 +186,7 @@ class readInput:
     def process_filenames(self, tree_name, backup, hpc, calculate_selection, count_subs, polymorphisms):
     
         # Find where data needs to be output to, set up documents and folders accordingly accordingly
-        output_file_start = os.getcwd() + '/' + tree_name.split('.')[0]
+        output_file_start = os.getcwd() + '/' + os.path.splitext(tree_name)[0]
         split_starting_output = output_file_start.split('/')
         
         #Find names of directories
@@ -198,7 +212,7 @@ class readInput:
            os.mkdir(nuc_FASTA_files_directory)
         except OSError:
             shutil.rmtree(nuc_FASTA_files_directory)
-            print("using the same nuc_FASTA folder")  
+            print("using the same nuc_FASTA folder", file=sys.stderr)
             os.mkdir(nuc_FASTA_files_directory)
         
         #aa
@@ -207,13 +221,14 @@ class readInput:
            os.mkdir(aa_FASTA_files_directory)
         except OSError:
             shutil.rmtree(aa_FASTA_files_directory)
-            print("using the same aa_FASTA folder")
+            print("using the same aa_FASTA folder", file=sys.stderr)
             os.mkdir(aa_FASTA_files_directory)
  
         #Set up where files will be output to 
         output_filename = output_files_directory + "/" + split_starting_output[-1]
         
-        filenames = [output_filename, output_file_start, None, None, None, None, None]
+        filenames = [output_filename, output_file_start, None, None, None, None, None,
+                     nuc_FASTA_files_directory, aa_FASTA_files_directory]
         
         #Make backup folder
         if(backup):
@@ -222,7 +237,7 @@ class readInput:
                 os.mkdir(backup_files_directory)
             except OSError:
                 shutil.rmtree(backup_files_directory)
-                print("using same backup folder")
+                print("using same backup folder", file=sys.stderr)
                 os.mkdir(backup_files_directory)
             
             filenames [2] = backup_files_directory
@@ -234,7 +249,7 @@ class readInput:
                 os.mkdir(slurm_directory)
             except OSError:
                 shutil.rmtree(slurm_directory)
-                print("using same slurm folder")
+                print("using same slurm folder", file=sys.stderr)
                 os.mkdir(slurm_directory)
             filenames [3] = slurm_directory
             
@@ -245,7 +260,7 @@ class readInput:
                 os.mkdir(slurm_directory)
             except OSError:
                 shutil.rmtree(slurm_directory)
-                print("using same selection folder")
+                print("using same selection folder", file=sys.stderr)
                 os.mkdir(slurm_directory)
             filenames [4] = slurm_directory
         
@@ -256,7 +271,7 @@ class readInput:
                 os.mkdir(slurm_directory)
             except OSError:
                 shutil.rmtree(slurm_directory)
-                print("using same substitution counting folder")
+                print("using same substitution counting folder", file=sys.stderr)
                 os.mkdir(slurm_directory)
             filenames [5] = slurm_directory
         
@@ -267,7 +282,7 @@ class readInput:
                 os.mkdir(slurm_directory)
             except OSError:
                 shutil.rmtree(slurm_directory)
-                print("using same polymorphisms folder")
+                print("using same polymorphisms folder", file=sys.stderr)
                 os.mkdir(slurm_directory)
             filenames [6] = slurm_directory
         

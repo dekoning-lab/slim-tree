@@ -1,1 +1,3 @@
-python3 ../../slim-tree/ -i ex7_tree.txt -T SLiM-Tree -fc False -pdb 1qhw.pdb -w False
+# Protein structure-based fitness effects are not supported in the current version.
+# Use a stationary distributions file and optionally a pre-computed fitness file (-fd) instead:
+slim-tree ex7_tree.txt stationary_distributions.csv -fd fitness_distributions.csv -w

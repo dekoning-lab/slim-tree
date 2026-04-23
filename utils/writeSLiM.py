@@ -504,9 +504,9 @@ class writeSLiM:
                                     ".genomes.nucleotides(), \"strsplit(applyValue, sep = '');\"), ncol = " + str(self.start_params["genome_length"] * 3) + 
                                     ", byrow = T)[,i])))];\n\t}" +
                                     "\n\n\tfasta_string_nuc = paste0(\">" + clade_name + ": \\n\", consensus);" +
-                                    "\n\twriteFile(\"" +  os.getcwd()+ "/nuc_FASTA/nuc.fasta" + "\", fasta_string_nuc,append = T);" +
+                                    "\n\twriteFile(\"" + self.start_params["filenames"][7] + "/nuc.fasta" + "\", fasta_string_nuc,append = T);" +
                                     "\n\n\tfasta_string_prot = paste0(\">" + clade_name + ": \\n\", codonsToAminoAcids(nucleotidesToCodons(consensus)));" +
-                                        "\n\twriteFile(\"" + os.getcwd()+ "/aa_FASTA/AA.fasta" +  "\", fasta_string_prot,append = T);")
+                                        "\n\twriteFile(\"" + self.start_params["filenames"][8] + "/AA.fasta" + "\", fasta_string_prot,append = T);")
 
         else:
             if(samp_size == "all"):
@@ -521,10 +521,10 @@ class writeSLiM:
             terminal_output_string += ("\n\n\tfor (g in genomes){" +
                                         "\n\t\tfasta_string_nuc = \"\";" +
                                         "\n\t\tfasta_string_nuc = paste0(\">\", g.individual, \", " + clade_name + ": \\n\", g.nucleotides());" +
-                                        "\n\t\twriteFile(\"" + os.getcwd()+ "/nuc_FASTA/" + clade_name + "_nuc.fasta" + "\", fasta_string_nuc,append = T);" +
+                                        "\n\t\twriteFile(\"" + self.start_params["filenames"][7] + "/" + clade_name + "_nuc.fasta" + "\", fasta_string_nuc,append = T);" +
                                         "\n\t\tfasta_string_prot = paste0(\">\", g.individual, \", " + clade_name +
                                         ": \\n\", codonsToAminoAcids(nucleotidesToCodons(g.nucleotides())));" +
-                                        "\n\t\twriteFile(\"" + os.getcwd()+ "/aa_FASTA/" + clade_name + "_aa.fasta" + "\", fasta_string_prot,append = T);}" )            
+                                        "\n\t\twriteFile(\"" + self.start_params["filenames"][8] + "/" + clade_name + "_aa.fasta" + "\", fasta_string_prot,append = T);}" )            
 
 
         return terminal_output_string

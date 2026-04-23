@@ -2,7 +2,7 @@ import unittest
 import os, io, yaml, copy
 from unittest import mock
 from utils import cladeReader, findFitness
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr
 from Bio import Phylo
 import numpy as np
 
@@ -33,14 +33,14 @@ class testCladeReader(unittest.TestCase):
  
         #Test failure if non-yaml data file is used
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.read_clades.read_clade_data([self.test_file_path + "bad_yaml.yaml"])
         
-        self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(sout.getvalue(), ("Please make sure your changes are in yaml format. " +
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(serr.getvalue(), ("Please make sure your changes are in yaml format. " +
                         "For more information on yaml format visit: " +
                         "https://en.wikipedia.org/wiki/YAML. Program closing.\n"))
-        sout.close()
+        serr.close()
         
         #Test successful yaml file with abbreviated names
         yaml_output = self.read_clades.read_clade_data([self.test_file_path + "good_yaml_abbr.yaml"])
@@ -52,21 +52,21 @@ class testCladeReader(unittest.TestCase):
         
         #Test failure of yaml when no branch specified
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.read_clades.read_clade_data([self.test_file_path + "bad_yaml_no_branch.yaml"])
         
-        self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(sout.getvalue(), ("Please check the formatting of your yaml file, you likely did not include the branch name. Closing program.\n"))
-        sout.close()
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(serr.getvalue(), ("Please check the formatting of your yaml file, you likely did not include the branch name. Closing program.\n"))
+        serr.close()
         
         #Test failure with yaml file with changes that cannot be made
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.read_clades.read_clade_data([self.test_file_path + "bad_yaml_wrong_vals.yaml"])
         
-        self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(sout.getvalue(), ("When using slim-tree without HPC, only the population size may be modified for specific branches. Exiting\n"))
-        sout.close()
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(serr.getvalue(), ("When using slim-tree without HPC, only the population size may be modified for specific branches. Exiting\n"))
+        serr.close()
         
         #Test successful hpc yaml file
         self.read_clades.start_params["high_performance_computing"] = True
@@ -76,13 +76,13 @@ class testCladeReader(unittest.TestCase):
         
         #Test hpc yaml file with changes that cannot be made
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.read_clades.read_clade_data([self.test_file_path + "bad_yaml_abbr_hpc.yaml"])
         
-        self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(sout.getvalue(), ("When using slim-tree with HPC only the following parameters may be modified for specific branches:\n" + 
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(serr.getvalue(), ("When using slim-tree with HPC only the following parameters may be modified for specific branches:\n" + 
                         "\n".join(["partition", "time", "population_size", "recombination_rate", "mutation_rate", "mutation_matrix", "sample_size", "split_ratio", "profile_shift\n"] )))
-        sout.close()
+        serr.close()
         
         #Test successful profile shift yaml with good changes
         yaml_output = self.read_clades.read_clade_data([self.test_file_path + "good_yaml_profile_shift.yaml"])
@@ -94,67 +94,67 @@ class testCladeReader(unittest.TestCase):
         #Test profile shift yaml with changes that cannot be made
         #Incorrect profile names
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.read_clades.read_clade_data([self.test_file_path + "bad_yaml_profile_shift_wrong_profile_names.yaml"])
         
-        self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(sout.getvalue(), "Please include new profile numbers as a list of integer new profile numbers. Exiting.\n")
-        sout.close()
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(serr.getvalue(), "Please include new profile numbers as a list of integer new profile numbers. Exiting.\n")
+        serr.close()
         
         #Incorrect names of profiles to shift
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.read_clades.read_clade_data([self.test_file_path + "bad_yaml_profile_shift_wrong_shift_names.yaml"])
         
-        self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(sout.getvalue(), "Please include profiles to shift as a list of integer profile numbers. Exiting.\n")
-        sout.close()
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(serr.getvalue(), "Please include profiles to shift as a list of integer profile numbers. Exiting.\n")
+        serr.close()
         
         #Profiles to shift outside the genome
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.read_clades.read_clade_data([self.test_file_path + "bad_yaml_profile_shift_outside_genome.yaml"])
         
-        self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(sout.getvalue(), "Please ensure that all your profiles to shift are within the genome. Exiting.\n")
-        sout.close()
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(serr.getvalue(), "Please ensure that all your profiles to shift are within the genome. Exiting.\n")
+        serr.close()
         
         #Profiles to shift are start or stop codon
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.read_clades.read_clade_data([self.test_file_path + "bad_yaml_profile_shift_stop_codon.yaml"])
         
-        self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(sout.getvalue(), ("Please ensure that all your profiles to shift are within coding regions of your given " +
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(serr.getvalue(), ("Please ensure that all your profiles to shift are within coding regions of your given " +
                         "genome and are not in start or stop codon positions. Exiting.\n"))
-        sout.close()
+        serr.close()
         
         #Different number of profiles as shifts
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.read_clades.read_clade_data([self.test_file_path + "bad_yaml_profile_shift_diff_num.yaml"])
         
-        self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(sout.getvalue(), "Please ensure that you provide the same number of new profile numbers as profiles. Exiting.\n")
-        sout.close()
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(serr.getvalue(), "Please ensure that you provide the same number of new profile numbers as profiles. Exiting.\n")
+        serr.close()
         
         #shifts != integers
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.read_clades.read_clade_data([self.test_file_path + "bad_yaml_profile_shift_profile_not_int.yaml"])
         
-        self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(sout.getvalue(), "Please include profiles to shift as a list of integer profile numbers. Exiting.\n")
-        sout.close()
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(serr.getvalue(), "Please include profiles to shift as a list of integer profile numbers. Exiting.\n")
+        serr.close()
         
         #Profiles != integers
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.read_clades.read_clade_data([self.test_file_path + "bad_yaml_profile_shift_shift_not_int.yaml"])
         
-        self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(sout.getvalue(), "Please include new profile numbers as a list of integer new profile numbers. Exiting.\n")
-        sout.close()
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(serr.getvalue(), "Please include new profile numbers as a list of integer new profile numbers. Exiting.\n")
+        serr.close()
         
         self.read_clades.start_params["high_performance_computing"] = False
         
@@ -205,20 +205,20 @@ class testCladeReader(unittest.TestCase):
         #Check a tree that is not in nexus format
         self.read_clades.start_params["input_tree"] = self.test_file_path + "nexus_tree.txt"
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.read_clades.read_input_tree()
-        self.assertEqual(cm.exception.code, 0)
+        self.assertEqual(cm.exception.code, 1)
           
         #Check a bad tree
         self.read_clades.start_params["input_tree"] = self.test_file_path + "bad_tree.txt"
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.read_clades.read_input_tree()
-        self.assertEqual(cm.exception.code, 0)
+        self.assertEqual(cm.exception.code, 1)
         
-        self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(sout.getvalue(), ("Please make sure your input tree is in Newick format. Program closing\n"))
-        sout.close()
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(serr.getvalue(), ("Please make sure your input tree is in Newick format. Program closing\n"))
+        serr.close()
         self.read_clades.start_params["input_tree"] = self.test_file_path + "test_tree.txt"
 
 

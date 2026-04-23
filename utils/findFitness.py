@@ -56,24 +56,24 @@ class findFitness:
             codons = Seq("".join(list(stationary_mat.index)))
             self.AAs = [*str(codons.translate())]
         except TypeError: #Make sure that codons are provided in the first row
-            print("Please ensure the first row of your stationary distributions is the codon names. Exiting.")
-            sys.exit(0)
+            print("Please ensure the first row of your stationary distributions is the codon names. Exiting.", file=sys.stderr)
+            sys.exit(1)
         except CodonTable.TranslationError: #Check to make sure only valid codons are provided
-            print("Please ensure that your stationary distribution only has valid codons. Exiting.")
-            sys.exit(0)
+            print("Please ensure that your stationary distribution only has valid codons. Exiting.", file=sys.stderr)
+            sys.exit(1)
         
         #Check to make sure stop codons are not provided
         if("*" in self.AAs):
-            print("Do not include stop codons in your stationary distribution. Exiting.")
-            sys.exit(0)
+            print("Do not include stop codons in your stationary distribution. Exiting.", file=sys.stderr)
+            sys.exit(1)
             
         #Check to make sure that all codons are represented in the stationary distribution
         all_codons_set = set(self.codons)
         given_codons_set = set (list(stationary_mat.index))
         
         if(all_codons_set != given_codons_set):
-            print("Please ensure that every codon is represented in your stationary distributions. Exiting.")
-            sys.exit(0)
+            print("Please ensure that every codon is represented in your stationary distributions. Exiting.", file=sys.stderr)
+            sys.exit(1)
             
     
     
@@ -101,15 +101,15 @@ class findFitness:
         nfitnesses = fitness_mat.shape[1]
         
         if(self.ndists!=nfitnesses):
-            print("The same number of fitness profiles and stationary distributions must be provided. Exiting.")
-            sys.exit(0)
+            print("The same number of fitness profiles and stationary distributions must be provided. Exiting.", file=sys.stderr)
+            sys.exit(1)
             
         
         #Verify that the fitness profiles are in terms of amino acids and that all are provided
         npossibilities = fitness_mat.shape[0]
         if(npossibilities != 21 or set(fitness_mat.index) != set(self.AAs + ["X"]) ):
-            print("Fitness data files must be in terms of amino acids. There should be the 20 amino acids and stops (ie. 21 rows). Exiting.")
-            sys.exit(0)
+            print("Fitness data files must be in terms of amino acids. There should be the 20 amino acids and stops (ie. 21 rows). Exiting.", file=sys.stderr)
+            sys.exit(1)
             
             
             
@@ -171,8 +171,8 @@ class findFitness:
             
             if(self.ndists != genome_length): 
                 print("Please ensure that when using a fasta file, the same number of fitness profiles are provided as the length " +
-                "of the genome in the fasta file. Exiting.")
-                sys.exit(0)
+                "of the genome in the fasta file. Exiting.", file=sys.stderr)
+                sys.exit(1)
 
             # A fitness profile is given for every position in genome
             fitness_profile_nums = list(range(genome_length))
@@ -235,26 +235,26 @@ class findFitness:
                 num_record += 1
 
         except:
-            print("Please provide ancestral sequence file in fasta format. Exiting.")
-            sys.exit(0)
+            print("Please provide ancestral sequence file in fasta format. Exiting.", file=sys.stderr)
+            sys.exit(1)
         
         
         #Make sure only one sequence uploaded
         if(num_record == 0):
             #Impropper formatting 
-            print("Please provide ancestral sequence file in fasta format. Exiting.")
-            sys.exit(0)
+            print("Please provide ancestral sequence file in fasta format. Exiting.", file=sys.stderr)
+            sys.exit(1)
         elif(num_record > 1):
             #Too many sequences
             print("You have provided more than one sequence in your fasta file. " +
-                    "Please provide only one sequence. Exiting.")
-            sys.exit(0)
+                    "Please provide only one sequence. Exiting.", file=sys.stderr)
+            sys.exit(1)
             
         
         #Check to make sure file is in terms of nucleotides
         if(not self.dna_check(ans_seq)):
-            print("Please ensure that your fasta file is in terms of nucleotides, not amino acids. Exiting.")
-            sys.exit(0)
+            print("Please ensure that your fasta file is in terms of nucleotides, not amino acids. Exiting.", file=sys.stderr)
+            sys.exit(1)
         
         #Find the length of the genome in terms of amino acids 
         genome_length = len(ans_seq)/3

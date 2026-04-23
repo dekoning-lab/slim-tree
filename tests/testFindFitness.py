@@ -1,7 +1,7 @@
 import unittest
 from unittest import mock
 from utils import findFitness
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr
 import pandas as pd
 import numpy as np
 import os, io, pathlib
@@ -21,42 +21,42 @@ class testCladeReader(unittest.TestCase):
         
         #Test a matrix that does not have codon names in first row
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.fit.validify_stationary_distribution(pd.read_csv(self.test_file_path + "table_stationary_dists_wrong_names.csv", header = None, index_col = 0))
         
-        self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(sout.getvalue(), ("Please ensure the first row of your stationary distributions is the codon names. Exiting.\n"))
-        sout.close()
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(serr.getvalue(), ("Please ensure the first row of your stationary distributions is the codon names. Exiting.\n"))
+        serr.close()
         
         
         #Test a matrix that has invalid codons
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.fit.validify_stationary_distribution(pd.read_csv(self.test_file_path + "table_stationary_dists_bad_codons.csv", header = None, index_col = 0))
         
-        self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(sout.getvalue(), ("Please ensure that your stationary distribution only has valid codons. Exiting.\n"))
-        sout.close()
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(serr.getvalue(), ("Please ensure that your stationary distribution only has valid codons. Exiting.\n"))
+        serr.close()
         
         
         #Test a matrix wil stop codons
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.fit.validify_stationary_distribution(pd.read_csv(self.test_file_path + "table_stationary_dists_stop_codons.csv", header = None, index_col = 0))
         
-        self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(sout.getvalue(), ("Do not include stop codons in your stationary distribution. Exiting.\n"))
-        sout.close()
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(serr.getvalue(), ("Do not include stop codons in your stationary distribution. Exiting.\n"))
+        serr.close()
         
         
         #Test a matrix without all codonswith self.assertRaises(SystemExit) as cm:
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.fit.validify_stationary_distribution(pd.read_csv(self.test_file_path + "table_stationary_dists_partial.csv", header = None, index_col = 0))
         
-        self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(sout.getvalue(), ("Please ensure that every codon is represented in your stationary distributions. Exiting.\n"))
-        sout.close()
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(serr.getvalue(), ("Please ensure that every codon is represented in your stationary distributions. Exiting.\n"))
+        serr.close()
     
     
     
@@ -71,42 +71,42 @@ class testCladeReader(unittest.TestCase):
         
         #Test a fitness file with too many profiles
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.fit.process_existing_fitness_file(self.test_file_path + "table_fitness_dists_too_few.csv")
         
-        self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(sout.getvalue(), ("The same number of fitness profiles and stationary distributions must be provided. Exiting.\n"))
-        sout.close()
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(serr.getvalue(), ("The same number of fitness profiles and stationary distributions must be provided. Exiting.\n"))
+        serr.close()
         
         
         #Test a fitness file with too few profiles
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.fit.process_existing_fitness_file(self.test_file_path + "table_fitness_dists_too_many.csv")
         
-        self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(sout.getvalue(), ("The same number of fitness profiles and stationary distributions must be provided. Exiting.\n"))
-        sout.close()
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(serr.getvalue(), ("The same number of fitness profiles and stationary distributions must be provided. Exiting.\n"))
+        serr.close()
         
         
         #Test a fitness file with the incorrect number of amino acids
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.fit.process_existing_fitness_file(self.test_file_path + "table_fitness_dists_too_few_amino.csv")
         
-        self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(sout.getvalue(), ("Fitness data files must be in terms of amino acids. There should be the 20 amino acids and stops (ie. 21 rows). Exiting.\n"))
-        sout.close()
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(serr.getvalue(), ("Fitness data files must be in terms of amino acids. There should be the 20 amino acids and stops (ie. 21 rows). Exiting.\n"))
+        serr.close()
         
         
         #Test a fitness file with an incorrect amino acid
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.fit.process_existing_fitness_file(self.test_file_path + "table_fitness_dists_bad_amino.csv")
         
-        self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(sout.getvalue(), ("Fitness data files must be in terms of amino acids. There should be the 20 amino acids and stops (ie. 21 rows). Exiting.\n"))
-        sout.close()
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(serr.getvalue(), ("Fitness data files must be in terms of amino acids. There should be the 20 amino acids and stops (ie. 21 rows). Exiting.\n"))
+        serr.close()
         
       
       
@@ -169,24 +169,24 @@ class testCladeReader(unittest.TestCase):
         
         #Test with a shorter sequence with self.assertRaises(SystemExit) as cm:
         with self.assertRaises(SystemExit) as cm1:    
-            with redirect_stdout(io.StringIO()) as sout1:
+            with redirect_stderr(io.StringIO()) as serr1:
                 self.fit.define_fitness_profiles( False, np.array([[0,49]]), 30)
         
-        self.assertEqual(cm1.exception.code, 0)
-        self.assertEqual(sout1.getvalue(), ("Please ensure that when using a fasta file, the same number of fitness profiles are provided as the length " +
+        self.assertEqual(cm1.exception.code, 1)
+        self.assertEqual(serr1.getvalue(), ("Please ensure that when using a fasta file, the same number of fitness profiles are provided as the length " +
                 "of the genome in the fasta file. Exiting.\n"))
-        sout1.close()
+        serr1.close()
         
         
         # Test with a longer sequence
         with self.assertRaises(SystemExit) as cm2:
-            with redirect_stdout(io.StringIO()) as sout2:
+            with redirect_stderr(io.StringIO()) as serr2:
                 self.fit.define_fitness_profiles( False, np.array([[0,49]]), 60)
         
-        self.assertEqual(cm2.exception.code, 0)
-        self.assertEqual(sout2.getvalue(), ("Please ensure that when using a fasta file, the same number of fitness profiles are provided as the length " +
+        self.assertEqual(cm2.exception.code, 1)
+        self.assertEqual(serr2.getvalue(), ("Please ensure that when using a fasta file, the same number of fitness profiles are provided as the length " +
                 "of the genome in the fasta file. Exiting.\n"))
-        sout2.close()
+        serr2.close()
     
 
     
@@ -242,32 +242,32 @@ class testCladeReader(unittest.TestCase):
         
         #Test with a sequence that is not in fasta format
         with self.assertRaises(SystemExit) as cm1:    
-            with redirect_stdout(io.StringIO()) as sout1:
+            with redirect_stderr(io.StringIO()) as serr1:
                 self.fit.find_ancestral_fasta(self.test_file_path + "not_fasta.fas")
         
-        self.assertEqual(cm1.exception.code, 0)
-        self.assertEqual(sout1.getvalue(), ("Please provide ancestral sequence file in fasta format. Exiting.\n"))
-        sout1.close()
+        self.assertEqual(cm1.exception.code, 1)
+        self.assertEqual(serr1.getvalue(), ("Please provide ancestral sequence file in fasta format. Exiting.\n"))
+        serr1.close()
         
         
         #Test with a sequence in terms of amino acids
         with self.assertRaises(SystemExit) as cm1:    
-            with redirect_stdout(io.StringIO()) as sout1:
+            with redirect_stderr(io.StringIO()) as serr1:
                 self.fit.find_ancestral_fasta(self.test_file_path + "amino.fas")
         
-        self.assertEqual(cm1.exception.code, 0)
-        self.assertEqual(sout1.getvalue(), ("Please ensure that your fasta file is in terms of nucleotides, not amino acids. Exiting.\n"))
-        sout1.close()
+        self.assertEqual(cm1.exception.code, 1)
+        self.assertEqual(serr1.getvalue(), ("Please ensure that your fasta file is in terms of nucleotides, not amino acids. Exiting.\n"))
+        serr1.close()
         
         
         #Test a fasta file with more than one sequence
         with self.assertRaises(SystemExit) as cm1:    
-            with redirect_stdout(io.StringIO()) as sout1:
+            with redirect_stderr(io.StringIO()) as serr1:
                 self.fit.find_ancestral_fasta(self.test_file_path + "2_seq.fas")
         
-        self.assertEqual(cm1.exception.code, 0)
-        self.assertEqual(sout1.getvalue(), ("You have provided more than one sequence in your fasta file. Please provide only one sequence. Exiting.\n"))
-        sout1.close()
+        self.assertEqual(cm1.exception.code, 1)
+        self.assertEqual(serr1.getvalue(), ("You have provided more than one sequence in your fasta file. Please provide only one sequence. Exiting.\n"))
+        serr1.close()
         
         
         

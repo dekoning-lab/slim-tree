@@ -37,7 +37,7 @@ class writeSLiMHPC(writeSLiM):
         
         #Set up the initialize and fitness functions for the new script
         super().write_initialize(population_parameters)
-        super().write_fitness()
+        super().write_fitness(population_parameters)
 
         super().write_reproduction()
 

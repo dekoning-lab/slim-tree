@@ -1,1 +1,1 @@
-python3 ../../slim-tree/ -i ex5_tree.txt -T SLiM-Tree -w False
+slim-tree ex5_tree.txt stationary_distributions.csv -w

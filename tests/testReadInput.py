@@ -2,7 +2,7 @@
 import unittest
 from unittest import mock
 from utils import readInput
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr
 import os, io
 import numpy
 import builtins
@@ -71,30 +71,30 @@ class testReadInput(unittest.TestCase):
        
         #Check that system correctly closes when mutational matrix is not 4 by 4
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.input_reader.make_mutation_matrix(self.test_file_path + "/mut_mat_3by4.csv")
 
-        self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(sout.getvalue(), 'Mutational matrices must be 4 by 4. Representing mutations from nucleotide to nucleotide.\n')
-        sout.close()
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(serr.getvalue(), 'Mutational matrices must be 4 by 4. Representing mutations from nucleotide to nucleotide.\n')
+        serr.close()
         
         
         with self.assertRaises(SystemExit) as cm1:
-            with redirect_stdout(io.StringIO()) as sout1:
+            with redirect_stderr(io.StringIO()) as serr1:
                 self.input_reader.make_mutation_matrix(self.test_file_path + "/mut_mat_4by3.csv")
             
-        self.assertEqual(cm1.exception.code, 0)
-        self.assertEqual(sout1.getvalue(), 'Mutational matrices must be 4 by 4. Representing mutations from nucleotide to nucleotide.\n')
-        sout1.close()
+        self.assertEqual(cm1.exception.code, 1)
+        self.assertEqual(serr1.getvalue(), 'Mutational matrices must be 4 by 4. Representing mutations from nucleotide to nucleotide.\n')
+        serr1.close()
         
         # Check that the system closes correctly when mutations to self are not 0
         with self.assertRaises(SystemExit) as cm2:
-            with redirect_stdout(io.StringIO()) as sout2:
+            with redirect_stderr(io.StringIO()) as serr2:
                 self.input_reader.make_mutation_matrix(self.test_file_path + "/mut_mat_nonzero.csv")
             
-        self.assertEqual(cm2.exception.code, 0)
-        self.assertEqual(sout2.getvalue(), 'All mutations from a nucleotide to itself must be 0.\n')
-        sout2.close()
+        self.assertEqual(cm2.exception.code, 1)
+        self.assertEqual(serr2.getvalue(), 'All mutations from a nucleotide to itself must be 0.\n')
+        serr2.close()
 
 
     def test_check_arguments(self):
@@ -118,90 +118,90 @@ class testReadInput(unittest.TestCase):
         # Test that arguments with hpc close if time and partition are not included
         self.arguments.partition = 'apophis'
         self.arguments.time = None
-        with redirect_stdout(io.StringIO()) as sout:
+        with redirect_stderr(io.StringIO()) as serr:
             return_val = self.input_reader.check_arguments(self.arguments)
         self.assertFalse(return_val)
             
-        self.assertEqual(sout.getvalue(), 'When using high performance computing, partition and time data must be provided. Closing program.\n')
-        sout.close()
+        self.assertEqual(serr.getvalue(), 'When using high performance computing, partition and time data must be provided. Closing program.\n')
+        serr.close()
         
 
         self.arguments.partition = None
         self.arguments.time ='10:00:00'
-        with redirect_stdout(io.StringIO()) as sout2:
+        with redirect_stderr(io.StringIO()) as serr2:
             return_val = self.input_reader.check_arguments(self.arguments)
         self.assertFalse(return_val)
             
-        self.assertEqual(sout2.getvalue(), 'When using high performance computing, partition and time data must be provided. Closing program.\n')
-        sout2.close()
+        self.assertEqual(serr2.getvalue(), 'When using high performance computing, partition and time data must be provided. Closing program.\n')
+        serr2.close()
         
         #Test that program does not run if gene count incorrect
         self.arguments.high_performance_computing = False
         self.arguments.gene_count = -0.05
-        with redirect_stdout(io.StringIO()) as sout:
+        with redirect_stderr(io.StringIO()) as serr:
             return_val = self.input_reader.check_arguments(self.arguments)
         self.assertFalse(return_val)
             
-        self.assertEqual(sout.getvalue(), "Number of genes must be greater than 0 and less than the length of the genome. Closing program.\n")
-        sout.close()
+        self.assertEqual(serr.getvalue(), "Number of genes must be greater than 0 and less than the length of the genome. Closing program.\n")
+        serr.close()
         
         self.arguments.gene_count = 501
-        with redirect_stdout(io.StringIO()) as sout:
+        with redirect_stderr(io.StringIO()) as serr:
             return_val = self.input_reader.check_arguments(self.arguments)
         self.assertFalse(return_val)
             
-        self.assertEqual(sout.getvalue(), "Number of genes must be greater than 0 and less than the length of the genome. Closing program.\n")
-        sout.close()
+        self.assertEqual(serr.getvalue(), "Number of genes must be greater than 0 and less than the length of the genome. Closing program.\n")
+        serr.close()
         
         
         #Test that program does not run if coding ratio incorrect
         self.arguments.gene_count = 1
         self.arguments.coding_ratio = -0.05
-        with redirect_stdout(io.StringIO()) as sout:
+        with redirect_stderr(io.StringIO()) as serr:
             return_val = self.input_reader.check_arguments(self.arguments)
         self.assertFalse(return_val)
             
-        self.assertEqual(sout.getvalue(), "Coding ratio must be greater than 0 and less than or equal to 1. Please re-enter as a ratio (0, 1]. Closing program.\n")
-        sout.close()
+        self.assertEqual(serr.getvalue(), "Coding ratio must be greater than 0 and less than or equal to 1. Please re-enter as a ratio (0, 1]. Closing program.\n")
+        serr.close()
         
         self.arguments.gene_count = 1.1
-        with redirect_stdout(io.StringIO()) as sout:
+        with redirect_stderr(io.StringIO()) as serr:
             return_val = self.input_reader.check_arguments(self.arguments)
         self.assertFalse(return_val)
             
-        self.assertEqual(sout.getvalue(), "Coding ratio must be greater than 0 and less than or equal to 1. Please re-enter as a ratio (0, 1]. Closing program.\n")
-        sout.close()
+        self.assertEqual(serr.getvalue(), "Coding ratio must be greater than 0 and less than or equal to 1. Please re-enter as a ratio (0, 1]. Closing program.\n")
+        serr.close()
         
         
         #Test the program if there is a fasta file
         self.arguments.fasta_file = "my_fasta.fa"
         self.arguments.gene_count = 1
         self.arguments.coding_ratio = 0.5
-        with redirect_stdout(io.StringIO()) as sout:
+        with redirect_stderr(io.StringIO()) as serr:
             return_val = self.input_reader.check_arguments(self.arguments)
         self.assertFalse(return_val)
             
-        self.assertEqual(sout.getvalue(), "When specifying an ancestral sequence with a fasta file, the sequence of only one fully coding gene should be provided. Closing program.\n")
-        sout.close()
+        self.assertEqual(serr.getvalue(), "When specifying an ancestral sequence with a fasta file, the sequence of only one fully coding gene should be provided. Closing program.\n")
+        serr.close()
 
         
         self.arguments.gene_count = 2
         self.arguments.coding_ratio = 1.0
-        with redirect_stdout(io.StringIO()) as sout:
+        with redirect_stderr(io.StringIO()) as serr:
             return_val = self.input_reader.check_arguments(self.arguments)
         self.assertFalse(return_val)
             
-        self.assertEqual(sout.getvalue(), "When specifying an ancestral sequence with a fasta file, the sequence of only one fully coding gene should be provided. Closing program.\n")
-        sout.close()
+        self.assertEqual(serr.getvalue(), "When specifying an ancestral sequence with a fasta file, the sequence of only one fully coding gene should be provided. Closing program.\n")
+        serr.close()
         
         
         self.arguments.gene_count = 1
         self.arguments.coding_ratio = 1.0
-        with redirect_stdout(io.StringIO()) as sout:
+        with redirect_stderr(io.StringIO()) as serr:
             return_val = self.input_reader.check_arguments(self.arguments)
         self.assertTrue(return_val)
             
-        sout.close()
+        serr.close()
 
 
     def test_process_filenames(self):
@@ -210,7 +210,8 @@ class testReadInput(unittest.TestCase):
         
         #Test process with new directories, no backup, ensure folders created
         processed_output = self.input_reader.process_filenames(tree_name + ".txt", False, False, False, False, False)
-        correct_output = [self.test_file_path + "/slimScripts/test_tree", self.test_file_path + "/test_tree", None, None, None, None, None]
+        correct_output = [self.test_file_path + "/slimScripts/test_tree", self.test_file_path + "/test_tree", None, None, None, None, None,
+                          self.test_file_path + "/nuc_FASTA", self.test_file_path + "/aa_FASTA"]
         self.assertTrue(processed_output == correct_output)
         self.assertTrue(os.path.exists(self.test_file_path + "/slimScripts/"))
         self.assertTrue(os.path.exists(self.test_file_path + "/aa_FASTA/"))
@@ -218,12 +219,12 @@ class testReadInput(unittest.TestCase):
         
         #Test process with existing directories, no backup
         with mock.patch.object(builtins, 'input', lambda _: 'y'):
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 processed_output2 = self.input_reader.process_filenames(tree_name + ".txt", False, False, False, False, False)
  
-            sout_correct = sout.getvalue() == "using the same nuc_FASTA folder\nusing the same aa_FASTA folder\n"
-            sout.close()
-            correct = processed_output2 == correct_output and sout_correct
+            serr_correct = serr.getvalue() == "using the same nuc_FASTA folder\nusing the same aa_FASTA folder\n"
+            serr.close()
+            correct = processed_output2 == correct_output and serr_correct
             assert correct
         
         
@@ -234,7 +235,8 @@ class testReadInput(unittest.TestCase):
 
         #Test process with new directories, include backup, ensure folders created
         processed_output3 = self.input_reader.process_filenames(tree_name + ".txt", True, False, False, False, False)
-        correct_output2 = [self.test_file_path + "/slimScripts/test_tree", self.test_file_path + "/test_tree", self.test_file_path + "/backupFiles", None, None, None, None]
+        correct_output2 = [self.test_file_path + "/slimScripts/test_tree", self.test_file_path + "/test_tree", self.test_file_path + "/backupFiles", None, None, None, None,
+                           self.test_file_path + "/nuc_FASTA", self.test_file_path + "/aa_FASTA"]
         self.assertTrue(processed_output3 == correct_output2)
         self.assertTrue(os.path.exists(self.test_file_path + "/slimScripts/"))
         self.assertTrue(os.path.exists(self.test_file_path + "/aa_FASTA/"))
@@ -250,7 +252,8 @@ class testReadInput(unittest.TestCase):
         
         # Test process with new directories, include hpc, ensure folders created
         processed_output5 = self.input_reader.process_filenames(tree_name + ".txt", False, True, False, False, False)
-        correct_output6 = [self.test_file_path + "/slimScripts/test_tree", self.test_file_path + "/test_tree", None, self.test_file_path + "/slurmOutput", None, None, None]
+        correct_output6 = [self.test_file_path + "/slimScripts/test_tree", self.test_file_path + "/test_tree", None, self.test_file_path + "/slurmOutput", None, None, None,
+                           self.test_file_path + "/nuc_FASTA", self.test_file_path + "/aa_FASTA"]
         self.assertTrue(processed_output5 == correct_output6)
         self.assertTrue(os.path.exists(self.test_file_path + "/slimScripts/"))
         self.assertTrue(os.path.exists(self.test_file_path + "/aa_FASTA/"))
@@ -260,14 +263,15 @@ class testReadInput(unittest.TestCase):
         
         # Test process with existing directories, no backup
         with mock.patch.object(builtins, 'input', lambda _: 'y'):
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 processed_output4 = self.input_reader.process_filenames(tree_name + ".txt", True, True, False, False, False)
  
-            sout_correct = sout.getvalue() == "using the same nuc_FASTA folder\nusing the same aa_FASTA folder\nusing same backup folder\nusing same slurm folder\n"
-            sout_val = sout.getvalue()
-            sout.close()
-            correct = processed_output4 == [self.test_file_path + "/slimScripts/test_tree", 
-                                self.test_file_path + "/test_tree",  self.test_file_path + "/backupFiles", self.test_file_path + "/slurmOutput", None, None, None] and sout_correct
+            serr_correct = serr.getvalue() == "using the same nuc_FASTA folder\nusing the same aa_FASTA folder\nusing same backup folder\nusing same slurm folder\n"
+            serr_val = serr.getvalue()
+            serr.close()
+            correct = processed_output4 == [self.test_file_path + "/slimScripts/test_tree",
+                                self.test_file_path + "/test_tree", self.test_file_path + "/backupFiles", self.test_file_path + "/slurmOutput", None, None, None,
+                                self.test_file_path + "/nuc_FASTA", self.test_file_path + "/aa_FASTA"] and serr_correct
             assert correct
             
             
@@ -278,9 +282,10 @@ class testReadInput(unittest.TestCase):
         
         #Test making folders for selection denominators, substitution counting and polymorphic sites
         processed_output6 = self.input_reader.process_filenames(tree_name + ".txt", False, False, True, True, True)
-        correct_output7 = [self.test_file_path + "/slimScripts/test_tree", self.test_file_path + "/test_tree", None, None, 
-                self.test_file_path + "/selectionCalculationOutput", self.test_file_path + "/substitutionCountingOutput", 
-                self.test_file_path + "/polymorphicSites"]
+        correct_output7 = [self.test_file_path + "/slimScripts/test_tree", self.test_file_path + "/test_tree", None, None,
+                self.test_file_path + "/selectionCalculationOutput", self.test_file_path + "/substitutionCountingOutput",
+                self.test_file_path + "/polymorphicSites",
+                self.test_file_path + "/nuc_FASTA", self.test_file_path + "/aa_FASTA"]
         self.assertTrue(processed_output6 == correct_output7)
         self.assertTrue(os.path.exists(self.test_file_path + "/slimScripts/"))
         self.assertTrue(os.path.exists(self.test_file_path + "/selectionCalculationOutput"))

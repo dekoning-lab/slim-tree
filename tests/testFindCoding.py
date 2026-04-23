@@ -1,7 +1,7 @@
 import unittest
 from unittest import mock
 from utils import findCoding
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr
 import pandas as pd
 import math
 import os, io, pathlib
@@ -22,12 +22,12 @@ class testFindCoding(unittest.TestCase):
         self.codeFinder.gene_count = 2
         
         with self.assertRaises(SystemExit) as cm:
-            with redirect_stdout(io.StringIO()) as sout:
+            with redirect_stderr(io.StringIO()) as serr:
                 self.codeFinder.get_coding_seqs()
         
-        self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(sout.getvalue(), ("Please ensure that if you have more than 1 gene, your coding ratio is not 1. Exiting.\n"))
-        sout.close()
+        self.assertEqual(cm.exception.code, 1)
+        self.assertEqual(serr.getvalue(), ("Please ensure that if you have more than 1 gene, your coding ratio is not 1. Exiting.\n"))
+        serr.close()
        
         
         #Test a case with 50% coding and 1 gene

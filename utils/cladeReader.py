@@ -2,6 +2,7 @@
 
 from Bio import Phylo
 import copy
+import io
 import math
 import yaml
 import sys
@@ -35,9 +36,9 @@ class cladeReader:
             if (not isinstance(yaml_data, dict)):
                 print("Please make sure your changes are in yaml format. " +
                         "For more information on yaml format visit: " +
-                        "https://en.wikipedia.org/wiki/YAML. Program closing.")
-                sys.exit(0)
-            
+                        "https://en.wikipedia.org/wiki/YAML. Program closing.", file=sys.stderr)
+                sys.exit(1)
+
         yaml_file.close()
         
         #Dictionary to change key names for abbreviations
@@ -62,17 +63,17 @@ class cladeReader:
             try:
                 new_dict = {(data_translation[k] if k in data_translation else k):v  for (k,v) in yaml_data[dat].items() }
             except AttributeError:
-                print("Please check the formatting of your yaml file, you likely did not include the branch name. Closing program.")
-                sys.exit(0)
+                print("Please check the formatting of your yaml file, you likely did not include the branch name. Closing program.", file=sys.stderr)
+                sys.exit(1)
             
             #Check to make sure no changes are specified that cannot be handled
             if self.start_params["high_performance_computing"] and len(np.setdiff1d(list(new_dict.keys()), possible_hpc_changes)) != 0:
-                print("When using slim-tree with HPC only the following parameters may be modified for specific branches:")
-                print(*list(data_translation.values()), sep = "\n")
-                sys.exit(0)
+                print("When using slim-tree with HPC only the following parameters may be modified for specific branches:", file=sys.stderr)
+                print(*list(data_translation.values()), sep = "\n", file=sys.stderr)
+                sys.exit(1)
             elif not self.start_params["high_performance_computing"] and len(np.setdiff1d(list(new_dict.keys()), possible_changes)) != 0:
-                print("When using slim-tree without HPC, only the population size may be modified for specific branches. Exiting")
-                sys.exit(0)
+                print("When using slim-tree without HPC, only the population size may be modified for specific branches. Exiting", file=sys.stderr)
+                sys.exit(1)
                 
             #If mutation rate or mutation matrix changed, specify Jukes-Cantor accordingly
             if('mutation_rate' in new_dict.keys()):
@@ -111,20 +112,20 @@ class cladeReader:
         #Ensure that formatting of profiles and profile numbers are correct
         if('profile_positions' not in new_dict['profile_shift'].keys() or 
             'new_profile_nums' not in new_dict['profile_shift'].keys()):
-                print("When shifting profiles, ensure that you include a list of profiles to change as <profile_positions> and new profile numbers to change to as <new_profile_nums>. Exiting.")
-                sys.exit(0)
+                print("When shifting profiles, ensure that you include a list of profiles to change as <profile_positions> and new profile numbers to change to as <new_profile_nums>. Exiting.", file=sys.stderr)
+                sys.exit(1)
                 
         #Ensure that given profile positions to shift are possible to shift
         shift_pos = new_dict['profile_shift']['profile_positions']
 
         if(type (shift_pos) != list):
-            print("Please include profiles to shift as a list of integer profile numbers. Exiting.")
-            sys.exit(0)
+            print("Please include profiles to shift as a list of integer profile numbers. Exiting.", file=sys.stderr)
+            sys.exit(1)
             
         for listed_shift_pos in shift_pos:
             if(type(listed_shift_pos) != int):
-                print("Please include profiles to shift as a list of integer profile numbers. Exiting.")
-                sys.exit(0)
+                print("Please include profiles to shift as a list of integer profile numbers. Exiting.", file=sys.stderr)
+                sys.exit(1)
             
             outside_coding_seq = True
             for coding_seq in self.start_params["coding_seqs"]:
@@ -132,23 +133,23 @@ class cladeReader:
                     outside_coding_seq = False
                     
             if(listed_shift_pos >= self.start_params["genome_length"]):
-                print("Please ensure that all your profiles to shift are within the genome. Exiting.")
-                sys.exit(0)
+                print("Please ensure that all your profiles to shift are within the genome. Exiting.", file=sys.stderr)
+                sys.exit(1)
                 
                     
             if (outside_coding_seq):
-                print("Please ensure that all your profiles to shift are within coding regions of your given genome and are not in start or stop codon positions. Exiting.")
-                sys.exit(0)
+                print("Please ensure that all your profiles to shift are within coding regions of your given genome and are not in start or stop codon positions. Exiting.", file=sys.stderr)
+                sys.exit(1)
                 
         #Ensure that shifts are possible
         shifts = new_dict['profile_shift']['new_profile_nums']
         if(type (shifts) != list):
-            print("Please include new profile numbers as a list of integer new profile numbers. Exiting.")
-            sys.exit(0) 
+            print("Please include new profile numbers as a list of integer new profile numbers. Exiting.", file=sys.stderr)
+            sys.exit(1) 
             
         if(len(shifts) != len(shift_pos)):
-            print("Please ensure that you provide the same number of new profile numbers as profiles. Exiting.")
-            sys.exit(0)
+            print("Please ensure that you provide the same number of new profile numbers as profiles. Exiting.", file=sys.stderr)
+            sys.exit(1)
 
 
         #Place shifts in vector of fitness shifts
@@ -157,8 +158,8 @@ class cladeReader:
         
             #Need to ensure profile position is integers
             if(type(shifts[list_pos]) != int):
-                print("Please include new profile numbers as a list of integer new profile numbers. Exiting.")
-                sys.exit(0)
+                print("Please include new profile numbers as a list of integer new profile numbers. Exiting.", file=sys.stderr)
+                sys.exit(1)
             
             #If the old profile has the shift position return None to restart creation of old genome
             if(profiles[shift_pos[list_pos]] == shifts[list_pos]):
@@ -178,10 +179,13 @@ class cladeReader:
         self.pop_num = 0
         
         try:
-            phylogeny = Phylo.read(self.start_params["input_tree"],"newick")
+            if "input_tree_string" in self.start_params:
+                phylogeny = Phylo.read(io.StringIO(self.start_params["input_tree_string"]), "newick")
+            else:
+                phylogeny = Phylo.read(self.start_params["input_tree"], "newick")
         except ValueError:
-            print ("Please make sure your input tree is in Newick format. Program closing")
-            sys.exit(0)
+            print ("Please make sure your input tree is in Newick format. Program closing", file=sys.stderr)
+            sys.exit(1)
 
         #Figure out how long the simulation is going to run for
         max_depth = int(max(phylogeny.depths().values())) + self.start_params["burn_in"] + 1
@@ -222,8 +226,8 @@ class cladeReader:
             clade_dict_list = self.recurse_through_clades(phylogeny.get_nonterminals()[0],
                                                  starting_parameter_dict, self.start_params["tree_data_file"], phylogeny)
         except IndexError:
-            print ("Please make sure your input tree is in Newick format. Program closing")
-            sys.exit(0)
+            print ("Please make sure your input tree is in Newick format. Program closing", file=sys.stderr)
+            sys.exit(1)
 
         #Sort clade dict list by the distance from the start of the simulation so that it works properly
         #in SLiM
@@ -291,10 +295,19 @@ class cladeReader:
         #Determine when sim of pop ends - note must run for at least 1 gen
         pop_end = self.start_params["burn_in"]  + phylogeny.distance(clade)
         
-        #Make sure that given tree is in generations
-        if (math.floor(dist_from_start) >= math.floor(pop_end)):
-            print("Please make sure that your tree is in generations not mutations. Exiting.")
-            sys.exit(0)
+        hint = ("Please make sure your tree is in generations. "
+                "If your tree is in substitutions, use the -s flag to convert it automatically.")
+        branch_len = pop_end - dist_from_start
+        eps = 1e-9
+
+        if branch_len < -eps:
+            print(f"Branch ending at '{clade.name}' has a negative length ({branch_len:.6f} generations). "
+                  + hint + " Exiting.", file=sys.stderr)
+            sys.exit(1)
+        elif branch_len < 1 - eps:
+            print(f"Warning: branch ending at '{clade.name}' has length {branch_len:.6f} generations "
+                  f"(< 1). Rounding up to 1 generation. " + hint, file=sys.stderr)
+            pop_end = dist_from_start + 1
 
         #Determine whether population belongs to the last child clade - allows for removal of extraneous data
         parents_children = parent_clade_dict["child_clades"]
