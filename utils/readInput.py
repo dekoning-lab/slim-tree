@@ -186,7 +186,7 @@ class readInput:
     def process_filenames(self, tree_name, backup, hpc, calculate_selection, count_subs, polymorphisms):
     
         # Find where data needs to be output to, set up documents and folders accordingly accordingly
-        output_file_start = os.getcwd() + '/' + os.path.splitext(tree_name)[0]
+        output_file_start = os.getcwd() + '/' + os.path.splitext(os.path.basename(tree_name))[0]
         split_starting_output = output_file_start.split('/')
         
         #Find names of directories
