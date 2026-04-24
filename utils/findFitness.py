@@ -115,16 +115,16 @@ class findFitness:
             
     #Function which finds fitnesses from stationary distributions using R script if fitness file not given.
     #Writes fitnesses to new file so they may be reused in the future
-    def find_optimal_fitnesses(self, population_size, hpc):
+    def find_optimal_fitnesses(self, population_size, hpc, output_dir="."):
         print("Finding fitnesses for stationary distributions")
 
         self.fitness_mat = pd.DataFrame(calculateFitnesses.Find_fitnesses(self.stationary_dist_file, population_size, hpc))
         self.fitness_mat.columns=["A","C","D","E","F","G","H","I","K","L","M","N","P","Q","R","S","T","V","W","Y"]
         self.fitness_mat["X"] = self.fitness_mat.min(axis = 'columns')
         self.fitness_mat = self.fitness_mat.transpose()
-        
+
         #Write fitness matrix to csv for future use
-        self.fitness_mat.to_csv("table_fitness_dists.csv",  header=False)
+        self.fitness_mat.to_csv(os.path.join(output_dir, "table_fitness_dists.csv"), header=False)
 
 
 

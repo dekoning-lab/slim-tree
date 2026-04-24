@@ -67,8 +67,8 @@ class SLiMTree:
             #Read in the stationary distributions, processes fitness profiles and find ancestral sequences
             if(start_params["aa_fitness_distributions"] != None):
                 fitness_finder.process_existing_fitness_file(start_params["aa_fitness_distributions"])
-            elif (start_params["jukes_cantor"]):
-                fitness_finder.find_optimal_fitnesses(start_params["population_size"], start_params["high_performance_computing"])
+            else:
+                fitness_finder.find_optimal_fitnesses(start_params["population_size"], start_params["high_performance_computing"], start_params["filenames"][1])
                             
             start_params["fitness_profiles"], start_params["min_fitness"]  = fitness_finder.process_fitness_dists()
             

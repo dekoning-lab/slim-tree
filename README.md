@@ -76,6 +76,7 @@ optional arguments:
   -sr FLOAT                     split ratio for non-WF models — fraction of parent
                                 population going into first daughter (default: 0.5)
   -d FILE                       YAML file to override parameters on specific branches
+                                (see Branch-specific parameters below)
   -w, --nonWF                   use a non-Wright-Fisher model
   -N, --neutral_evolution       run neutral evolution (no fitness effects)
   -c, --count_subs              count substitutions per branch (slows simulation)
@@ -89,6 +90,34 @@ optional arguments:
   -p PARTITION                  Slurm partition name (required with -hpc)
   -t TIME                       maximum Slurm wall time, e.g. 12:00:00 (required with -hpc)
 ```
+
+## Branch-specific parameters
+
+The `-d` flag accepts a YAML file that overrides simulation parameters on specific branches. Each top-level key must match a branch name in the Newick tree:
+
+```yaml
+A:
+  n: 200
+B:
+  n: 600
+  v: 0.000001
+```
+
+**In local mode** (no `-hpc`), only population size (`n` / `population_size`) may be changed per branch.
+
+**In HPC mode** (`-hpc`), the following additional keys are supported:
+
+| Key | Full name | Description |
+|---|---|---|
+| `n` | `population_size` | Population size |
+| `v` | `mutation_rate` | Per-site mutation rate |
+| `m` | `mutation_matrix` | 4×4 mutation rate matrix file |
+| `r` | `recombination_rate` | Recombination rate |
+| `k` | `sample_size` | Sample size at branch end |
+| `sr` | `split_ratio` | Split ratio for non-WF branching |
+| `ps` | `profile_shift` | Shift to a different fitness profile mid-tree |
+
+> **Note:** Fitness profile shifts (`ps`) require `-hpc`. They are not supported in local mode.
 
 ## Examples
 

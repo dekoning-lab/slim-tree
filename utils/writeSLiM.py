@@ -120,7 +120,7 @@ class writeSLiM:
             count = 0;
             profile_num = 0;
     
-            textfile = open("fitness_profile_nums.txt", "w")
+            textfile = open(os.path.join(self.start_params["filenames"][1], "fitness_profile_nums.txt"), "w")
             for element in self.start_params["fitness_profile_nums"]:
                 textfile.write(str(element) + "\n")
             textfile.close()
@@ -400,7 +400,10 @@ class writeSLiM:
 
             define_population_string += str("\n\n\tsim.setValue(\"fixations_" + pop_name + "\", sim.getValue(\"fixations_"+
                                     population_parameters["parent_pop_name"] +"\"));" +
-                                    "\n\tsim.setValue(\"fixations_counted_"+ pop_name+"\", 0);")
+                                    "\n\tsim.setValue(\"fixations_counted_"+ pop_name+"\", 0);" +
+                                    "\n\tsim.setValue(\"dN_"+ pop_name+"\", 0);" +
+                                    "\n\tsim.setValue(\"dS_"+ pop_name+"\", 0);" +
+                                    "\n\tsim.setValue(\"subs_"+ pop_name+"\", \"\\n\\nSubstitutions:\");")
 
 
             define_population_string += "\n}\n\n\n"

@@ -2,89 +2,73 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Running SLiM-Tree
+## Commands
 
+**Install:**
 ```bash
-python3 slim-tree/ <input_tree> <codon_stationary_distributions> [options]
+pip install .
 ```
 
-Example with common options:
+**Run:**
 ```bash
-python3 slim-tree/ tree.txt stationary_distributions.csv -n 100 -v 2.5e-6 -g 300
+slim-tree <input_tree.txt> <stationary_distributions.csv> [options]
+# Example with substitution conversion:
+slim-tree my_tree.txt stationary_distributions.csv -s -n 100 -v 2.5e-6
 ```
 
-HPC mode (requires Slurm):
+**Run tests:**
 ```bash
-python3 slim-tree/ tree.txt stationary_distributions.csv -hpc -p <partition> -t <time>
+python3 -m unittest discover -s tests
 ```
 
-## Running Tests
-
-Run all tests from the `slim-tree/` directory:
+**Run a single test file:**
 ```bash
-python3 -m pytest tests/
+python3 -m unittest tests.testFindFitness
 ```
 
-Run a single test file:
+**Run an example:**
 ```bash
-python3 -m unittest tests/testReadInput.py
-python3 -m unittest tests/testCladeReader.py
-python3 -m unittest tests/testFindCoding.py
-python3 -m unittest tests/testFindFitness.py
-python3 -m unittest tests/testCalculateSelectionDenominators.py
+cd Examples/Ex_1_Default_Simulation
+slim-tree ex1_tree.txt stationary_distributions.csv
 ```
 
-Run a specific test method:
-```bash
-python3 -m unittest tests.testReadInput.testReadInput.test_check_arguments
-```
+## Architecture
 
-## Architecture Overview
+SLiM-Tree takes a Newick phylogenetic tree and generates/runs [SLiM](https://messerlab.org/slim/) forward-time simulation scripts. The pipeline runs in this order:
 
-SLiM-Tree is a Python wrapper that generates and runs [SLiM](https://messerlab.org/slim/) simulation scripts from a Newick phylogenetic tree. The pipeline has four stages:
+### Entry point
+`SLiMTree.py` — the `SLiMTree` class orchestrates the full pipeline: read input → process fitness → read clades → write and execute SLiM scripts. It includes a `while` loop to regenerate the ancestral sequence if it already carries the amino acid targeted by a profile shift.
 
-1. **Input parsing** (`utils/readInput.py`) — reads CLI arguments, validates them, builds a `start_params` dict, and creates output directories (`slimScripts/`, `aa_FASTA/`, `nuc_FASTA/`, and optionally `backupFiles/`, `slurmOutput/`, etc.).
+### Central data structure
+`start_params` — a flat dictionary assembled by `readInput` and passed through every pipeline stage. It holds all simulation parameters (population size, mutation rate, genome length, fitness profiles, ancestral sequence, file paths, etc.).
 
-2. **Fitness processing** (`utils/findFitness.py`, `utils/findCoding.py`, `utils/calculateSelectionDenominators.py`) — reads codon stationary distributions or amino acid fitness files, determines coding regions, assigns fitness profiles to codon positions in the genome, and computes dN/dS denominators when needed. The outer `while` loop in `SLiMTree.__init__` retries this stage if the ancestral sequence happens to match a profile-shift target.
+### Pipeline modules (`utils/`)
 
-3. **Tree traversal** (`utils/cladeReader.py`) — parses the Newick tree via BioPython, recursively traverses clades depth-first, and produces a list of per-clade parameter dictionaries sorted by distance from simulation start. A YAML `tree_data_file` (`-d` flag) can override population size, mutation rate/matrix, sample size, or trigger a `profile_shift` on a per-branch basis.
+| Module | Responsibility |
+|---|---|
+| `readInput.py` | Parses CLI args via `argparse`, validates them, creates output directories, saves parameters to YAML |
+| `findFitness.py` | Reads codon stationary distributions CSV, computes fitness profiles via KLD optimization (or uses provided `-fd` file), generates the ancestral codon sequence |
+| `calculateFitnesses.py` | Low-level fitness optimization using `scipy` — minimizes Kullback-Leibler divergence between SLiM-simulated and target stationary distributions |
+| `findCoding.py` | Partitions the genome into coding/non-coding regions given genome length, number of genes, and coding ratio |
+| `calculateSelectionDenominators.py` | Pre-computes dN and dS denominators for dN/dS calculations when `-S` flag is used |
+| `cladeReader.py` | Parses the Newick tree with BioPython `Phylo`, recursively walks the tree depth-first, and returns a list of per-branch dicts sorted by `dist_from_start` (breadth-first execution order required by SLiM) |
+| `convertTree.py` | Converts branch lengths from substitutions/site to generations using population size and mutation rate |
+| `writeSLiM.py` | Base class that writes `.slim` scripts for local execution (WF and non-WF models) |
+| `writeSLiMHPC.py` | Subclass that writes Slurm `.sh` job scripts instead of running locally |
 
-4. **SLiM script generation and launch** (`utils/writeSLiM.py`, `utils/writeSLiMHPC.py`) — writes one `.slim` (or `.sh` for HPC) script per clade. Scripts are chained sequentially; each script picks up where the parent population left off. The root simulation is then launched via `os.system("slim ...")` or `os.system("sbatch ...")`.
+### Supporting data
+`fitnessDataFiles/slim_codon_nums.csv` — maps codon triplets to SLiM's internal codon index numbering; required for constructing fitness callbacks in generated scripts.
 
-### Key data flow
+`fitnessDataFiles/table_stationary_distributions.csv` — example stationary distributions used in tests and examples.
 
-`start_params` dict is the central state object threaded through all stages. It holds all CLI parameters plus computed values like `ancestral_sequence`, `fitness_profiles`, `fitness_profile_nums`, `coding_seqs`, `scaling_value`, `filenames`, and the `fitness_finder` object itself.
+### Output structure
+All output is written relative to the input tree file's directory:
+- `slimScripts/` — generated `.slim` (or `.sh`) scripts, one per branch
+- `nuc_FASTA/` — nucleotide FASTA at each tip
+- `aa_FASTA/` — amino acid FASTA at each tip
+- `<tree_name>_parameters.yaml` — record of all run parameters
 
-### Mutation model
-
-Two modes controlled by `jukes_cantor` (set `True` when no `-m` matrix is supplied):
-- **Jukes-Cantor** (`jukes_cantor=True`): uniform mutation rate `-v`
-- **Matrix model** (`jukes_cantor=False`): 4×4 CSV matrix supplied via `-m`
-
-Per-branch overrides of mutation rate/matrix are handled in `cladeReader.read_clade_data()`.
-
-## Requirements
-
-- Python 3, R, SLiM
-- Protein-based fitness: Java and C also required
-- Python packages: `BioPython`, `matplotlib`, `pandas`, `numpy`, `yaml`, `argparse`
-- R packages: `dplyr`, `BB`, `data.table`, `optparse`, `seqinr`, `doParallel`, `Rfast`
-
-## Output Structure
-
-Generated relative to the input tree file location:
-- `slimScripts/` — generated `.slim` / `.sh` scripts (one per population/clade)
-- `aa_FASTA/` — amino acid FASTA outputs
-- `nuc_FASTA/` — nucleotide FASTA outputs
-- `backupFiles/` — simulation checkpoints (only with `-B`)
-- `slurmOutput/` — Slurm stdout/stderr (only with `-hpc`)
-- `selectionCalculationOutput/` — dN/dS data (only with `-S`)
-- `substitutionCountingOutput/` — substitution counts (only with `-c`)
-- `polymorphicSites/` — polymorphism data (only with `-P`)
-
-## Post-Processing
-
-The `DataPostProcessing/` folder contains standalone scripts for downstream analysis:
-- `process_data.py` — Python post-processing
-- `find_branch_lengths.py` — branch length analysis
-- `FindPercentPolymorphic.R`, `perform_analysis_fixation_counts.R`, `perform_statistical_analysis_branch_lengths.R` — R analysis scripts
+### Key design notes
+- The `clade_dict_list` produced by `cladeReader` must be sorted by `dist_from_start` because SLiM scripts for each branch reference the previous branch's state and must be launched in chronological order.
+- When `-hpc` is set, scripts are submitted via `sbatch` rather than executed directly; only population-size changes (and a few other parameters) can be varied per-branch in local mode, while HPC mode allows more per-branch overrides.
+- Branch-specific parameter overrides (population size, mutation rate, fitness profile shifts) are specified via a YAML file passed with `-d`; `cladeReader.read_clade_data` translates short CLI abbreviations to full key names before merging into each branch's dict.

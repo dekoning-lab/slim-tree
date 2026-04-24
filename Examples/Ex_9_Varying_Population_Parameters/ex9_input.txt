@@ -1,1 +1,1 @@
-slim-tree ex9_tree.txt stationary_distributions.csv -d ex9_pop_parameters.txt
+slim-tree ex9_tree.txt stationary_distributions.csv -d ex9_pop_parameters.txt -hpc

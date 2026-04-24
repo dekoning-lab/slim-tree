@@ -16,7 +16,7 @@ def substitutions_to_generations(tree_str, population_size, mutation_rate):
     # First pass: normalize so all decimal branch lengths collectively sum to 30
     def scale_to_30(match):
         return str(float(match.group()) * (30 / total))
-    tree_str = re.sub(r'\d+\.?\d*', scale_to_30, tree_str)
+    tree_str = re.sub(r'\d+\.\d+', scale_to_30, tree_str)
 
     # Compute the generation-time correction factor
     N, v = population_size, mutation_rate
@@ -25,4 +25,4 @@ def substitutions_to_generations(tree_str, population_size, mutation_rate):
     # Second pass: scale to generations and round to integers
     def to_generations(match):
         return str(round(float(match.group()) * (Tbfix / 3)))
-    return re.sub(r'\d+\.?\d*', to_generations, tree_str)
+    return re.sub(r'\d+\.\d+', to_generations, tree_str)
