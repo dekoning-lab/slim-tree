@@ -120,7 +120,7 @@ class writeSLiM:
             count = 0;
             profile_num = 0;
     
-            textfile = open(os.path.join(self.start_params["filenames"][1], "fitness_profile_nums.txt"), "w")
+            textfile = open(os.path.join(os.path.dirname(self.start_params["filenames"][1]), "fitness_profile_nums.txt"), "w")
             for element in self.start_params["fitness_profile_nums"]:
                 textfile.write(str(element) + "\n")
             textfile.close()
