@@ -28,7 +28,7 @@ slim-tree my_tree.txt stationary_distributions.csv
 ```
 
 - `my_tree.txt` — Newick tree with branch lengths **in generations**
-  If your tree has branch lengths in **substitutions per site**, use `-s` to convert automatically:
+  If your tree has branch lengths in **substitutions per site**, use `-s` to convert automatically: [NEED TO RUN MORE TEST TO MAKE SURE -s WORKS - WORKING ON IT]
 - `stationary_distributions.csv` — codon stationary distributions (61 codons × N profiles)
 
 
