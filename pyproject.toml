@@ -43,7 +43,7 @@ dependencies = [
 Repository = "https://github.com/afarineshpanahy/slim-tree"
 
 [project.scripts]
-slim-tree = "SLiMTree:SLiMTree"
+slim-tree = "SLiMTree:main"
 
 [tool.setuptools]
 py-modules = ["SLiMTree"]

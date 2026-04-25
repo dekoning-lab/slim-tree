@@ -134,5 +134,8 @@ class SLiMTree:
 
 
 
-if __name__=='__main__':
+def main():
     SLiMTree()
+
+if __name__=='__main__':
+    main()

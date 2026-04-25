@@ -35,7 +35,7 @@ slim-tree tree.txt stat_dists.csv -m mut_mat.csv -n 50 -b 2 -g 10
 ---
 
 ### Bug 2 — Two output files written to CWD instead of output directory ❌
-**Status:** 🟢 Fixed — `findFitness.py:127` and `writeSLiM.py:123` now use `os.path.join(output_dir, ...)` with `filenames[1]`
+**Status:** 🟢 Fixed — `writeSLiM.py:123` uses `os.path.dirname(filenames[1])`; `findFitness.py:127` now also uses `os.path.join(os.path.dirname(output_dir), ...)` (previously applied incorrectly)
 
 **Symptom:** `fitness_profile_nums.txt` and `table_fitness_dists.csv` appear in whatever directory the command is run from, not in the simulation output folder. They are silently overwritten on each run.
 
@@ -43,7 +43,7 @@ slim-tree tree.txt stat_dists.csv -m mut_mat.csv -n 50 -b 2 -g 10
 - `utils/writeSLiM.py:123` — `open("fitness_profile_nums.txt", "w")` — bare filename, no path
 - `utils/findFitness.py:127` — `self.fitness_mat.to_csv("table_fitness_dists.csv", header=False)` — bare filename, no path
 
-**Fix:** Prepend the output directory path (derivable from `start_params["filenames"][1]`) to both filenames.
+**Fix:** Use `os.path.dirname(filenames[1])` to get the output directory. Note: outputs are written to CWD (by design — allows replicate workflows where input files are shared but each replicate runs from its own directory).
 
 ---
 
@@ -112,31 +112,12 @@ slim-tree tree.txt stat_dists.csv -w -S -n 50 -b 2 -g 10
 ---
 
 ### Bug 7 — Bundled `fitnessDataFiles/table_stationary_distributions.csv` unusable as input ❌
-**Status:** 🔴 Open
-
-**Symptom:**
-```
-Please ensure the first row of your stationary distributions is the codon names. Exiting.
-```
-
-**Root cause:** The packaged file has shape `(21, 49)` with floating-point values as the row index. The program requires shape `(61, N)` with codon triplets (GCA, GCC, …) as the row index. The file appears to be a fitness distribution file mistakenly named and placed as a stationary distributions file.
-
-**Also:** All 10 `Examples/Ex_*/` directories reference `stationary_distributions.csv` which does not exist in those folders.
-
-**Fix:**
-- Replace `fitnessDataFiles/table_stationary_distributions.csv` with a correctly formatted 61-row codon file (e.g. a copy of `tests/testFiles/table_stationary_dists_full.csv`).
-- Add a copy of that file to each `Examples/Ex_*/` directory.
+**Status:** 🟢 Fixed — correctly formatted `stationary_distributions.csv` (61 rows, codon triplet index) added to each `Examples/Ex_*/` directory.
 
 ---
 
-### Bug 8 — `-c`, `-S`, `-P` write output for internal (non-tip) populations ❌
-**Status:** 🔴 Open
-
-**Symptom:** Running with any of `-c`, `-S`, `-P` produces output files for every population including internal ancestor populations (e.g. `unnamed_population_p1_num_subs.txt`, `unnamed_population_p1_dNdS.txt`). These have no meaningful biological interpretation.
-
-**Root cause:** `utils/writeSLiM.py` — `write_end_pop()` has the substitution-count, dN/dS, and polymorphism write blocks outside the `if(population_parameters["terminal_clade"]):` gate, so they run for every branch regardless of whether it is a tree tip.
-
-**Fix:** Move those three output blocks inside the `terminal_clade` gate, or document explicitly that per-branch (not just per-tip) output is intended.
+### Bug 8 — `-c`, `-S`, `-P` write output for internal (non-tip) populations
+**Status:** 🟢 Closed (by design) — internal-node output is intentional. Substitution counts, dN/dS, and polymorphism files for ancestor populations are useful for studying what happened along internal branches of the tree.
 
 ---
 

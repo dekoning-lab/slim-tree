@@ -124,7 +124,7 @@ class findFitness:
         self.fitness_mat = self.fitness_mat.transpose()
 
         #Write fitness matrix to csv for future use
-        self.fitness_mat.to_csv(os.path.join(output_dir, "table_fitness_dists.csv"), header=False)
+        self.fitness_mat.to_csv(os.path.join(os.path.dirname(output_dir), "table_fitness_dists.csv"), header=False)
 
 
 
