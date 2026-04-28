@@ -14,8 +14,9 @@ Before installing SLiM-Tree, ensure the following are available on your system:
 ## Installation
 
 ```bash
-git clone https://github.com/afarineshpanahy/slim-tree
-cd slim-tree/slim-tree
+git clone git@github.com:dekoning-lab/slim-tree.git 
+cd slim-tree
+git checkout Afarinesh (FOR NOW)
 pip install .
 ```
 
