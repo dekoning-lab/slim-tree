@@ -54,6 +54,7 @@ class readInput:
         parser.add_argument('-p', '--partition', type = str, help = 'partition to run Slurm o n - required if using high performance computing')
         parser.add_argument('-t', '--time', type = str, help = 'maximum time to run each simulation for - suggested time is the maximum ' +
                                 'time available for a partition - required if using high performance computing')
+        parser.add_argument('-M', '--memory', type = str, help = 'memory to request per Slurm job, e.g. 16g or 32000M - required if using high performance computing')
 
         #Simulation parameters
         parser.add_argument('-w', '--nonWF', action='store_true', default=False, help = 'boolean flag to specify that a non-wright-fisher ' +

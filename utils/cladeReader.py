@@ -45,6 +45,7 @@ class cladeReader:
         data_translation = {
             'p': 'partition',
             't': 'time',
+            'M': 'memory',
             'n': 'population_size',
             'r': 'recombination_rate',
             'v': 'mutation_rate',
@@ -201,6 +202,7 @@ class cladeReader:
             "split_ratio": self.start_params["split_ratio"],
             "partition": self.start_params["partition"],
             "time" : self.start_params["time"],
+            "memory" : self.start_params["memory"],
             "count_subs" : self.start_params["count_subs"],
             "output_gens" : self.start_params["output_gens"],
             "backup" : self.start_params["backup"],
@@ -274,7 +276,7 @@ class cladeReader:
                     if(keyname == 'mutation_matrix'):
                         input_reader = readInput.readInput()
                         clade_dict[keyname] = input_reader.make_mutation_matrix(str(current_clade_data[keyname]))
-                    elif (keyname == 'partition' or keyname == 'time' or keyname == 'sample_size'):
+                    elif (keyname == 'partition' or keyname == 'time' or keyname == 'memory' or keyname == 'sample_size'):
                         clade_dict[keyname] = str(current_clade_data[keyname])
                     else:
                         clade_dict[keyname] = current_clade_data[keyname]

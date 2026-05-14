@@ -53,17 +53,20 @@ class writeSLiMHPC(writeSLiM):
         self.output_file.close()
         
     
-    ##Create a new slim script and batch file for the population        
+    ##Create a new slim script and batch file for the population
     def create_scripts(self, population_parameters):
-        
+
         pop_name = population_parameters["pop_name"]
-    
+        slim_dir = os.path.dirname(self.start_params["filenames"][0])
+
         #Write out batch file to run slim script
         batch_file = open(self.start_params["filenames"][0] + "_" + pop_name + ".sh", "w")
+        mem_line = ("\n#SBATCH --mem=" + population_parameters["memory"]) if population_parameters["memory"] is not None else ""
         batch_file.write("#!/bin/sh\n\n#SBATCH -J SLiM_Simulation_" + pop_name + "\n#SBATCH -t " + population_parameters["time"] +
-                "\n#SBATCH -p "  + population_parameters["partition"] + "\n#SBATCH -o " + self.start_params["filenames"][3] + "/" + pop_name + ".out" + 
+                "\n#SBATCH -p "  + population_parameters["partition"] + mem_line +
+                "\n#SBATCH -o " + self.start_params["filenames"][3] + "/" + pop_name + ".out" +
                 "\n#SBATCH -e " +  self.start_params["filenames"][3] + "/" + pop_name + ".err" +
-                "\n#SBATCH -n 1" + "\n\nslim \'" + self.start_params["filenames"][0] + "_" + pop_name +".slim\'")
+                "\n#SBATCH -n 1" + "\n\ncd '" + slim_dir + "'\nslim \'" + self.start_params["filenames"][0] + "_" + pop_name +".slim\'")
         batch_file.close()
         
         #Open slim script
@@ -168,7 +171,8 @@ class writeSLiMHPC(writeSLiM):
                                       ".fasta\", (\">parent_ancestral_to_load\\n\" + sim.chromosome.ancestralNucleotides()));")
         
             #Write out the fixed mutations - this is different than in single computer because we need the old fixations to run the next pop
-            end_population_string += ("\n\twriteFile(\"" + os.getcwd()+ "/" + population_parameters["pop_name"] + "_fixed_mutations.txt\"," +
+            slim_dir = os.path.dirname(self.start_params["filenames"][0])
+            end_population_string += ("\n\twriteFile(\"" + slim_dir + "/" + population_parameters["pop_name"] + "_fixed_mutations.txt\"," +
                     " paste(codonsToNucleotides(nucleotidesToCodons(sim.getValue(\"fixations_p1\"))), sep = \"\"));")
         
         #Write file with the substitution counts

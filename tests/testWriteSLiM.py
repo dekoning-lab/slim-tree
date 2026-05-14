@@ -62,6 +62,7 @@ def _make_root_pop(**overrides):
         "fitness_profile_nums": [0, 1, 0],
         "time": "24:00:00",
         "partition": "normal",
+        "memory": None,
     }
     params.update(overrides)
     return params
@@ -92,6 +93,7 @@ def _make_child_pop(**overrides):
         "fitness_profile_nums": [0, 1, 0],
         "time": "24:00:00",
         "partition": "normal",
+        "memory": None,
     }
     params.update(overrides)
     return params
@@ -521,6 +523,24 @@ class testWriteSLiMHPC(unittest.TestCase):
         self.assertIn("rm", c)
         self.assertIn("p1.txt", c)
         self.assertIn("p1.fasta", c)
+
+    # ── -M / --memory flag ──
+
+    def test_create_scripts_sh_no_mem_line_when_memory_not_set(self):
+        # memory=None (default) → no --mem directive, script identical to before
+        w = writeSLiMHPC(self.sp)
+        w.create_scripts(_make_root_pop(memory=None))
+        w.output_file.close()
+        sh = self._read_sh("p1")
+        self.assertNotIn("--mem", sh)
+
+    def test_create_scripts_sh_includes_mem_when_memory_set(self):
+        # memory="16g" → #SBATCH --mem=16g present in script
+        w = writeSLiMHPC(self.sp)
+        w.create_scripts(_make_root_pop(memory="16g"))
+        w.output_file.close()
+        sh = self._read_sh("p1")
+        self.assertIn("#SBATCH --mem=16g", sh)
 
 
 if __name__ == "__main__":

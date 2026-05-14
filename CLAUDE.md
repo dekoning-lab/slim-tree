@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 SLiM-Tree is a Python CLI tool that automates the generation and execution of [SLiM](https://messerlab.org/slim/) (population genetics simulator) scripts from Newick phylogenetic trees. It simulates sequence evolution across multiple clades with fitness effects derived from codon stationary distributions, producing nucleotide and amino acid FASTA sequences at tree tips.
 
-**External runtime dependencies:** SLiM must be installed and on PATH. An R installation may be required if using fitness distribution modes that invoke R optimization.
+**External runtime dependencies:** SLiM 4.x must be installed and on PATH. R (with packages `dplyr`, `BB`, `data.table`, `optparse`, `seqinr`, `doParallel`, `Rfast`) is required when computing fitness profiles from scratch (no `-fd` and not `-N`). Python dependencies: `biopython`, `pandas`, `numpy`, `scipy`, `pyyaml` (installed automatically via `pip install .`).
 
 ## Installation
 
@@ -14,7 +14,7 @@ SLiM-Tree is a Python CLI tool that automates the generation and execution of [S
 pip install .
 ```
 
-This installs the `slim-tree` CLI entry point (defined in `pyproject.toml` as `SLiMTree:SLiMTree`).
+This installs the `slim-tree` CLI entry point (defined in `pyproject.toml` as `SLiMTree:main`). You can also invoke via `python slim-tree/` thanks to `__main__.py`.
 
 ## Running Tests
 
@@ -24,9 +24,14 @@ Tests are plain Python unittest files in `tests/`. Run them individually or with
 # Run a single test file
 python -m pytest tests/testConvertTree.py
 
-# Run all tests
+# Run all tests (pytest)
 python -m pytest tests/
+
+# Run all tests (unittest discover — matches Testing_Checklist.txt)
+python3 -m unittest discover -s tests
 ```
+
+Full QA per `tests/Testing_Checklist.txt`: (1) run all unit tests, (2) run all 10 examples in `Examples/`, (3) visually verify fitness profile output.
 
 No linting configuration is present in this repo.
 
@@ -42,8 +47,52 @@ CLI args → param_dict → tree parsing → fitness computation → SLiM script
 2. **`utils/cladeReader.py`** — Parses the Newick tree (via BioPython) into per-clade data structures. Handles branch-specific parameter overrides from the YAML file (`-d` flag).
 3. **`utils/findFitness.py`** — Converts codon stationary distributions into per-amino-acid fitness values. Calls `utils/calculateFitnesses.py` for the underlying optimization.
 4. **`utils/findCoding.py`** — Assigns coding regions and fitness profiles, generates the ancestral sequence.
-5. **`utils/writeSLiM.py`** / **`utils/writeSLiMHPC.py`** — Generates `.slim` scripts (and Slurm `.sh` job scripts in HPC mode). One script per population is produced for multi-clade trees.
-6. **`SLiMTree.py`** — Top-level orchestrator. Contains a `while(run_random_process)` loop that re-runs fitness/ancestral-sequence generation if the ancestral sequence accidentally contains a target amino acid during a fitness profile shift (rare but possible).
+5. **`utils/writeSLiM.py`** / **`utils/writeSLiMHPC.py`** — Generates `.slim` scripts (and Slurm `.sh` job scripts in HPC mode). One script per population is produced for multi-clade trees. `writeSLiMHPC` subclasses `writeSLiM` and overrides only the population-writing methods; shared script logic lives in the base class.
+6. **`SLiMTree.py`** — Top-level orchestrator. The `while(run_random_process)` loop re-runs the entire fitness+ancestral-sequence pipeline when `cladeReader` sets `redo_random=True` (happens when a profile-shift produces an ancestral sequence already containing the target amino acid). Can iterate multiple times; each iteration calls R again if needed.
+
+### `param_dict` Key Structures
+
+`readInput.process_filenames()` populates `param_dict["filenames"]` as a 9-element list:
+
+| Index | Value |
+|---|---|
+| 0 | Script output prefix (`slimScripts/<tree_stem>`) |
+| 1 | Base output prefix (used for `_parameters.yaml` and as dir anchor) |
+| 2 | Backup dir (or `None`) |
+| 3 | Slurm output dir (or `None`) |
+| 4 | dN/dS output dir (or `None`) |
+| 5 | Substitution counting dir (or `None`) |
+| 6 | Polymorphic sites dir (or `None`) |
+| 7 | `nuc_FASTA/` dir |
+| 8 | `aa_FASTA/` dir |
+
+All directories are relative to the **input tree file's parent directory**, not `os.getcwd()`.
+
+Other top-level keys set in `param_dict` by the pipeline (not all from argparse):
+
+| Key | Set by | Purpose |
+|---|---|---|
+| `ancestral_sequence` | `process_fitness` | Starting nucleotide sequence |
+| `coding_seqs` | `process_fitness` | Coding region coordinates |
+| `fitness_profiles` | `process_fitness` | Per-profile AA fitness arrays |
+| `fitness_profile_nums` | `process_fitness` | Per-codon profile assignment |
+| `min_fitness` | `process_fitness` | Minimum fitness scalar |
+| `scaling_value` | `process_fitness` | Fitness scaling factor |
+| `stat_mat` | `process_fitness` | Stationary distribution matrix |
+| `fitness_finder` | `process_fitness` | `findFitness` object (passed to `cladeReader`) |
+| `dn_denom` / `ds_denom` | `process_fitness` | dN/dS denominators (only when `-S`) |
+| `input_tree_string` | `readInput` | Modified tree string (only when `-s`) |
+
+### `fitnessDataFiles/` Package
+
+Contains two bundled CSVs required at runtime:
+- `slim_codon_nums.csv` — SLiM integer encoding for each codon (loaded by `findFitness`)
+- `table_stationary_distributions.csv` — reference stationary distributions (not used as direct CLI input; examples ship their own)
+- `5687A600` — R cache artifact generated by `findFitness`; safe to ignore in version control
+
+### R Dependency
+
+R is invoked via `subprocess` inside `findFitness.find_optimal_fitnesses()` when fitness profiles must be computed from scratch (no `-fd` file and not `-N`). The R call is skipped entirely when either flag is present, so SLiM-Tree can run without R in those modes.
 
 ### Execution Modes
 
@@ -53,11 +102,11 @@ CLI args → param_dict → tree parsing → fitness computation → SLiM script
 
 ### Branch-Level Parameter Overrides
 
-The `-d <yaml>` flag accepts a YAML file mapping branch names to per-branch parameter overrides (population size, mutation rate, recombination rate, sample size, split ratio, or fitness profile shifts). HPC mode supports a superset of the parameters available in local mode.
+The `-d <yaml>` flag accepts a YAML file mapping branch names to per-branch parameter overrides. **Local mode** only supports `n` (population size). **HPC mode** additionally supports: `v` (mutation rate), `m` (mutation matrix), `r` (recombination rate), `k` (sample size), `sr` (split ratio), `ps` (fitness profile shift — HPC only, intentionally blocked in local mode).
 
 ### Output Location
 
-All outputs (`.slim` scripts, FASTA sequences, parameter YAML) are written to the **directory containing the input tree file**, not the working directory.
+All outputs (`.slim` scripts, FASTA sequences, parameter YAML) are written to the **directory containing the input tree file**, not the working directory. `fitness_profile_nums.txt` and `table_fitness_dists.csv` are written to CWD by design, to support replicate workflows where input files are shared but each replicate runs from its own directory.
 
 ### Key Files
 
@@ -68,12 +117,57 @@ All outputs (`.slim` scripts, FASTA sequences, parameter YAML) are written to th
 | `utils/cladeReader.py` | Newick tree traversal and clade data structures |
 | `utils/findFitness.py` | Fitness profile computation from stationary distributions |
 | `utils/calculateFitnesses.py` | Fitness optimization algorithm (called by findFitness) |
+| `utils/calculateFitnesses_old.py` | **Legacy dead code** — superseded by `calculateFitnesses.py`, do not use |
 | `utils/writeSLiM.py` | SLiM script generation (local mode) |
 | `utils/writeSLiMHPC.py` | SLiM + Slurm script generation (HPC mode) |
-| `utils/convertTree.py` | Branch length conversion (substitutions/site → generations) |
-| `utils/calculateSelectionDenominators.py` | dN/dS calculation support (used with `-S` flag) |
+| `utils/convertTree.py` | Branch length conversion (substitutions/site → generations), used when `-s` is set |
+| `utils/findCoding.py` | Assigns coding regions (first `coding_ratio × genome_length` codons) and generates ancestral sequence |
+| `utils/calculateSelectionDenominators.py` | dN/dS denominators (only used with `-S` flag) |
+
+### CLI Flags Quick Reference
+
+| Flag | Long form | Default | Notes |
+|---|---|---|---|
+| *(pos)* | `input_tree` | — | Newick tree; branch lengths in generations |
+| *(pos)* | `codon_stationary_distributions` | — | 61-row CSV of codon stationary distributions |
+| `-fd` | `--aa_fitness_distributions` | `None` | Pre-computed AA fitness file; skips R optimisation |
+| `-n` | `--population_size` | 100 | |
+| `-b` | `--burn_in_multiplier` | 10 | Multiplied by `-n` for burn-in length |
+| `-v` | `--mutation_rate` | 2.5e-6 | Ignored when `-m` is supplied |
+| `-m` | `--mutation_matrix` | `None` | 4×4 CSV (A,C,G,T order, diagonal=0) |
+| `-r` | `--recombination_rate` | 2.5e-8 | |
+| `-g` | `--genome_length` | 300 | Codons |
+| `-G` | `--gene_count` | 1 | |
+| `-C` | `--coding_ratio` | 1.0 | Fraction of genome that is coding |
+| `-f` | `--fasta_file` | `None` | Ancestral AA FASTA; requires `-fd` |
+| `-k` | `--sample_size` | `all` | `all`, `consensus`, or integer |
+| `-sr` | `--split_ratio` | 0.5 | non-WF branching fraction into first daughter |
+| `-d` | `--tree_data_file` | `None` | YAML for per-branch overrides |
+| `-s` | `--substitutions` | `False` | Convert branch lengths from subs/site to generations |
+| `-w` | `--nonWF` | `False` | Use non-Wright-Fisher model |
+| `-N` | `--neutral_evolution` | `False` | Skip fitness computation |
+| `-c` | `--count_subs` | `False` | Count substitutions per branch |
+| `-o` | `--output_gens` | `False` | Output every 100th generation |
+| `-B` | `--backup` | `False` | Save simulation checkpoints |
+| `-P` | `--polymorphisms` | `False` | Record polymorphic sites |
+| `-S` | `--calculate_selection` | `False` | Compute dN/dS |
+| `-hpc` | `--high_performance_computing` | `False` | Generate Slurm scripts instead of running |
+| `-p` | `--partition` | `None` | Slurm partition (required with `-hpc`) |
+| `-t` | `--time` | `None` | Slurm wall time, e.g. `12:00:00` (required with `-hpc`) |
+| `-M` | `--memory` | `None` | Slurm memory per job, e.g. `16g` or `32000M`. Omit to use cluster default |
+
+### Gotchas
+
+- **`-v` and `-m` are mutually exclusive but not enforced by argparse.** Specifying both is silently accepted; `-m` wins inside the SLiM script. Branch YAML overrides allow `-v` in local mode and `-m` in HPC mode only.
+- **`dn_denom`/`ds_denom` and `input_tree_string` are only present in `param_dict` when `-S` or `-s` are set**, respectively. Access them only after checking the corresponding flag.
+- **High-risk untested flag combinations** (no integration tests; past bugs came from these): `-m` without `-fd`, `-s` with bootstrap integers in the Newick, `-w -S` combined, `ps:` in a local-mode `-d` YAML.
 
 ### Examples and Post-Processing
 
-- `Examples/` — 10 worked examples covering different tree topologies and parameter combinations.
-- `DataPostProcessing/` — R/Python scripts for analyzing simulator output.
+- `Examples/` — 10 worked examples (`Ex_1` through `Ex_10`). Each example folder contains its own `stationary_distributions.csv`. Run from inside the example folder.
+- `DataPostProcessing/` — R/Python scripts for downstream analysis (branch length estimation, dN/dS, fixation counts, polymorphism).
+- `slimtree-calculate-K.md` — step-by-step guide for computing the substitution rate K from `-c` output.
+
+### Active Issue Tracker
+
+`bugs.md` in the repo root tracks known bugs and code-quality issues with reproduction steps, root-cause notes, and fix status. Check it before investigating unexpected runtime behaviour. The unit test suite has no end-to-end integration tests; the untested combinations are listed in the "No-test-coverage gaps" section of `bugs.md`.

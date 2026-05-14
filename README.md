@@ -90,6 +90,8 @@ optional arguments:
                                 generate Slurm job scripts instead of running locally
   -p PARTITION                  Slurm partition name (required with -hpc)
   -t TIME                       maximum Slurm wall time, e.g. 12:00:00 (required with -hpc)
+  -M MEMORY                     memory to request per Slurm job, e.g. 16g or 32000M
+                                (optional; omit to use the cluster default)
 ```
 
 ## Branch-specific parameters

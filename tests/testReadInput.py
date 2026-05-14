@@ -26,6 +26,7 @@ class testReadInput(unittest.TestCase):
                 self.high_performance_computing = False
                 self.partition = 'apophis'
                 self.time = '12:00:00'
+                self.memory = None
                 self.nonWF = True
                 self.population_size = 100
                 self.burn_in_multiplier = 10
