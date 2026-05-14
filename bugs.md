@@ -162,6 +162,25 @@ if population_parameters["count_subs"] or population_parameters["calculate_selec
 
 ---
 
+### Bug 9 — HPC race condition: last sibling deletes parent's chain files before slower siblings start
+**Status:** 🟢 Fixed — removed `rm` cleanup block from `writeSLiMHPC.write_end_sim` (`writeSLiMHPC.py:217–220`)
+
+**Symptom:**
+```
+ERROR (Species::ExecuteContextFunction_initializeAncestralNucleotides): the file at path p1.fasta could not be opened or does not exist.
+Error on script line 4, character 1:
+   initializeAncestralNucleotides("p1.fasta");
+```
+
+**Reproduction:**
+Any HPC run on a tree with at least one internal branching node, when sibling Slurm jobs experience unequal queue wait times.
+
+**Root cause:** `write_end_sim()` appended `system("rm p1.txt"); system("rm p1.fasta"); ...` to the `last_child_clade`'s script. All sibling jobs are submitted simultaneously at the end of the parent's simulation. On a busy cluster the last-child job can get resources immediately and finish (deleting `p1.fasta`) while sibling jobs are still queued. When a sibling eventually starts, it tries to read `p1.fasta` in its `initialize()` block and fails.
+
+**Fix:** Remove the three `rm` lines entirely (`writeSLiMHPC.py:217–220`). The intermediate `.txt`, `.fasta`, and `_fixed_mutations.txt` files are small (KB–MB range) and safe to leave on disk until all jobs complete.
+
+---
+
 ## No-test-coverage gaps
 
 The 68 unit tests all pass but none of them test the full pipeline end-to-end. The following scenarios have zero test coverage and produced runtime bugs above:

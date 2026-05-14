@@ -156,9 +156,14 @@ All outputs (`.slim` scripts, FASTA sequences, parameter YAML) are written to th
 | `-t` | `--time` | `None` | Slurm wall time, e.g. `12:00:00` (required with `-hpc`) |
 | `-M` | `--memory` | `None` | Slurm memory per job, e.g. `16g` or `32000M`. Omit to use cluster default |
 
+### HPC Job Chaining
+
+In HPC mode, Python only submits `_p1.sh` at the end of `SLiMTree.__init__()`. Each subsequent child population's job is auto-submitted from *within* the SLiM script via an embedded `system("sbatch <child>.sh")` call written by `writeSLiMHPC.write_start_pop()` (see `writeSLiMHPC.py:116`). So the full multi-population chain runs without manual intervention once p1 is queued.
+
 ### Gotchas
 
-- **`-v` and `-m` are mutually exclusive but not enforced by argparse.** Specifying both is silently accepted; `-m` wins inside the SLiM script. Branch YAML overrides allow `-v` in local mode and `-m` in HPC mode only.
+- **`-v` and `-m` are mutually exclusive but not enforced by argparse.** Specifying both is silently accepted; `-m` wins inside the SLiM script.
+- **Branch YAML overrides are stricter than the CLI flags.** In local mode, only `n` (`population_size`) is accepted; any other key causes immediate exit. In HPC mode all keys (`v`, `m`, `r`, `k`, `sr`, `ps`) are valid. This is enforced in `cladeReader.py:71-78`.
 - **`dn_denom`/`ds_denom` and `input_tree_string` are only present in `param_dict` when `-S` or `-s` are set**, respectively. Access them only after checking the corresponding flag.
 - **High-risk untested flag combinations** (no integration tests; past bugs came from these): `-m` without `-fd`, `-s` with bootstrap integers in the Newick, `-w -S` combined, `ps:` in a local-mode `-d` YAML.
 
@@ -170,4 +175,13 @@ All outputs (`.slim` scripts, FASTA sequences, parameter YAML) are written to th
 
 ### Active Issue Tracker
 
-`bugs.md` in the repo root tracks known bugs and code-quality issues with reproduction steps, root-cause notes, and fix status. Check it before investigating unexpected runtime behaviour. The unit test suite has no end-to-end integration tests; the untested combinations are listed in the "No-test-coverage gaps" section of `bugs.md`.
+`bugs.md` tracks known bugs and code-quality issues with reproduction steps, root-cause notes, and fix status. **Bugs 1–9 are all fixed.** Four code-quality issues remain open:
+
+| ID | Location | Issue |
+|---|---|---|
+| CQ1 | `writeSLiM.py:275` | Dead `integer(row_num*1500)` allocation before immediate reassignment |
+| CQ2 | `calculateSelectionDenominators.py:119` | Unused variable `ndists` |
+| CQ3 | `writeSLiM.py:38,148` | `fixations_p1` initialised twice per run |
+| CQ4 | `writeSLiM.py:358–361` | `dN_`/`dS_`/`subs_` unconditionally initialised even when `-S` is not set |
+
+The unit test suite has no end-to-end integration tests; the untested combinations are listed in the "No-test-coverage gaps" section of `bugs.md`.
