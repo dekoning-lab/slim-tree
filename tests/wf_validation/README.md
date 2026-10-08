@@ -1,6 +1,6 @@
-# Wright–Fisher validation suite
+# Wright–Fisher and non-WF validation suite
 
-This suite checks that SLiM-Tree's Wright–Fisher simulations reproduce weak-mutation population-genetic theory. It compares long simulations with exact theoretical expectations for substitution rates and for the stationary distribution of codons at sites with a given fitness profile.
+This suite checks that SLiM-Tree's Wright–Fisher simulations, and with `--model nonWF` its non-WF simulations, reproduce weak-mutation population-genetic theory. It compares long simulations with exact theoretical expectations for substitution rates and for the stationary distribution of codons at sites with a given fitness profile.
 
 ## What is tested
 
@@ -49,6 +49,7 @@ Weak-mutation theory requires θ = 4Nμ ≤ 0.01. θ = 0.001 is safer, but runs 
 ```bash
 python -m pytest tests/wf_validation/test_theory.py
 python tests/wf_validation/suite.py --outdir tests/wf_validation/runs/<name> --jobs 22
+python tests/wf_validation/suite.py --model nonWF --outdir tests/wf_validation/runs/<name> --jobs 22
 WFV_RESULTS=tests/wf_validation/runs/<name>/results.json python -m pytest tests/wf_validation/test_wf_validation.py
 ```
 
@@ -59,11 +60,30 @@ WFV_RESULTS=tests/wf_validation/runs/<name>/results.json python -m pytest tests/
 
 ## Fitness model under test
 
-Wright–Fisher scripts compute fitness multiplicatively. The fitness profiles are fitted (`utils/calculateFitnesses.py`) treating the difference between two amino acids' values as the selection coefficient of a change at one site, so each codon whose amino acid differs from the ancestor multiplies a haplosome's selection factor by exp(f_new − f_ancestral). An individual's fitness is the product of its two haplosomes' factors. Earlier versions added per-site values across the sequence and averaged the two haplosomes, so a change at one site moved fitness by only a small fraction of its intended selection coefficient. On that code the profile configurations fail: nonsynonymous substitution rates were 3–4 times theory for the strong and graded profiles, and the stationary distributions were far from their targets (total variation distance 0.53–0.59, against 0.64–0.78 for a fully neutral distribution). Non-WF models keep the additive form.
+Wright–Fisher scripts compute fitness multiplicatively. The fitness profiles are fitted (`utils/calculateFitnesses.py`) treating the difference between two amino acids' values as the selection coefficient of a change at one site, so each codon whose amino acid differs from the ancestor multiplies a haplosome's selection factor by exp(f_new − f_ancestral). An individual's fitness is the product of its two haplosomes' factors. Earlier versions added per-site values across the sequence and averaged the two haplosomes, so a change at one site moved fitness by only a small fraction of its intended selection coefficient. On that code the profile configurations fail: nonsynonymous substitution rates were 3–4 times theory for the strong and graded profiles, and the stationary distributions were far from their targets (total variation distance 0.53–0.59, against 0.64–0.78 for a fully neutral distribution). Non-WF models use the same fitness; see below.
 
 - **Null alleles:** a gene is null in a haplosome if its start codon or terminal stop codon has changed, or if it carries a premature stop codon. Each gene multiplies fitness by 1 with two functional copies, 0.5 with one and 0 with none.
 - **Pseudogenization:** in a haplosome where a gene is null, that gene's codons contribute nothing to the selection factor. A null protein's sequence is unconstrained.
 - **Several genes:** null alleles are scored per gene, so null copies of different genes complement each other.
+
+## Non-WF models
+
+SLiM-Tree's non-WF scripts (`-w`) give every individual b offspring per tick (b = 1), each with a random mate. Parents and offspring then survive together with probability w·K/Σw, where w is the fitness above and K the population size. That keeps the expected size at K whatever the mean fitness.
+
+The top-level README ("Non-WF models") and `utils/nonWFLifeCycle.py` state the life cycle's assumptions and its consequences in general form. With b = 1:
+- one generation is 2 ticks;
+- the effective size is 16K/11 per tick;
+- SLiM-Tree multiplies selection coefficients by 11/16 (`NONWF_SELECTION_SCALE`) so that scaled selection matches the 4Kf the profiles are fitted for.
+
+`theory.py` derives the same quantities independently for any b, including the fixation probability (a diffusion approximation). `test_theory.py` checks that the two derivations agree.
+
+With `--model nonWF`, rates are per tick. The harness reads the selection scale and b from the generated script. Each profile also reports how far the non-WF stationary distribution is from the Wright–Fisher target, which is the distribution the profile was fitted to.
+
+**Results** (SLiM 5.2; N = 100, θ = 0.01, 300 codons, 100,000 ticks; 10/10/20 replicates). All 25 scored checks pass:
+- The neutral substitution rate is 0.986 ± 0.009 of μ/2 per tick.
+- Site-profile rates are between 0.950 and 1.013 of theory. The Wright–Fisher suite shows the same small average deficit, about 2%.
+- The stationary-distribution p-values range from 0.047 to 0.89.
+- Non-WF theory is within codon TVD 0.0012 of the Wright–Fisher targets.
 
 ## SLiM 5
 
@@ -74,7 +94,7 @@ Wright–Fisher scripts compute fitness multiplicatively. The fitness profiles a
 
 ## Scope and limits
 
-- **Model type:** Wright–Fisher models only. The harness refuses non-WF scripts.
+- **Model type:** Wright–Fisher models (default) and SLiM-Tree's non-WF model (`--model nonWF`). The non-WF theory is a diffusion approximation for the life cycle described above.
 - **Script writer:** it tests the local writer (`writeSLiM`). The HPC writer (`writeSLiMHPC`) inherits the same `write_initialize`, `write_fitness` and `write_repeated_commands`, so the fitness model is the same code, but HPC orchestration is not exercised.
 - **Genome and mutation model:** a single gene (coding ratio 1) under Jukes–Cantor mutation. Mutation matrices and multiple genes are not covered.
 - **dN/dS outputs:** SLiM-Tree's own dN/dS output (`-S`, `calculateSelectionDenominators.py`) is not checked here. The suite computes substitution counts independently from the observer.

@@ -11,7 +11,7 @@ Measurements are taken in the root population p1, which runs for SLiM-Tree's bur
 generation at the end.
 """
 
-import hashlib, json, os, random, shutil, subprocess, sys, time
+import hashlib, json, os, random, re, shutil, subprocess, sys, time
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -39,8 +39,8 @@ OBSERVER = """
 
 
 def generate(workdir, *, N, mu, codons, recombination, measure_gens, equil_gens, sample_interval,
-             seed, neutral=False, stationary_csv=None, extra_args=(), observer=OBSERVER):
-    """Generate a SLiM-Tree Wright-Fisher script in `workdir` and append the observer.
+             seed, neutral=False, nonWF=False, stationary_csv=None, extra_args=(), observer=OBSERVER):
+    """Generate a SLiM-Tree script (Wright-Fisher, or non-WF with nonWF=True) in `workdir` and append the observer.
     Returns (script_path, info) where info records what SLiM-Tree chose (profiles, ancestor, ...)."""
     workdir = os.path.abspath(workdir)
     if stationary_csv is not None:
@@ -53,7 +53,7 @@ def generate(workdir, *, N, mu, codons, recombination, measure_gens, equil_gens,
         fh.write("(A:1);\n")
     args = ["tree.txt", "null" if neutral else stationary_csv,
             "-n", str(N), "-v", repr(mu), "-g", str(codons), "-r", repr(recombination),
-            "-b", str(total // N)] + (["-N"] if neutral else []) + list(extra_args)
+            "-b", str(total // N)] + (["-N"] if neutral else []) + (["-w"] if nonWF else []) + list(extra_args)
     # WFV_SLIMTREE_ARGS adds slim-tree arguments to every run, except to neutral-mode runs
     if not neutral:
         args += os.environ.get("WFV_SLIMTREE_ARGS", "").split()
@@ -68,8 +68,8 @@ def generate(workdir, *, N, mu, codons, recombination, measure_gens, equil_gens,
         import utils
         st = SLiMTree.SLiMTree.__new__(SLiMTree.SLiMTree)       # skip __init__, which would launch SLiM
         params = st.read_input()
-        if params["nonWF"]:
-            raise RuntimeError("this suite is for Wright-Fisher models only")
+        if params["nonWF"] != nonWF:
+            raise RuntimeError("slim-tree did not set up the requested model type")
         redo = True
         while redo:
             params = st.process_fitness(params)
@@ -85,22 +85,30 @@ def generate(workdir, *, N, mu, codons, recombination, measure_gens, equil_gens,
     samples = os.path.join(workdir, "observer_samples.tsv")
     with open(script) as fh:
         text = fh.read()
-    if "nonWF" in text:
-        raise RuntimeError("generated script is not Wright-Fisher")
+    if ("initializeSLiMModelType(\"nonWF\")" in text) != nonWF:
+        raise RuntimeError("generated script is not of the requested model type")
+    # In non-WF scripts the tip population takes over p1's individuals and removes p1 in a late() event of the last
+    # tick, which runs before the observer, so non-WF observation stops one tick earlier
     with open(script, "a") as fh:
-        fh.write(observer.format(t0=equil_gens, t1=total, k=sample_interval, out=samples))
+        fh.write(observer.format(t0=equil_gens, t1=total - 1 if nonWF else total, k=sample_interval, out=samples))
 
+    # Non-WF scripts scale selection coefficients (see theory.py); record the value the script actually uses, and the
+    # number of offspring per individual per tick its reproduction() callback produces
+    scale = re.search(r'defineConstant\("NONWF_SELECTION_SCALE", ([^)]+)\)', text)
+    litter = re.search(r'for \(i in seqLen\((\d+)\)\) subpop\.addCrossed', text)
     profiles = None
     if not neutral:
         # aa -> list of fitness values per profile (last column is SLiM-Tree's 'neutral' profile)
         profiles = {aa: [float(x) for x in vals] for aa, vals in params["fitness_profiles"].items()}
     info = {
-        "N": N, "mu": mu, "codons": codons, "recombination": recombination, "neutral": neutral,
+        "N": N, "mu": mu, "codons": codons, "recombination": recombination, "neutral": neutral, "nonWF": nonWF,
         "equil_gens": equil_gens, "measure_gens": measure_gens, "sample_interval": sample_interval,
         "seed": seed, "args": args, "script": script, "samples": samples,
         "ancestral_codons": [int(c) for c in params["ancestral_sequence"]],
         "profile_nums": [int(p) for p in params["fitness_profile_nums"]],
         "fitness_profiles": profiles,
+        "selection_scale": float(scale.group(1)) if scale else 1.0,
+        "offspring_per_tick": int(litter.group(1)) if litter else 1,
     }
     with open(os.path.join(workdir, "run_info.json"), "w") as fh:
         json.dump(info, fh, indent=1)

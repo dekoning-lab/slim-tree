@@ -1,4 +1,5 @@
-"""Wright-Fisher validation suite for SLiM-Tree: simulation vs weak-mutation theory.
+"""Validation suite for SLiM-Tree: simulation vs weak-mutation theory, for Wright-Fisher models (default) or
+SLiM-Tree's non-WF model (--model nonWF; rates are then per tick, see theory.py).
 
 Checks
   1. neutral_mode     SLiM-Tree -N (no fitness callback), default recombination.
@@ -176,12 +177,14 @@ def stationary_checks(label, occ_obs_sense, Q, pi, n_sites, gens, interval, B, r
     return out
 
 
-def evaluate_profiles(name, results, N, mu, intended, B, rng, checks):
+def evaluate_profiles(name, results, N, mu, intended, B, rng, checks, model="WF"):
     """Per-profile substitution and stationary checks for a fitness-profile configuration."""
     info0 = results[0]["info"]
     fit = info0["fitness_profiles"]
+    scale = info0.get("selection_scale", 1.0)
+    b = info0.get("offspring_per_tick", 1)
     n_prof = len(next(iter(fit.values())))
-    neutral_pi = theory.expected(np.ones(20), N, mu)["pi_codon"]
+    neutral_pi = theory.expected(np.ones(20), N, mu, model, scale, b)["pi_codon"]
     names = list(intended) if intended else [f"profile{p}" for p in range(n_prof - 1)]
     for p in range(n_prof - 1):                         # last column = SLiM-Tree's neutral profile
         f = np.array([fit[a][p] for a in theory.AA_ORDER])
@@ -191,7 +194,13 @@ def evaluate_profiles(name, results, N, mu, intended, B, rng, checks):
                            "observed": float(np.abs((f - f.max()) - (want - want.max())).max()),
                            "expected": 0, "pass": bool(np.abs((f - f.max()) - (want - want.max())).max() < 1e-6),
                            "note": "SLiM-Tree's fitting step; theory below uses the fitted values"})
-        e = theory.expected(f, N, mu)
+        e = theory.expected(f, N, mu, model, scale, b)
+        if model == "nonWF":
+            target = theory.expected(f, N, mu)["pi_codon"]
+            checks.append({"check": f"{name}/{names[p]}: non-WF theory vs Wright-Fisher target (codon TVD)",
+                           "observed": tvd(e["pi_codon"], target), "expected": 0, "pass": None,
+                           "note": f"selection scale {scale}; how closely the non-WF model reproduces the stationary "
+                                   "distribution the profile was fitted to"})
         key = str(p)
         reps = [r for r in results if key in r["profiles"]]
         sites = [r["profiles"][key]["codon_sites"] for r in reps]
@@ -236,6 +245,7 @@ def main(argv=None):
     ap.add_argument("--seed-offset", type=int, default=0, help="added to every replicate seed (default runs reuse seeds 1000+, 2000+, 3000+)")
     ap.add_argument("--only", nargs="*", default=None, help="subset of: neutral_mode flat_profiles site_profiles")
     ap.add_argument("--slimtree-args", default="", help="extra slim-tree arguments for every non-neutral replicate")
+    ap.add_argument("--model", choices=("WF", "nonWF"), default="WF", help="Wright-Fisher (default) or SLiM-Tree's non-WF model")
     a = ap.parse_args(argv)
     if a.theta > 0.01 + 1e-12:
         sys.exit("theta must be <= 0.01: the theory assumes weak mutation")
@@ -246,7 +256,7 @@ def main(argv=None):
     os.makedirs(a.outdir, exist_ok=True)
     rng = np.random.default_rng(12345)
     base = dict(N=N, mu=mu, codons=a.codons, measure_gens=a.measure_gens, equil_gens=equil,
-                sample_interval=a.interval, extra_args=tuple(a.slimtree_args.split()))
+                sample_interval=a.interval, extra_args=tuple(a.slimtree_args.split()), nonWF=a.model == "nonWF")
     only = set(a.only) if a.only else {"neutral_mode", "flat_profiles", "site_profiles"}
     checks, timing, all_results = [], {}, []
 
@@ -258,8 +268,10 @@ def main(argv=None):
         all_results += res
         counts = [sum(sum(p["subs"].values()) for p in r["profiles"].values()) for r in res]
         sites = [3 * sum(p["codon_sites"] for p in r["profiles"].values()) for r in res]
-        expv = [theory.neutral_rate_per_site(mu) * s * r["generations"] for s, r in zip(sites, res)]
-        checks.append(rate_check("neutral_mode: substitutions per nucleotide site = mu", counts, expv,
+        b = res[0]["info"].get("offspring_per_tick", 1)
+        expv = [theory.neutral_rate_per_site(mu, a.model, b) * s * r["generations"] for s, r in zip(sites, res)]
+        label = "mu" if a.model == "WF" else f"mu b/(1 + b) per tick, b = {b}"
+        checks.append(rate_check(f"neutral_mode: substitutions per nucleotide site = {label}", counts, expv,
                                  "SLiM-Tree -N; default recombination (linked); Kimura 1968"))
 
     if "flat_profiles" in only:
@@ -270,7 +282,7 @@ def main(argv=None):
                                                     a.reps_flat, 2000 + a.seed_offset), a.outdir, a.jobs)
         timing["flat_profiles"] = time.time() - t
         all_results += res
-        evaluate_profiles("flat_profiles", res, N, mu, {"flat": np.ones(20)}, a.bootstrap, rng, checks)
+        evaluate_profiles("flat_profiles", res, N, mu, {"flat": np.ones(20)}, a.bootstrap, rng, checks, a.model)
 
     if "site_profiles" in only:
         prof = validation_profiles(N)
@@ -281,7 +293,7 @@ def main(argv=None):
                                                     a.reps_sites, 3000 + a.seed_offset), a.outdir, a.jobs)
         timing["site_profiles"] = time.time() - t
         all_results += res
-        evaluate_profiles("site_profiles", res, N, mu, prof, a.bootstrap, rng, checks)
+        evaluate_profiles("site_profiles", res, N, mu, prof, a.bootstrap, rng, checks, a.model)
 
     versions = sorted({r.get("slim_version", "unknown") for r in all_results})
     report = {"settings": {**vars(a), "mu": mu, "equil_gens": equil, "slim_version": ", ".join(versions)},
@@ -297,9 +309,11 @@ def main(argv=None):
 
 def render(report):
     s = report["settings"]
-    lines = [f"# SLiM-Tree Wright-Fisher validation\n",
+    nonwf = s.get("model", "WF") == "nonWF"
+    unit = "ticks" if nonwf else "generations"
+    lines = [f"# SLiM-Tree {'non-WF' if nonwf else 'Wright-Fisher'} validation\n",
              f"N = {s['N']}, theta = {s['theta']} (mu = {s['mu']:.3g}), {s['codons']} codons, "
-             f"{s['measure_gens']:,} generations measured after {s['equil_gens']:,}, sampled every {s['interval']}.\n",
+             f"{s['measure_gens']:,} {unit} measured after {s['equil_gens']:,}, sampled every {s['interval']}.\n",
              f"Extra slim-tree arguments: `{s.get('slimtree_args') or 'none'}`. SLiM: {s.get('slim_version', 'unknown')}.\n",
              "| Check | Observed | Expected | Ratio / p | Result |", "|---|---|---|---|---|"]
     for c in report["checks"]:

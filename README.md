@@ -94,7 +94,46 @@ optional arguments:
                                 (optional; omit to use the cluster default)
 ```
 
-> **Known issue: selection in non-WF models (`-w`) is far weaker than intended.** Non-WF fitness adds per-site values across the sequence and divides by their expected total, so a change at one site shifts fitness by roughly Δf/(2L) for L codons, instead of the fitted selection coefficient Δf. Selection is therefore about 600 times too weak at 300 codons. Wright–Fisher models (the default) are not affected. A fix is in progress; until then, do not use non-WF runs with fitness profiles where selection strength matters.
+### Non-WF models (`-w`)
+
+> **Non-WF runs are calibrated to a specific life cycle.** SLiM-Tree corrects selection strength in non-WF runs with a factor derived for the life cycle below (`utils/nonWFLifeCycle.py`). If you change that life cycle (offspring numbers, age structure, which individuals face survival, how density is regulated), re-derive the factor; the values below no longer apply.
+
+**Life cycle.** Each tick, every individual is the first parent of b offspring (b = 1), each with a random second parent. Then parents and offspring face survival together: an individual with fitness w survives with probability w·K/Σw, where K is the population size (`-n`). Fitness is multiplicative across sites, as in Wright–Fisher runs. This normalization keeps the expected population size at K whatever the mean fitness (soft selection), and leaves relative fitness unchanged.
+
+**Assumptions** behind the values below:
+- every individual faces survival every tick, with no age effects;
+- there is no fecundity selection;
+- mates are drawn at random;
+- selection is genic (multiplicative per copy) and weak;
+- K is large and roughly constant.
+
+**Consequences, in general form.** With φ = b/(1 + b), the fraction of survivors that are newborns:
+
+| Quantity | General form | b = 1 |
+|---|---|---|
+| Generation time | (1 + b)/b ticks | 2 ticks |
+| Neutral substitutions per site per tick | μ·b/(1 + b) | μ/2 |
+| Effective size per tick | 4K(1 + b)²/(b(4b + 7)) | 16K/11 |
+| Effective size per generation | 4K(1 + b)/(4b + 7) | 8K/11 |
+| Neutral diversity | 4μK·4(1 + b)/(4b + 7) | (8/11)·4Kμ |
+| Selection scale applied (K / Ne per tick) | b(4b + 7)/(4(1 + b)²) | 11/16 |
+
+**Derivation.**
+- **Coalescence.** Two gene copies coalesce in one tick with probability [2φ(1 − φ) + φ²(4b − 1)/(4b)]/(2K):
+  - an adult and a newborn: 1/(2K);
+  - two newborns: 1/(2K), unless both copies come from their first parents, in which case they coalesce only if the newborns are siblings;
+  - two adults: never.
+- **Selection.** Survival selection changes an allele's frequency by s·p(1 − p) per tick, so scaled selection is 4·Ne_tick·s. The fitness profiles are fitted for 4Kf, so SLiM-Tree multiplies selection coefficients by K/Ne_tick. As b grows, the life cycle approaches Wright–Fisher and the scale tends to 1.
+
+**Checks.**
+- *Neutral, b = 1:* substitutions were 0.496 ± 0.005 μ per tick (predicted 0.5). Diversity relative to Wright–Fisher was 0.713 ± 0.007 (predicted 0.727).
+- *General b:* Neutral runs with b = 1, 2 and 3 (the generated script's reproduction callback edited to give b offspring; 10 replicates each). Substitution rates were 0.497, 0.655 and 0.738 μ per tick (predicted 0.500, 0.667, 0.750). Diversity was 0.718, 0.783 and 0.827 of 4Kμ (predicted 0.727, 0.800, 0.842). The predicted dependence on b holds, but all six values are 1–2% below prediction at K = 100. For rates, the Wright–Fisher suite shows the same deficit, so that is the measurement. For diversity it is probably the small-population effects the derivation leaves out, such as census fluctuation and self-mating.
+- *Site profiles:* `tests/wf_validation` (`--model nonWF`) checks that site profiles reproduce their stationary distributions. On SLiM 5.2 with b = 1, all 25 scored checks pass. Without the correction, scaled selection would be 16/11 of what the profiles intend.
+
+**Practical consequences:**
+- **Time units.** Non-WF branch lengths are in ticks. `-s` converts substitutions to Wright–Fisher generations, so a non-WF tree converted with `-s` accrues about 1/T of the intended divergence, where T is the generation time in ticks (half, for b = 1).
+- **θ.** With the same `-n` and `-v`, non-WF neutral diversity is 8/11 of the Wright–Fisher value.
+- **Run record.** Each run prints these values and records them in `<tree>_parameters.yaml` (`nonWF_*` keys).
 
 ## Branch-specific parameters
 
@@ -139,4 +178,4 @@ The `DataPostProcessing/` directory contains scripts for downstream analysis of 
 
 ## Testing
 
-Unit tests for the script writers and input handling are in `tests/` (`python -m pytest tests`). `tests/wf_validation/` checks that Wright–Fisher simulations reproduce weak-mutation theory for substitution rates and stationary codon distributions; see its README.
+Unit tests for the script writers and input handling are in `tests/` (`python -m pytest tests`). `tests/wf_validation/` checks that Wright–Fisher and non-WF simulations reproduce weak-mutation theory for substitution rates and stationary codon distributions; see its README.

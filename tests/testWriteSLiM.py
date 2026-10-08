@@ -183,14 +183,19 @@ class testWriteSLiM(unittest.TestCase):
         self.assertIn("function (float) get_genome_fitness (object nucs)", c)
         self.assertIn("fitnessEffect()", c)
 
-    def test_write_fitness_scaling_value_in_denominator(self):
-        # nonWF models keep the additive fitness scaled by the expected fitness:
-        # denominator = 2 * scaling_value = 2 * 100.0 = 200.0
+    def test_write_fitness_nonwf_is_multiplicative_and_normalized(self):
+        # nonWF models use the same multiplicative genome fitness, set in early() and normalized by total fitness
         sp = _make_start_params(self.base_path, nonWF=True)
         w = self._writer_with_open_file("p1", sp)
         w.write_fitness(self.root)
         w.output_file.close()
-        self.assertIn("200.0", self._read("p1"))
+        c = self._read("p1")
+        self.assertIn("function (void) set_fitness_nonwf (object<Subpopulation>$ subpop, numeric$ K)", c)
+        self.assertIn('defineConstant("NONWF_SELECTION_SCALE", 0.6875);', c)
+        self.assertIn("(w1[0] * w2[0]) ^ NONWF_SELECTION_SCALE", c)
+        self.assertIn("subpop.fitnessScaling = K / total;", c)
+        self.assertNotIn("fitnessEffect()", c)
+        self.assertNotIn("200.0", c)
 
     def test_write_fitness_wf_is_multiplicative(self):
         # Wright-Fisher models multiply the two haplosomes' fitness (no scaling denominator)
@@ -267,8 +272,17 @@ class testWriteSLiM(unittest.TestCase):
         w.write_subpop_nonwf(self.root)
         w.close_file()
         c = self._read("p1")
-        self.assertIn("fitnessScaling", c)
+        self.assertIn("set_fitness_nonwf(p1, 100);", c)
         self.assertIn("reproduction()", c)
+
+    def test_write_subpop_nonwf_neutral_scales_by_census(self):
+        sp = _make_start_params(self.base_path, nonWF=True, neutral=True)
+        w = writeSLiM(sp)
+        w.write_subpop_nonwf(self.root)
+        w.close_file()
+        c = self._read("p1")
+        self.assertIn("p1.fitnessScaling = 100/p1.individualCount;", c)
+        self.assertNotIn("set_fitness_nonwf", c)
 
     def test_write_subpop_nonwf_last_child_uses_takemigrants(self):
         sp = _make_start_params(self.base_path, nonWF=True)
@@ -502,7 +516,8 @@ class testWriteSLiMHPC(unittest.TestCase):
         w.write_subpop_nonwf(self.root)
         c = self._read_slim("p1")
         self.assertIn("reproduction()", c)
-        self.assertIn("fitnessScaling", c)
+        self.assertIn("set_fitness_nonwf(p1, 100);", c)
+        self.assertIn("p2.fitnessScaling = 0;", c)
 
     # ── write_end_sim ──
 

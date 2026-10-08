@@ -100,3 +100,54 @@ def test_stationary_check_passes_null_and_fails_neutral():
     ko = stationary_checks("t", bad, e["Q"], e["pi_codon"], 600, 50_000, 100, 300, rng, neutral["pi_codon"])
     assert all(c["pass"] for c in ok)
     assert not any(c["pass"] for c in ko)
+
+
+# ---------------------------------------------------------------- non-WF theory
+
+def test_nonwf_neutral_limits():
+    # a neutral mutation fixes with probability 1/(4K): it must survive its first tick (1/2), then it is one of 2K copies
+    assert theory.pfix_nonwf(np.array([0.0]), N)[0] == pytest.approx(1 / (4 * N))
+    assert theory.pfix_nonwf(np.array([1e-12]), N)[0] == pytest.approx(1 / (4 * N), rel=1e-6)
+    e = theory.expected(np.ones(20), N, MU, "nonWF", 11 / 16)
+    assert e["K_total"] == pytest.approx(theory.expected(np.ones(20), N, MU)["K_total"] / 2)   # 2 ticks per generation
+    assert theory.neutral_rate_per_site(MU, "nonWF") == MU / 2
+
+
+@pytest.mark.parametrize("name", ["strong", "graded", "weak"])
+def test_nonwf_stationary_detailed_balance(name):
+    # symmetric mutation: pi_i / pi_j = u(c df) / u(-c df) = exp(2 c df + 4 Ne c df (1 - 1/(2K)))
+    f = validation_profiles(N)[name]
+    c = 11 / 16
+    ne = theory.nonwf_ne_per_tick(N)
+    w = np.array([np.exp(c * f[theory.AA_OF_CODON[k]] * (2 + 4 * ne * (1 - 1 / (2 * N)))) for k in theory.SENSE])
+    assert np.allclose(theory.expected(f, N, 1.0, "nonWF", c)["pi_codon"], w / w.sum(), atol=1e-10)
+
+
+@pytest.mark.parametrize("name", ["strong", "graded", "weak"])
+def test_nonwf_scale_reproduces_wright_fisher_target(name):
+    # with selection scaled by 11/16 the non-WF stationary distribution is close to the one the profile was fitted to;
+    # without the scale, scaled selection is 16/11 times too strong
+    f = validation_profiles(N)[name]
+    target = theory.expected(f, N, 1.0)["pi_codon"]
+    scaled = theory.expected(f, N, 1.0, "nonWF", 11 / 16)["pi_codon"]
+    unscaled = theory.expected(f, N, 1.0, "nonWF", 1.0)["pi_codon"]
+    assert 0.5 * np.abs(scaled - target).sum() < 0.005
+    if name != "weak":
+        assert 0.5 * np.abs(unscaled - target).sum() > 0.05
+
+
+def test_nonwf_life_cycle_agrees_with_slimtree():
+    # SLiM-Tree's own statement of the life cycle (utils/nonWFLifeCycle.py) matches this independent derivation
+    from utils import nonWFLifeCycle as lc
+    assert theory.nonwf_ne_per_tick(N) == pytest.approx(16 * N / 11)
+    assert lc.selection_scale(1) == pytest.approx(11 / 16)
+    for b in range(1, 6):
+        ne = theory.nonwf_ne_per_tick(N, b)
+        assert lc.ne_per_tick_ratio(b) == pytest.approx(ne / N)
+        assert lc.selection_scale(b) == pytest.approx(N / ne)
+        phi = b / (1 + b)
+        assert lc.generation_time(b) == pytest.approx(1 / phi)
+        assert theory.neutral_rate_per_site(MU, "nonWF", b) == pytest.approx(MU * phi)
+        assert lc.ne_per_generation_ratio(b) == pytest.approx(phi * ne / N)
+    # many offspring per tick approaches Wright-Fisher
+    assert lc.selection_scale(10 ** 6) == pytest.approx(1.0, rel=1e-5)

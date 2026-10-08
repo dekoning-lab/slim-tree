@@ -2,7 +2,7 @@
 
 import argparse, sys, os, yaml, pandas, copy, shutil
 import numpy as np
-from utils import convertTree
+from utils import convertTree, nonWFLifeCycle
 
 class readInput:
     def __init__(self):
@@ -26,6 +26,14 @@ class readInput:
                 mu = args.mutation_rate
             self.param_dict["input_tree_string"] = convertTree.substitutions_to_generations(
                 tree_str, args.population_size, mu)
+
+        #Non-WF runs differ from Wright-Fisher runs with the same -n and -v; say how (see README, "Non-WF models")
+        if self.param_dict["nonWF"]:
+            print("Non-WF model: one generation = " + format(nonWFLifeCycle.generation_time(), "g") + " ticks; Ne per generation = " +
+                  format(nonWFLifeCycle.ne_per_generation_ratio(), ".4g") + " x population size" +
+                  ("" if self.param_dict["neutral_evolution"] else "; selection coefficients scaled by " +
+                   format(nonWFLifeCycle.selection_scale(), ".4g")) +
+                  ". These values assume SLiM-Tree's non-WF life cycle (utils/nonWFLifeCycle.py).")
         
         
 
@@ -324,6 +332,16 @@ class readInput:
             param_dict_dump["average_theta"] = 4*param_dict_dump["mean_mutation_rate"]*param_dict_dump["population_size"]
             param_dict_dump.pop("mutation_rate")
             
+        #Non-WF models: record what SLiM-Tree's non-WF life cycle implies (utils/nonWFLifeCycle.py)
+        if (param_dict_dump["nonWF"]):
+            param_dict_dump["nonWF_offspring_per_tick"] = nonWFLifeCycle.OFFSPRING_PER_TICK
+            param_dict_dump["nonWF_generation_time_ticks"] = nonWFLifeCycle.generation_time()
+            param_dict_dump["nonWF_Ne_per_generation_over_population_size"] = nonWFLifeCycle.ne_per_generation_ratio()
+            if (not param_dict_dump["neutral_evolution"]):
+                param_dict_dump["nonWF_selection_scale"] = nonWFLifeCycle.selection_scale()
+            if (param_dict_dump["jukes_cantor"]):
+                param_dict_dump["nonWF_theta_per_generation"] = param_dict_dump["theta"] * nonWFLifeCycle.ne_per_generation_ratio()
+
         #Remove filenames from data for datafile
         param_dict_dump.pop("filenames")
         
