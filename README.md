@@ -94,6 +94,8 @@ optional arguments:
                                 (optional; omit to use the cluster default)
 ```
 
+> **Known issue: selection in non-WF models (`-w`) is far weaker than intended.** Non-WF fitness adds per-site values across the sequence and divides by their expected total, so a change at one site shifts fitness by roughly Δf/(2L) for L codons, instead of the fitted selection coefficient Δf. Selection is therefore about 600 times too weak at 300 codons. Wright–Fisher models (the default) are not affected. A fix is in progress; until then, do not use non-WF runs with fitness profiles where selection strength matters.
+
 ## Branch-specific parameters
 
 The `-d` flag accepts a YAML file that overrides simulation parameters on specific branches. Each top-level key must match a branch name in the Newick tree:
