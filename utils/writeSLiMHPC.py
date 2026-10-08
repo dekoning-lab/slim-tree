@@ -193,11 +193,11 @@ class writeSLiMHPC(writeSLiM):
 
         #Write files containing polymorphisms in each population and relative proportions
         if(population_parameters["polymorphisms"]):
-            end_population_string += ("\n\tpop_seq = sample(p1.individuals.genomes, 1).nucleotides();"+
+            end_population_string += ("\n\tpop_seq = sample(p1.individuals.haplosomes, 1).nucleotides();"+
                                     "\n\tpop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = \"\");" +
                                     "\n\tpolymorph_str = c();\n\tfixed_str=c();"+
                                     "\n\tfor (a in 0:(length(pop_seq)-1)) {" +
-                                    "\n\t\tdiffs = c();\n\t\tfor (g in p1.individuals.genomes.nucleotides()){"+
+                                    "\n\t\tdiffs = c();\n\t\tfor (g in p1.individuals.haplosomes.nucleotides()){"+
                                     "\n\t\t\taa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = \"\");"+
                                     "\n\t\t\tdiffs = c(diffs, aa_seq[a]);\n\t\t}" +
                                     "\n\t\tunique_diffs = unique(diffs);\n\t\tif (length(unique_diffs) > 1) {"+

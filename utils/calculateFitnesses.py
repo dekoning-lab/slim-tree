@@ -280,13 +280,16 @@ def ratio_func(pi_i, pi_j, c_aa_i, c_aa_j, pop,  mu_ij = 0.0, mu_ji = 0.0):
     else:
         invert = False
 
-    #solve for negative coeff (NUMERICALLY MORE STABLE!)
-    sel = sp.minimize(opt_ratio, -1e-7, args = (pop, ratio_const), bounds=[(-1.0, -1e-7)], method = 'L-BFGS-B', tol = 1e-7)
+    #Solve for the (negative) selection coefficient in closed form. With Kimura's fixation probability
+    #u(s) = (1 - exp(-2s)) / (1 - exp(-4 pop s)), the ratio u(-s) / u(s) that opt_ratio matches equals
+    #exp(-(4 pop - 2) s) exactly, so s = -log(ratio) / (4 pop - 2). The numerical optimizer this replaces
+    #(L-BFGS-B from -1e-7 with tol 1e-7) lost accuracy as pop grew: errors in 4 pop s reached ~0.1 at pop = 1000
+    #and ~10 at pop = 10000. The bounds of the old search, [-1, -1e-7], are kept as a clamp.
+    sel = -np.log(ratio_const) / (4.0 * pop - 2.0)
+    sel = min(-1e-7, max(-1.0, sel))
 
     if(invert):
-        sel = sel.x[0] * -1.0
-    else:
-        sel = sel.x[0]
+        sel = sel * -1.0
     return(sel)
 
 def Find_nuc_freqs(true_distribution, pop):

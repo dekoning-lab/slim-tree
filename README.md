@@ -7,7 +7,7 @@ SLiM-Tree automates forward-time population genetics simulations over phylogenet
 Before installing SLiM-Tree, ensure the following are available on your system:
 
 - **Python 3.8+**
-- **SLiM 4.x** — [messerlab.org/slim](https://messerlab.org/slim/)
+- **SLiM 5.x** — [messerlab.org/slim](https://messerlab.org/slim/). Generated scripts use the SLiM 5 haplosome API and do not run on SLiM 4. Validated on SLiM 5.2.
 - **R** with packages: `dplyr`, `BB`, `data.table`, `optparse`, `seqinr`, `doParallel`, `Rfast`
 - **Java and C** — only required when computing fitness effects from protein structure
 
@@ -134,3 +134,7 @@ slim-tree ex1_tree.txt stationary_distributions.csv
 ## Post-processing
 
 The `DataPostProcessing/` directory contains scripts for downstream analysis of SLiM-Tree output, including branch length estimation and dN/dS calculations.
+
+## Testing
+
+Unit tests for the script writers and input handling are in `tests/` (`python -m pytest tests`). `tests/wf_validation/` checks that Wright–Fisher simulations reproduce weak-mutation theory for substitution rates and stationary codon distributions; see its README.

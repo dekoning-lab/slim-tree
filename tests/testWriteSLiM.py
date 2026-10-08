@@ -184,11 +184,24 @@ class testWriteSLiM(unittest.TestCase):
         self.assertIn("fitnessEffect()", c)
 
     def test_write_fitness_scaling_value_in_denominator(self):
+        # nonWF models keep the additive fitness scaled by the expected fitness:
+        # denominator = 2 * scaling_value = 2 * 100.0 = 200.0
+        sp = _make_start_params(self.base_path, nonWF=True)
+        w = self._writer_with_open_file("p1", sp)
+        w.write_fitness(self.root)
+        w.output_file.close()
+        self.assertIn("200.0", self._read("p1"))
+
+    def test_write_fitness_wf_is_multiplicative(self):
+        # Wright-Fisher models multiply the two haplosomes' fitness (no scaling denominator)
         w = self._writer_with_open_file("p1")
         w.write_fitness(self.root)
         w.output_file.close()
-        # denominator = 2 * scaling_value = 2 * 100.0 = 200.0
-        self.assertIn("200.0", self._read("p1"))
+        c = self._read("p1")
+        self.assertIn("w1 = get_genome_fitness(individual.haploidGenome1);", c)
+        self.assertIn("w2 = get_genome_fitness(individual.haploidGenome2);", c)
+        self.assertIn("return w1[0] * w2[0] *", c)
+        self.assertNotIn("200.0", c)
 
     def test_write_fitness_neutral_omits_fitness_functions(self):
         sp = _make_start_params(self.base_path, neutral=True)
@@ -360,7 +373,7 @@ class testWriteSLiM(unittest.TestCase):
     def test_write_terminal_output_all_outputs_all_genomes(self):
         w = writeSLiM(self.sp)
         result = w.write_terminal_output(self.root)
-        self.assertIn("genomes = p1.genomes", result)
+        self.assertIn("genomes = p1.haplosomes", result)
         self.assertIn("_nuc.fasta", result)
         self.assertIn("_aa.fasta", result)
 
@@ -369,7 +382,7 @@ class testWriteSLiM(unittest.TestCase):
         result = w.write_terminal_output(_make_root_pop(sample_size="consensus"))
         self.assertIn("consensus", result)
         self.assertIn("whichMax", result)
-        self.assertNotIn("genomes = p1.genomes", result)
+        self.assertNotIn("genomes = p1.haplosomes", result)
 
     def test_write_terminal_output_n_samples_uses_sample(self):
         w = writeSLiM(self.sp)
