@@ -60,6 +60,23 @@ class testCladeReader(unittest.TestCase):
     
     
     
+    def test_apply_stop_model(self):
+        # site model: stop value = lowest amino-acid value - S_stop / (4N - 2), derived from the 20 amino-acid rows only,
+        # so applying it twice gives the same table
+        self.fit.process_existing_fitness_file(self.test_file_path + "table_fitness_dists_full.csv")
+        aa_rows = [a for a in self.fit.fitness_mat.index if a != "X"]
+        expected = self.fit.fitness_mat.loc[aa_rows].min(axis = 0) - 100.0 / (4 * 100 - 2)
+        self.fit.apply_stop_model("site", 100.0, 100)
+        self.fit.apply_stop_model("site", 100.0, 100)
+        self.assertTrue(np.allclose(self.fit.fitness_mat.loc["X"].values, expected.values))
+
+        # gene model: a stop value above a profile's lowest amino-acid value is refused
+        self.fit.process_existing_fitness_file(self.test_file_path + "table_fitness_dists_full.csv")
+        self.fit.fitness_mat.loc["X"] = self.fit.fitness_mat.loc[aa_rows].max(axis = 0)
+        with self.assertRaises(SystemExit):
+            with redirect_stderr(io.StringIO()):
+                self.fit.apply_stop_model("gene", 100.0, 100)
+
     #Tests both process_existing_fitness_file and validify_fitness_file
     def test_process_existing_fitness_file(self):
         

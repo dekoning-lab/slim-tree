@@ -7,8 +7,9 @@ This suite checks that SLiM-Tree's Wright–Fisher simulations, and with `--mode
 | Configuration | Setup | Theory compared |
 |---|---|---|
 | `neutral_mode` | SLiM-Tree `-N` (no fitness callback), default recombination (fully linked) | Substitutions per nucleotide site per generation = μ (Kimura 1968) |
-| `flat_profiles` | One uniform stationary distribution (every amino acid equally fit) | Sense-codon substitution rate (stops lethal), dN/dS = 1, uniform stationary codon distribution, no premature stop fixes |
+| `flat_profiles` | One uniform stationary distribution (every amino acid equally fit) | Sense-codon substitution rate (stops effectively lethal at S_stop = 100), dN/dS = 1, uniform stationary codon distribution, no premature stop fixes |
 | `site_profiles` | Three site-heterogeneous profiles (strong, graded and weak amino-acid preferences), free recombination | Synonymous and nonsynonymous substitution rates, dN/dS, stationary amino-acid and codon distributions, no premature stop fixes |
+| `stop_control` | One flat profile with a small stop penalty (S_stop = 2), free recombination (Wright–Fisher only) | The stop value SLiM-Tree wrote; synonymous, nonsynonymous, stop-gain and stop-loss substitution rates against a 64-state chain with stops as finite-fitness states |
 
 For the profile configurations, the suite also checks that SLiM-Tree's fitting step (`utils/calculateFitnesses.py`) recovers the intended fitness values from the stationary distributions it is given.
 
@@ -18,7 +19,7 @@ The theory is written independently of SLiM-Tree. It uses the same model that SL
 
 - **Population and mutation:** a diploid Wright–Fisher population of N individuals with Jukes–Cantor mutation, so the total rate per nucleotide site is μ (SLiM-Tree `-v`).
 - **Selection:** a change between amino acids with fitness values f_i and f_j has selection coefficient s = f_j − f_i. It fixes with Kimura's probability u(s) = (1 − e^(−2s)) / (1 − e^(−4Ns)).
-- **Stop codons:** lethal, so each site is a Markov chain on the 61 sense codons.
+- **Stop codons:** treated as lethal in the main chain, so each site is a Markov chain on the 61 sense codons. At the default S_stop = 100 this matches the 64-state chain with stops as finite-fitness states to within 1e-9 (`test_theory.py`). `expected_with_stops` gives the 64-state chain, used by `stop_control`.
 - **Weak mutation:** fixed states change by single substitutions at rate q_ij = 2N (μ/3) u(f_j − f_i).
 - **Outputs:** the stationary distribution, the expected synonymous and nonsynonymous substitution rates, and the mutation–selection dN/dS of Spielman & Wilke (2015, *MBE*).
 
@@ -48,13 +49,22 @@ Weak-mutation theory requires θ = 4Nμ ≤ 0.01. θ = 0.001 is safer, but runs 
 
 ```bash
 python -m pytest tests/wf_validation/test_theory.py
+WFV_SLIM=/path/to/slim5 python -m pytest tests/wf_validation/test_genotypes.py
 python tests/wf_validation/suite.py --outdir tests/wf_validation/runs/<name> --jobs 22
 python tests/wf_validation/suite.py --model nonWF --outdir tests/wf_validation/runs/<name> --jobs 22
 WFV_RESULTS=tests/wf_validation/runs/<name>/results.json python -m pytest tests/wf_validation/test_wf_validation.py
 ```
 
 - **Defaults:** N = 100, θ = 0.01, 300 codons, 100,000 measured generations after 1,000, sampled every 100 generations.
-- **Replicates:** 10 neutral-mode, 10 flat-profile and 20 site-profile replicates.
+- **Replicates:** 10 neutral-mode, 10 flat-profile, 20 site-profile and 10 stop-control replicates.
+- **Genotype tests:** `test_genotypes.py` builds haplosomes with chosen mutations inside a generated script and checks `get_genome_fitness` exactly against values computed independently in Python. The cases are:
+  - premature stops, two stops and a reversion;
+  - changes among terminal stops, read-through and start loss;
+  - a second gene's start codon, and a non-coding stop;
+  - invariance to adding a constant to a profile;
+  - the gene model's null factors, including that knocking out a loaded copy never raises fitness.
+
+  These tests need SLiM 5.
 - **Outputs:** `suite.py` writes `report.md`, `results.json` and one directory per replicate (generated script, SLiM output, observer samples, parsed counts).
 - **Options:** `--only` runs a subset of configurations; `--theta 0.001 --measure-gens 1000000` is the slower, safer setting.
 
@@ -62,9 +72,8 @@ WFV_RESULTS=tests/wf_validation/runs/<name>/results.json python -m pytest tests/
 
 Wright–Fisher scripts compute fitness multiplicatively. The fitness profiles are fitted (`utils/calculateFitnesses.py`) treating the difference between two amino acids' values as the selection coefficient of a change at one site, so each codon whose amino acid differs from the ancestor multiplies a haplosome's selection factor by exp(f_new − f_ancestral). An individual's fitness is the product of its two haplosomes' factors. Earlier versions added per-site values across the sequence and averaged the two haplosomes, so a change at one site moved fitness by only a small fraction of its intended selection coefficient. On that code the profile configurations fail: nonsynonymous substitution rates were 3–4 times theory for the strong and graded profiles, and the stationary distributions were far from their targets (total variation distance 0.53–0.59, against 0.64–0.78 for a fully neutral distribution). Non-WF models use the same fitness; see below.
 
-- **Null alleles:** a gene is null in a haplosome if its start codon or terminal stop codon has changed, or if it carries a premature stop codon. Each gene multiplies fitness by 1 with two functional copies, 0.5 with one and 0 with none.
-- **Pseudogenization:** in a haplosome where a gene is null, that gene's codons contribute nothing to the selection factor. A null protein's sequence is unconstrained.
-- **Several genes:** null alleles are scored per gene, so null copies of different genes complement each other.
+- **Stop codons (site model, default):** a stop is one more state at each site, worse than the site's worst amino acid by S_stop/(4N − 2) on the log-fitness scale (S_stop = 100). Each gene's start codon (ATG optimal) and terminal stop codon (any stop optimal) have dedicated profiles. Non-coding sites are neutral. See the top-level README, "Stop codons".
+- **Gene model (opt-in):** null alleles with explicit fitness factors; it is not used by the suite's default configurations.
 
 ## Non-WF models
 
@@ -98,4 +107,4 @@ With `--model nonWF`, rates are per tick. The harness reads the selection scale 
 - **Script writer:** it tests the local writer (`writeSLiM`). The HPC writer (`writeSLiMHPC`) inherits the same `write_initialize`, `write_fitness` and `write_repeated_commands`, so the fitness model is the same code, but HPC orchestration is not exercised.
 - **Genome and mutation model:** a single gene (coding ratio 1) under Jukes–Cantor mutation. Mutation matrices and multiple genes are not covered.
 - **dN/dS outputs:** SLiM-Tree's own dN/dS output (`-S`, `calculateSelectionDenominators.py`) is not checked here. The suite computes substitution counts independently from the observer.
-- **Stop codons:** the theory treats stops as lethal. That matches the calibration (stationary distributions exclude stops) and the null-allele model above, under which a premature stop cannot fix in a single-gene genome.
+- **Stop codons:** the main configurations treat stops as lethal, which matches the site model at S_stop = 100 (stationary distributions exclude stops). `stop_control` tests the stop penalty directly at S_stop = 2. The segregating stop burden at high θ is not tested here; it belongs in the high-θ pilots.

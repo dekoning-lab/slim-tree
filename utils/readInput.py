@@ -34,6 +34,16 @@ class readInput:
                 self.param_dict["input_tree_string"] = convertTree.substitutions_to_generations(
                     tree_str, args.population_size, mu)
 
+        #Say how stop codons are treated (see README, "Stop codons")
+        if not self.param_dict["neutral_evolution"]:
+            if self.param_dict["stop_model"] == "site":
+                print("Stop codons: site model, penalty S_stop = " + format(self.param_dict["stop_penalty"], "g") +
+                      " (per-copy log-fitness gap " + format(self.param_dict["stop_penalty"] / (4.0 * args.population_size - 2.0), ".4g") +
+                      " below each site's worst amino acid, calibrated at N = " + str(args.population_size) + ").")
+            else:
+                print("Stop codons: gene model (null alleles; fitness factors 1, 1 - h*s_hom, 1 - s_hom with h = " +
+                      format(self.param_dict["null_dominance"], "g") + ", s_hom = " + format(self.param_dict["null_cost"], "g") + ").")
+
         #Non-WF runs differ from Wright-Fisher runs with the same -n and -v; say how (see README, "Non-WF models")
         if self.param_dict["nonWF"]:
             print("Non-WF model: one generation = " + format(nonWFLifeCycle.generation_time(), "g") + " ticks; Ne per generation = " +
@@ -123,6 +133,16 @@ class readInput:
                                     'of selection by counting synonymous and non-synonymous fixed substitutions')
         parser.add_argument('-N', '--neutral_evolution', action='store_true', default=False, help = 'boolean flag to run neutral evolution ' +
                                     'instead of fitness based evolution')
+        parser.add_argument('--stop_model', choices = ['site', 'gene'], default = 'site', help = 'how stop codons affect fitness: ' +
+                                    '"site" (default) scores a stop as one more state at each site, worse than every amino acid there by ' +
+                                    'the scaled penalty --stop_penalty, with dedicated profiles for each gene\'s start and terminal stop codon; ' +
+                                    '"gene" makes a gene with a changed start/stop codon or a premature stop a null allele (see --null_cost)')
+        parser.add_argument('--stop_penalty', type = float, default = 100.0, help = 'site stop model: population-scaled per-copy penalty ' +
+                                    'S_stop = (4N - 2) x log-fitness gap between a stop and the worst amino acid at a site (default 100)')
+        parser.add_argument('--null_cost', type = float, default = 1.0, help = 'gene stop model: fitness cost s_hom of having no ' +
+                                    'functional copy of a gene, between 0 and 1 (default 1, lethal)')
+        parser.add_argument('--null_dominance', type = float, default = 0.5, help = 'gene stop model: dominance h of a null allele; ' +
+                                    'one functional copy multiplies fitness by 1 - h x s_hom (default 0.5)')
         parser.add_argument('-s', '--substitutions', action='store_true', default=False, help = 'boolean flag to indicate that the input tree ' +
                                     'has branch lengths in substitutions per site; slim-tree will convert them to generations (ticks for non-WF ' +
                                     'models) using the provided population size and mutation rate before running the simulation')
@@ -173,6 +193,14 @@ class readInput:
         hpc = arguments.high_performance_computing
         if (hpc and (arguments.partition == None or arguments.time == None)):
             print("When using high performance computing, partition and time data must be provided. Closing program.", file=sys.stderr)
+            arguments_pass = False
+
+        #Check the stop-model parameters
+        if (arguments.stop_penalty < 0):
+            print("--stop_penalty must not be negative. Closing program.", file=sys.stderr)
+            arguments_pass = False
+        if (not 0 <= arguments.null_cost <= 1 or not 0 <= arguments.null_dominance <= 1):
+            print("--null_cost and --null_dominance must be between 0 and 1. Closing program.", file=sys.stderr)
             arguments_pass = False
 
         #Check to make sure gene count and coding ratio are valid
@@ -339,6 +367,10 @@ class readInput:
             param_dict_dump["average_theta"] = 4*param_dict_dump["mean_mutation_rate"]*param_dict_dump["population_size"]
             param_dict_dump.pop("mutation_rate")
             
+        #Record the population size the stop penalty is calibrated at (site stop model)
+        if (not param_dict_dump["neutral_evolution"] and param_dict_dump["stop_model"] == "site"):
+            param_dict_dump["stop_penalty_reference_N"] = param_dict_dump["population_size"]
+
         #Non-WF models: record what SLiM-Tree's non-WF life cycle implies (utils/nonWFLifeCycle.py)
         if (param_dict_dump["nonWF"]):
             param_dict_dump["nonWF_offspring_per_tick"] = nonWFLifeCycle.OFFSPRING_PER_TICK

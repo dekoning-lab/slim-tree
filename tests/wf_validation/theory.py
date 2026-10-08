@@ -161,6 +161,38 @@ def expected(aa_fitness, N, mu, model="WF", selection_scale=1.0, offspring_per_t
     }
 
 
+def expected_with_stops(aa_fitness, stop_fitness, N, mu):
+    """Weak-mutation expectations for a Wright-Fisher site where stop codons are ordinary states with fitness value
+    stop_fitness (SLiM-Tree's site stop model), instead of lethal. The chain has all 64 codons (SLiM order), with
+    q_ij = 2N (mu/3) u(f_j - f_i). Returns per codon site per generation:
+      K_syn, K_nonsyn       sense-to-sense substitution rates
+      K_to_stop             substitutions whose new codon is a stop (including stop-to-stop changes)
+      K_from_stop           substitutions from a stop to a sense codon
+      pi_stop               stationary probability that the fixed codon is a stop
+      pi_codon              stationary distribution over the 64 codons
+    These classes match harness.parse."""
+    f = np.asarray(aa_fitness, dtype=float)
+    fit = np.array([stop_fitness if c in STOP else f[AA_OF_CODON[c]] for c in range(64)])
+    stop = np.zeros(64, dtype=bool)
+    stop[STOP] = True
+    Q = np.zeros((64, 64))
+    for i in range(64):
+        for j, _ in neighbours(i):
+            Q[i, j] = 2 * N * (mu / 3) * pfix(np.array([fit[j] - fit[i]]), N)[0]
+        Q[i, i] = -Q[i].sum()
+    pi = stationary(Q)
+    aa = np.array([AA_OF_CODON[c] for c in range(64)])
+    off = ~np.eye(64, dtype=bool)
+    sense_pair = (~stop)[:, None] & (~stop)[None, :] & off
+    same_aa = aa[:, None] == aa[None, :]
+    rate = lambda mask: float(pi @ np.where(mask, Q, 0.0).sum(axis=1))
+    return {
+        "K_syn": rate(sense_pair & same_aa), "K_nonsyn": rate(sense_pair & ~same_aa),
+        "K_to_stop": rate(off & stop[None, :]), "K_from_stop": rate(stop[:, None] & (~stop)[None, :]),
+        "pi_stop": float(pi[stop].sum()), "pi_codon": pi, "Q": Q,
+    }
+
+
 def neutral_rate_per_site(mu, model="WF", offspring_per_tick=1):
     """Kimura (1968): the neutral substitution rate per site equals the mutation rate per generation; in the
     non-WF life cycle a generation is (1 + b)/b ticks (2 for b = 1), so the rate is mu b/(1 + b) per tick."""

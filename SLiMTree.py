@@ -1,7 +1,7 @@
 #Program to take in a tree in Newick file and output SLiM code to run a simulation from that tree
 
 import utils
-import os
+import os, sys
 
 class SLiMTree:
 
@@ -69,7 +69,11 @@ class SLiMTree:
                 fitness_finder.process_existing_fitness_file(start_params["aa_fitness_distributions"])
             else:
                 fitness_finder.find_optimal_fitnesses(start_params["population_size"], start_params["high_performance_computing"], start_params["filenames"][1])
-                            
+
+            #Stop-codon values for the chosen stop model (README, "Stop codons")
+            fitness_finder.apply_stop_model(start_params["stop_model"], start_params["stop_penalty"], start_params["population_size"],
+                                            os.path.dirname(start_params["filenames"][1]))
+
             start_params["fitness_profiles"], start_params["min_fitness"]  = fitness_finder.process_fitness_dists()
             
             
@@ -84,6 +88,15 @@ class SLiMTree:
             else:
                 start_params["ancestral_sequence"], start_params["genome_length"] = fitness_finder.find_ancestral_fasta(start_params["fasta_file"])
                 start_params["coding_seqs"] = utils.findCoding.findCoding(start_params["genome_length"]).get_coding_regions()
+
+                #The site stop model scores each gene's first and last codon against ATG and the stop codons, so the supplied
+                #ancestral sequence must start with ATG and end with a stop codon (SLiM codon numbers 14 and 48/50/56)
+                codons = start_params["ancestral_sequence"]
+                if (start_params["stop_model"] == "site" and (codons[0] != "14" or codons[-1] not in ("48", "50", "56"))):
+                    print("With the site stop model, the ancestral sequence (-f) must start with ATG and end with a stop codon. Exiting.",
+                          file=sys.stderr)
+                    sys.exit(1)
+
                 start_params["fitness_profile_nums"] = fitness_finder.define_fitness_profiles(False,
                         start_params["coding_seqs"], start_params["genome_length"])
                 

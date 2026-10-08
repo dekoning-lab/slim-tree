@@ -218,13 +218,44 @@ def evaluate_profiles(name, results, N, mu, intended, B, rng, checks, model="WF"
                        "ratio": obs_dnds / e["dNdS"], "pass": None,
                        "note": "summary of the two rate checks above (not scored separately)"})
         checks.append(zero_check(f"{lab}: premature stop codons fixed", stop,
-                                 "stop codons are excluded from SLiM-Tree's stationary distributions"))
+                                 "site stop model (S_stop = 100): stops are strongly selected and essentially never fix"))
         occ = np.sum([np.array(r["profiles"][key]["occupancy"]) for r in reps], axis=0)
         occ_sense = occ[np.array(theory.SENSE)]
         interval = reps[0]["info"]["sample_interval"]
         n_sites = int(sum(sites))
         g = int(np.median(gens))
         checks.extend(stationary_checks(lab, occ_sense, e["Q"], e["pi_codon"], n_sites, g, interval, B, rng, neutral_pi))
+
+
+STOP_CONTROL_PENALTY = 2.0     # small enough that stop gains and losses are observable (u(-2/(4N)) is about 0.3 x neutral)
+
+
+def evaluate_stop_control(name, results, N, mu, penalty, checks):
+    """Positive control for the site stop model: one flat profile with a small stop penalty. Stops are then ordinary
+    selected states; their gain and loss rates are compared with the 64-state weak-mutation chain (theory.expected_with_stops),
+    using the stop value SLiM-Tree actually wrote. At the default penalty (100) stops are too rare for this test to tell a
+    correct implementation from one that never produces stops."""
+    fit = results[0]["info"]["fitness_profiles"]
+    f = np.array([fit[a][0] for a in theory.AA_ORDER])
+    f_stop = fit["X"][0]
+    want = f.min() - penalty / (4 * N - 2)
+    checks.append({"check": f"{name}: stop value = lowest amino-acid value - S_stop/(4N - 2) (abs diff)",
+                   "observed": abs(f_stop - want), "expected": 0, "pass": bool(abs(f_stop - want) < 1e-12),
+                   "note": f"S_stop = {penalty:g}"})
+    e = theory.expected_with_stops(f, f_stop, N, mu)
+    reps = [r for r in results if "0" in r["profiles"]]
+    sites = [r["profiles"]["0"]["codon_sites"] for r in reps]
+    gens = [r["generations"] for r in reps]
+    for key, label in (("syn", "synonymous"), ("nonsyn", "nonsynonymous (sense to sense)"),
+                       ("to_stop", "stop gains"), ("from_stop", "stop losses")):
+        rate = {"syn": e["K_syn"], "nonsyn": e["K_nonsyn"], "to_stop": e["K_to_stop"], "from_stop": e["K_from_stop"]}[key]
+        counts = [r["profiles"]["0"]["subs"][key] for r in reps]
+        checks.append(rate_check(f"{name}: {label} substitutions", counts, [rate * s * g for s, g in zip(sites, gens)]))
+    occ = np.sum([np.array(r["profiles"]["0"]["occupancy"]) for r in reps], axis=0)
+    stop_occ = float(occ[np.array(theory.STOP)].sum() / occ.sum())
+    checks.append({"check": f"{name}: fraction of time the fixed codon is a stop", "observed": stop_occ,
+                   "expected": e["pi_stop"], "ratio": stop_occ / e["pi_stop"], "pass": None,
+                   "note": "summary (autocorrelated samples; not scored)"})
 
 
 def main(argv=None):
@@ -239,11 +270,12 @@ def main(argv=None):
     ap.add_argument("--reps-neutral", type=int, default=10)
     ap.add_argument("--reps-flat", type=int, default=10)
     ap.add_argument("--reps-sites", type=int, default=20)
+    ap.add_argument("--reps-stop", type=int, default=10)
     ap.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 2))
     ap.add_argument("--bootstrap", type=int, default=1000)
     ap.add_argument("--evaluate-only", action="store_true", help="re-score saved replicates in --outdir without simulating")
     ap.add_argument("--seed-offset", type=int, default=0, help="added to every replicate seed (default runs reuse seeds 1000+, 2000+, 3000+)")
-    ap.add_argument("--only", nargs="*", default=None, help="subset of: neutral_mode flat_profiles site_profiles")
+    ap.add_argument("--only", nargs="*", default=None, help="subset of: neutral_mode flat_profiles site_profiles stop_control")
     ap.add_argument("--slimtree-args", default="", help="extra slim-tree arguments for every non-neutral replicate")
     ap.add_argument("--model", choices=("WF", "nonWF"), default="WF", help="Wright-Fisher (default) or SLiM-Tree's non-WF model")
     a = ap.parse_args(argv)
@@ -257,7 +289,7 @@ def main(argv=None):
     rng = np.random.default_rng(12345)
     base = dict(N=N, mu=mu, codons=a.codons, measure_gens=a.measure_gens, equil_gens=equil,
                 sample_interval=a.interval, extra_args=tuple(a.slimtree_args.split()), nonWF=a.model == "nonWF")
-    only = set(a.only) if a.only else {"neutral_mode", "flat_profiles", "site_profiles"}
+    only = set(a.only) if a.only else {"neutral_mode", "flat_profiles", "site_profiles", "stop_control"}
     checks, timing, all_results = [], {}, []
 
     if "neutral_mode" in only:
@@ -294,6 +326,17 @@ def main(argv=None):
         timing["site_profiles"] = time.time() - t
         all_results += res
         evaluate_profiles("site_profiles", res, N, mu, prof, a.bootstrap, rng, checks, a.model)
+
+    if "stop_control" in only and a.model == "WF":
+        flat_csv = os.path.join(a.outdir, "flat_stationary.csv")
+        write_stationary_csv(flat_csv, [np.ones(20)], N)
+        t = time.time()
+        stop_base = dict(base, extra_args=base["extra_args"] + ("--stop_model", "site", "--stop_penalty", repr(STOP_CONTROL_PENALTY)))
+        res = load_results("stop_control", a.outdir) if a.evaluate_only else run_config("stop_control", make_jobs(dict(stop_base, stationary_csv=flat_csv, recombination=0.5),
+                                                    a.reps_stop, 4000 + a.seed_offset), a.outdir, a.jobs)
+        timing["stop_control"] = time.time() - t
+        all_results += res
+        evaluate_stop_control("stop_control", res, N, mu, STOP_CONTROL_PENALTY, checks)
 
     versions = sorted({r.get("slim_version", "unknown") for r in all_results})
     report = {"settings": {**vars(a), "mu": mu, "equil_gens": equil, "slim_version": ", ".join(versions)},

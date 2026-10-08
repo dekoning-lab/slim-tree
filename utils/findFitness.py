@@ -128,6 +128,31 @@ class findFitness:
 
 
 
+    #Set each profile's stop-codon ("X") value for the chosen stop model, before the neutral profile is added (so that stops
+    #at non-coding sites stay neutral). Profile values are log-fitness contributions.
+    #  site (default): X = min over the 20 amino acids - stop_penalty / (4 n_ref - 2), so a stop is worse than every amino
+    #      acid at the site by at least the scaled penalty S_stop = stop_penalty (n_ref is the population size the profiles
+    #      were fitted at). Always derived from the 20 amino-acid values, so applying it twice gives the same result, and it
+    #      also replaces the X row of a supplied fitness file (-fd).
+    #  gene: X stays the fitted value (the minimum amino-acid value); a supplied X must not exceed the site's minimum, so that
+    #      a premature stop can never be beneficial at its own site.
+    #The applied table is written to applied_fitness_table.csv in output_dir
+    def apply_stop_model(self, stop_model, stop_penalty, n_ref, output_dir = None):
+        aa_rows = [aa for aa in self.fitness_mat.index if aa != "X"]
+        aa_min = self.fitness_mat.loc[aa_rows].min(axis = 0)
+        if (stop_model == "site"):
+            self.fitness_mat.loc["X"] = aa_min - float(stop_penalty) / (4.0 * n_ref - 2.0)
+        elif (stop_model == "gene"):
+            if ((self.fitness_mat.loc["X"] > aa_min + 1e-12).any()):
+                print("With --stop_model gene, each profile's stop (X) value must not exceed its smallest amino-acid value. Exiting.",
+                      file=sys.stderr)
+                sys.exit(1)
+        else:
+            raise ValueError("unknown stop model " + str(stop_model))
+        if (output_dir is not None):
+            self.fitness_mat.to_csv(os.path.join(output_dir, "applied_fitness_table.csv"), header=False)
+
+
     #Process the fitness distributions so that they may be used by slim-tree
     def process_fitness_dists(self):
  

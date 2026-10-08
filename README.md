@@ -83,6 +83,10 @@ optional arguments:
                                 (see Branch-specific parameters below)
   -w, --nonWF                   use a non-Wright-Fisher model
   -N, --neutral_evolution       run neutral evolution (no fitness effects)
+  --stop_model {site,gene}      how stop codons affect fitness (default: site; see Stop codons)
+  --stop_penalty FLOAT          site model: scaled stop penalty S_stop (default: 100)
+  --null_cost FLOAT             gene model: cost s_hom of no functional copy (default: 1)
+  --null_dominance FLOAT        gene model: dominance h of a null allele (default: 0.5)
   -c, --count_subs              count substitutions per branch (slows simulation)
   -o, --output_gens             output sequences every 100 generations (ticks for non-WF)
   -B, --backup                  save simulation checkpoints (increases disk/time usage)
@@ -96,6 +100,26 @@ optional arguments:
   -M MEMORY                     memory to request per Slurm job, e.g. 16g or 32000M
                                 (optional; omit to use the cluster default)
 ```
+
+### Stop codons
+
+**Profile values are log-fitness contributions.** Fitness is multiplicative across sites. Each codon whose amino acid differs from the ancestor's multiplies a haplosome's selection factor by exp(f_new − f_ancestral), where f are the fitted profile values.
+
+**Site model (`--stop_model site`, the default).** A stop codon is one more state at each site, scored like any amino acid. It is a *phenomenological* finite-state model, not a mechanistic model of nonsense-mediated decay or loss of function.
+- **Interior coding sites.** The stop value is the site's lowest amino-acid value minus S_stop/(4N − 2). S_stop is `--stop_penalty` (default 100), and N is the population size the profiles are fitted at (`-n`).
+  - A stop is therefore worse than every amino acid at the site by at least S_stop in population-scaled units. A copy with a stop has relative fitness e^(−δ), where δ ≥ S_stop/(4N − 2) depends on the amino acid replaced. Two copies give e^(−2δ).
+  - The value is computed once per run. Branches with other population sizes (`-d`) keep it, just as they keep the amino-acid values.
+- **Start and terminal stop codons.** Each gene's start codon has ATG as the optimum, and any change costs S_stop. Its terminal stop codon has all three stops equally fit, and read-through to a sense codon costs S_stop.
+- **Non-coding sites** stay neutral, stops included.
+- **No gene-level effects.** A stop's cost does not depend on its position in the gene.
+- **Stops essentially never fix at S_stop = 100, but they do segregate.** At high θ a noticeable fraction of genomes carry a premature stop (about 20% at θ = 0.6 for a 300-codon gene). Such sequences are part of the output and should not be filtered out.
+- **User-supplied fitness files (`-fd`).** The stop value is recomputed from the 20 amino-acid values. The table actually applied is saved as `applied_fitness_table.csv`.
+
+**Gene model (`--stop_model gene`, opt-in).** A gene is a null allele in a haplosome if its start codon or terminal stop codon has changed, or if it carries a premature stop.
+- **Gene factor.** Each gene multiplies fitness by 1, 1 − h·s_hom or 1 − s_hom for two, one or no functional copies (`--null_dominance` h, `--null_cost` s_hom).
+- **The null copy stays under profile selection.** Its codons keep their profile values, and the stop keeps its site value (the site's lowest amino-acid value), so a premature stop has a gene effect plus a small site effect. A knockout can therefore never raise fitness.
+- **This cost doesn't scale.** Its absolute costs are not preserved when N changes at fixed θ.
+- **Supplied stop values** (`-fd`) must not exceed a site's lowest amino-acid value.
 
 ### Non-WF models (`-w`)
 

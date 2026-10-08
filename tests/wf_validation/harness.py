@@ -53,10 +53,12 @@ def generate(workdir, *, N, mu, codons, recombination, measure_gens, equil_gens,
         fh.write("(A:1);\n")
     args = ["tree.txt", "null" if neutral else stationary_csv,
             "-n", str(N), "-v", repr(mu), "-g", str(codons), "-r", repr(recombination),
-            "-b", str(total // N)] + (["-N"] if neutral else []) + (["-w"] if nonWF else []) + list(extra_args)
-    # WFV_SLIMTREE_ARGS adds slim-tree arguments to every run, except to neutral-mode runs
+            "-b", str(total // N)] + (["-N"] if neutral else []) + (["-w"] if nonWF else [])
+    # WFV_SLIMTREE_ARGS adds slim-tree arguments to every run, except to neutral-mode runs. A run's own extra_args come last,
+    # so they take precedence
     if not neutral:
         args += os.environ.get("WFV_SLIMTREE_ARGS", "").split()
+    args += list(extra_args)
 
     random.seed(seed)
     np.random.seed(seed % (2 ** 32))
@@ -106,6 +108,9 @@ def generate(workdir, *, N, mu, codons, recombination, measure_gens, equil_gens,
         "seed": seed, "args": args, "script": script, "samples": samples,
         "ancestral_codons": [int(c) for c in params["ancestral_sequence"]],
         "profile_nums": [int(p) for p in params["fitness_profile_nums"]],
+        "coding_seqs": np.asarray(params["coding_seqs"]).reshape(-1, 2).tolist(),
+        "stop_model": None if neutral else params["stop_model"],
+        "stop_penalty": None if neutral else params["stop_penalty"],
         "fitness_profiles": profiles,
         "selection_scale": float(scale.group(1)) if scale else 1.0,
         "offspring_per_tick": int(litter.group(1)) if litter else 1,

@@ -151,3 +151,29 @@ def test_nonwf_life_cycle_agrees_with_slimtree():
         assert lc.ne_per_generation_ratio(b) == pytest.approx(phi * ne / N)
     # many offspring per tick approaches Wright-Fisher
     assert lc.selection_scale(10 ** 6) == pytest.approx(1.0, rel=1e-5)
+
+
+# ---------------------------------------------------------------- stops as finite-fitness states (site stop model)
+
+@pytest.mark.parametrize("name", ["strong", "graded", "weak"])
+def test_stops_as_states_reduce_to_lethal_chain(name):
+    # with a huge stop penalty, the 64-state chain gives the 61-state (lethal-stop) expectations
+    f = validation_profiles(N)[name]
+    e61 = theory.expected(f, N, MU)
+    e64 = theory.expected_with_stops(f, f.min() - 100.0 / (4 * N - 2), N, MU)
+    assert e64["K_syn"] == pytest.approx(e61["K_syn"], rel=1e-9)
+    assert e64["K_nonsyn"] == pytest.approx(e61["K_nonsyn"], rel=1e-9)
+    assert e64["pi_stop"] < 1e-12          # true value is about e^-100; the linear solve has a ~1e-14 floor
+
+
+def test_stops_as_states_detailed_balance():
+    # symmetric mutation: pi over all 64 codons is proportional to exp((4N - 2) f), stops included
+    f = validation_profiles(N)["graded"]
+    f_stop = f.min() - 2.0 / (4 * N - 2)
+    e = theory.expected_with_stops(f, f_stop, N, 1.0)
+    w = np.array([np.exp((4 * N - 2) * ((f_stop if c in theory.STOP else f[theory.AA_OF_CODON[c]]) - f.max()))
+                  for c in range(64)])
+    assert np.allclose(e["pi_codon"], w / w.sum(), atol=1e-12)
+    # at stationarity, the flux into stops equals the flux out (stop-to-stop changes counted on both sides)
+    stop_to_stop = sum(e["pi_codon"][i] * e["Q"][i, j] for i in theory.STOP for j in theory.STOP if i != j)
+    assert e["K_to_stop"] - stop_to_stop == pytest.approx(e["K_from_stop"], rel=1e-9)
