@@ -1,6 +1,7 @@
 import unittest
 import sys
 import io
+import re
 from contextlib import redirect_stderr
 from utils import convertTree
 
@@ -70,3 +71,13 @@ class testConvertTree(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class testConvertTreeNonWF(unittest.TestCase):
+    # Non-WF branch lengths are in ticks: the conversion takes the generation time in ticks
+    def test_ticks_per_generation_scales_branch_lengths(self):
+        gens = convertTree.substitutions_to_generations("(A:0.1,B:0.2)C:0.3;", 100, 2.5e-6)
+        ticks = convertTree.substitutions_to_generations("(A:0.1,B:0.2)C:0.3;", 100, 2.5e-6, ticks_per_generation = 2.0)
+        lengths = lambda s: [int(x) for x in re.findall(r':(\d+)', s)]
+        for g, t in zip(lengths(gens), lengths(ticks)):
+            self.assertLessEqual(abs(t - 2 * g), 1)

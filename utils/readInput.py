@@ -24,8 +24,15 @@ class readInput:
                 mu = float(args.mutation_matrix[0].sum().sum()) / 12
             else:
                 mu = args.mutation_rate
-            self.param_dict["input_tree_string"] = convertTree.substitutions_to_generations(
-                tree_str, args.population_size, mu)
+            #Non-WF branch lengths are in ticks: convert with the effective population size per generation and scale
+            #generations to ticks (utils/nonWFLifeCycle.py)
+            if self.param_dict["nonWF"]:
+                self.param_dict["input_tree_string"] = convertTree.substitutions_to_generations(
+                    tree_str, args.population_size * nonWFLifeCycle.ne_per_generation_ratio(), mu,
+                    ticks_per_generation = nonWFLifeCycle.generation_time())
+            else:
+                self.param_dict["input_tree_string"] = convertTree.substitutions_to_generations(
+                    tree_str, args.population_size, mu)
 
         #Non-WF runs differ from Wright-Fisher runs with the same -n and -v; say how (see README, "Non-WF models")
         if self.param_dict["nonWF"]:
@@ -49,7 +56,7 @@ class readInput:
                                 'phylogeny with realistic fitness effects using either fitness profiles or structure-based fitness effects.')
         
         #Main tree that is a required argument
-        parser.add_argument('input_tree', type = str, help = 'newick formatted tree file with branch lengths in generations')
+        parser.add_argument('input_tree', type = str, help = 'newick formatted tree file with branch lengths in generations (ticks for non-WF models)')
         
         #Table of possible stationary distributions - which we convert to fitness effects, can also input fitness effects
         parser.add_argument('codon_stationary_distributions', type = str, help = 'file containing a series of stationary codon ' +
@@ -72,7 +79,7 @@ class readInput:
         #Arguments for specifying population parameters
         parser.add_argument('-n','--population_size', help = 'starting population size for the simulation, default = 100', type = int, default = 100)
         parser.add_argument('-b','--burn_in_multiplier', type=int, default = 10, help = 'value to multiply population size by ' +
-                                    'for burn in, default = 10')
+                                    'for burn in (generations; ticks for non-WF models), default = 10')
         parser.add_argument('-r','--recombination_rate', help = 'recombination rate, default = 2.5e-8', type=float, default = 2.5e-8)
         parser.add_argument('-v','--mutation_rate', help = 'starting mutation rate for the simulation, default = 2.5e-6', type=float, default = 2.5e-6)
         parser.add_argument('-m', '--mutation_matrix',  type = self.make_mutation_matrix, help = 'CSV file specifying a 4 by 4 mutation ' +
@@ -106,7 +113,7 @@ class readInput:
 	      #Flags to turn on and off simulation functions
         parser.add_argument('-c','--count_subs', action='store_true', default=False, help = 'boolean flag to turn on substitution counting. ' +
                                     'This will slow down simulations')
-        parser.add_argument('-o','--output_gens', action='store_true', default=False, help = 'boolean flag to output every 100th generation. ' +
+        parser.add_argument('-o','--output_gens', action='store_true', default=False, help = 'boolean flag to output every 100th generation (tick for non-WF models). ' +
                                     'This can be helpful in tracking simulation progression')
         parser.add_argument('-B','--backup', action='store_true', default=False, help = 'boolean flag to turn on backups of the simulations, ' +
                                     'allowing a restart of simulations if required. This will increase space and time complexity')
@@ -117,8 +124,8 @@ class readInput:
         parser.add_argument('-N', '--neutral_evolution', action='store_true', default=False, help = 'boolean flag to run neutral evolution ' +
                                     'instead of fitness based evolution')
         parser.add_argument('-s', '--substitutions', action='store_true', default=False, help = 'boolean flag to indicate that the input tree ' +
-                                    'has branch lengths in substitutions per site; slim-tree will convert them to generations using the ' +
-                                    'provided population size and mutation rate before running the simulation')
+                                    'has branch lengths in substitutions per site; slim-tree will convert them to generations (ticks for non-WF ' +
+                                    'models) using the provided population size and mutation rate before running the simulation')
 
 
         #Get arguments from user

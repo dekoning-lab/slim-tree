@@ -28,7 +28,7 @@ This installs the `slim-tree` command globally.
 slim-tree my_tree.txt stationary_distributions.csv
 ```
 
-- `my_tree.txt` — Newick tree with branch lengths **in generations**
+- `my_tree.txt` — Newick tree with branch lengths **in generations** (**in ticks** for non-WF runs, `-w`; see [Non-WF models](#non-wf-models--w))
   If your tree has branch lengths in **substitutions per site**, use `-s` to convert automatically: [NEED TO RUN MORE TEST TO MAKE SURE -s WORKS - WORKING ON IT]
 - `stationary_distributions.csv` — codon stationary distributions (61 codons × N profiles)
 
@@ -51,6 +51,7 @@ All output is written relative to the input tree file location:
 ```
 positional arguments:
   input_tree                    Newick tree file; branch lengths must be in generations
+                                (ticks for non-WF models, -w)
                                 (use -s if they are in substitutions per site)
   codon_stationary_distributions
                                 CSV of codon stationary distributions (61 rows × N columns,
@@ -61,9 +62,11 @@ optional arguments:
   -fd FILE                      CSV of amino acid fitness values; if omitted, fitnesses are
                                 computed from the stationary distributions
   -s, --substitutions           convert branch lengths from substitutions per site to
-                                generations using the provided -n and -v values
+                                generations (ticks for non-WF models) using the provided
+                                -n and -v values
   -n INT                        starting population size (default: 100)
-  -b INT                        burn-in multiplier × population size (default: 10)
+  -b INT                        burn-in multiplier × population size (default: 10);
+                                generations, or ticks for non-WF
   -v FLOAT                      per-site mutation rate (default: 2.5e-6)
   -r FLOAT                      recombination rate (default: 2.5e-8)
   -m FILE                       4×4 mutation rate matrix CSV (A,C,G,T order, no header,
@@ -81,7 +84,7 @@ optional arguments:
   -w, --nonWF                   use a non-Wright-Fisher model
   -N, --neutral_evolution       run neutral evolution (no fitness effects)
   -c, --count_subs              count substitutions per branch (slows simulation)
-  -o, --output_gens             output sequences every 100 generations
+  -o, --output_gens             output sequences every 100 generations (ticks for non-WF)
   -B, --backup                  save simulation checkpoints (increases disk/time usage)
   -P, --polymorphisms           record polymorphic sites at each branch end
   -S, --calculate_selection     compute dN/dS by counting synonymous and non-synonymous
@@ -131,7 +134,7 @@ optional arguments:
 - *Site profiles:* `tests/wf_validation` (`--model nonWF`) checks that site profiles reproduce their stationary distributions. On SLiM 5.2 with b = 1, all 25 scored checks pass. Without the correction, scaled selection would be 16/11 of what the profiles intend.
 
 **Practical consequences:**
-- **Time units.** Non-WF branch lengths are in ticks. `-s` converts substitutions to Wright–Fisher generations, so a non-WF tree converted with `-s` accrues about 1/T of the intended divergence, where T is the generation time in ticks (half, for b = 1).
+- **Time units: non-WF branch lengths are in ticks.** All times in a non-WF run are in ticks: branch lengths, the burn-in (`-b` × K ticks) and the `-o` output interval. One generation is (1 + b)/b ticks (2 for b = 1), so a branch of t ticks accrues the neutral divergence of t·b/(1 + b) generations. The default burn-in of 10K ticks is therefore 5K generations. With `-s`, SLiM-Tree converts substitutions to ticks: it evaluates the Wright–Fisher conversion at the effective size per generation (8K/11) and multiplies by the generation time.
 - **θ.** With the same `-n` and `-v`, non-WF neutral diversity is 8/11 of the Wright–Fisher value.
 - **Run record.** Each run prints these values and records them in `<tree>_parameters.yaml` (`nonWF_*` keys).
 

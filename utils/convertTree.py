@@ -2,7 +2,10 @@ import re
 import sys
 
 
-def substitutions_to_generations(tree_str, population_size, mutation_rate):
+#Converts branch lengths from substitutions per site to the simulation's time units: generations for Wright-Fisher models
+#(ticks_per_generation = 1) or ticks for non-WF models, which pass their generation time in ticks and their effective
+#population size per generation (see utils/nonWFLifeCycle.py and readInput.process_input)
+def substitutions_to_generations(tree_str, population_size, mutation_rate, ticks_per_generation = 1.0):
     tree_str = tree_str.replace(" ", "")
 
     # Sum only numbers that contain a decimal point (branch lengths, not bootstrap integers)
@@ -24,5 +27,5 @@ def substitutions_to_generations(tree_str, population_size, mutation_rate):
 
     # Second pass: scale to generations and round to integers
     def to_generations(match):
-        return str(round(float(match.group()) * (Tbfix / 3)))
+        return str(round(float(match.group()) * (Tbfix / 3) * ticks_per_generation))
     return re.sub(r'\d+\.\d+', to_generations, tree_str)
