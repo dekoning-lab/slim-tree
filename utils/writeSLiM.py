@@ -9,6 +9,7 @@
 
 import random, csv, os, pandas, sys
 import numpy as np
+from utils import nonWFLifeCycle
 
 #Base class from which other classes inherit
 class writeSLiM:
@@ -141,6 +142,23 @@ class writeSLiM:
             set_up_fitness += ("\n\tdefineConstant(\"seq_length\", " + str(self.start_params["genome_length"]*3) + ");" +
                             "\n\tget_fitness();\n")
 
+            #Fitness values are looked up in one flat table: FIT_TABLE[aa_index * N_PROF + profile]. With the site stop model
+            #(the default) two extra profiles, the last two columns, score each gene's start codon (ATG optimal) and terminal
+            #stop codon (any stop optimal); every other state at those sites costs the stop penalty (stop_penalty_delta)
+            aa_letters = list(fitness_profiles.keys())
+            columns = {aa: [float(v) for v in fitness_profiles[aa]] for aa in aa_letters}
+            if (self.stop_model() == "site"):
+                delta = self.stop_penalty_delta()
+                for aa in aa_letters:
+                    columns[aa] = columns[aa] + [1.0 if aa == "M" else 1.0 - delta, 1.0 if aa == "X" else 1.0 - delta]
+            fit_table = [v for aa in aa_letters for v in columns[aa]]
+            set_up_fitness += ("\n\tdefineConstant(\"AA_LETTERS\", c(" + ", ".join("\"" + aa + "\"" for aa in aa_letters) + "));" +
+                            "\n\tdefineConstant(\"N_PROF\", " + str(len(columns[aa_letters[0]])) + ");" +
+                            "\n\tdefineConstant(\"FIT_TABLE\", c(" + ", ".join(repr(v) for v in fit_table) + "));\n")
+            set_up_fitness += self.fitness_constants()
+            if (self.start_params["nonWF"]):
+                set_up_fitness += "\tdefineConstant(\"NONWF_SELECTION_SCALE\", " + repr(nonWFLifeCycle.selection_scale()) + ");\n"
+
 
 
         #Write code to start a fixed state from the starting nucleotide sequence
@@ -181,73 +199,142 @@ class writeSLiM:
     
     
             #Defining a function in SLiM which returns the fitness of an individual genome
-    
+
+            #Fitness is multiplicative across sites. The fitness profiles are fitted (utils/calculateFitnesses.py) treating the
+            #difference between two amino acids' values as the selection coefficient of that change at a single site, so each
+            #codon whose amino acid differs from the ancestor's multiplies a haplosome's selection factor by
+            #exp(f_new - f_ancestral). Profile values are therefore log-fitness contributions. get_genome_fitness works on
+            #integer codons and amino-acid indices (CODON_TO_AA) rather than amino-acid strings, which is about 4x faster
+            #when few codons differ from the ancestor.
+            #Site stop model (default): a stop codon is one more state at each site, scored from the table like any amino
+            #acid (its value is set in findFitness.apply_stop_model); get_genome_fitness returns the selection factor.
+            #Gene stop model: in addition, a gene is a null allele in a haplosome if its start or terminal stop codon has
+            #changed or it has a premature stop, and each gene multiplies fitness by NULL_FACTORS[number of functional
+            #copies]; get_genome_fitness returns c(selection factor, functional flag of gene 0, gene 1, ...). A null copy's
+            #codons stay in the selection factor, so a knockout can never raise fitness
+            gene_model = self.stop_model() == "gene"
             genome_fitness_function_string = ("function (float) get_genome_fitness (object nucs){" +
- 
-                                        #Get ancestral fitness for this position --- change this to the original ancester. 
-                                        "\n\tanc_fit_val =  sim.getValue(\"ancestral_fitness_value\");" +
-                                        
-                                        #Get amino acid sequence
-                                        "\n\taa_seq = codonsToAminoAcids(nucs.nucleotides(format = \"codon\"), paste = F);" +
-                                        
-                                        #Find where sequences are different
-                                        "\n\tposes = (aa_seq != sim.getValue(\"ancestral_aas\"));" +
-                                        
-                                        #If no differences, ancestral fitness
-                                        "\n\n\tif(sum(poses) == 0){" +
-                                        "\n\t\tfitness_value = anc_fit_val;" +
-                                        "\n\t}"  +
-                                        
-                                        #If missing start or stop codon, 0
-                                        "\n\telse if(length(setIntersection(start_stop_codon_positions, which(poses)))!=0){" +
-                                        "\n\t\tfitness_value = 0.0;" +
-                                        "\n\t}"  +
-                                        
-                                        #Get the fitness of the whole genome, replace changes with new values
-                                        "\n\telse{" 
-                                        "\n\t\tfitness_vals = sim.getValue(\"ancestral_fitnesses\");" +
-                                        "\n\t\tfitness_vals[poses] = sapply(which(poses), \"sim.getValue(aa_seq[applyValue])" +
-                                        "[sim.getValue(\\\"fitness_profiles\\\")[applyValue]];\");" +
-                                        
-                                        #If anything is a stop codon remove that portion from fitnesses
-                                        "\n\n\t\tif(any(aa_seq[poses] == \"X\")){" +
-                                        "\n\t\t\tearly_stop_points = which(aa_seq == \"X\");" +
-                                        "\n\t\t\tfor(stop_point in early_stop_points){" +
-                                        "\n\t\t\t\tclosest_start_stop_pos  = which(abs(start_stop_codon_positions - stop_point) " +
-                                        "== min(abs(start_stop_codon_positions - stop_point)))[0];" +
-                                        "\n\t\t\t\tif(closest_start_stop_pos % 2 == 0.0){" +
-                                        "\n\t\t\t\t\tstart_pos = start_stop_codon_positions[closest_start_stop_pos];" +
-                                        "\n\t\t\t\t\tstop_pos = start_stop_codon_positions[closest_start_stop_pos + 1];" +
-                                        "\n\t\t\t\t} else {" +
-                                        "\n\t\t\t\t\tstart_pos = start_stop_codon_positions[closest_start_stop_pos - 1];" +
-                                        "\n\t\t\t\t\tstop_pos = start_stop_codon_positions[closest_start_stop_pos];" +
-                                        "\n\t\t\t\t}" +
-                                        "\n\t\t\t\tif(stop_point < stop_pos){" +
-                                        "\n\t\t\t\t\tfitness_vals[stop_point:stop_pos] =  0.0;" +
-                                        "\n\t\t\t\t};\n\t\t\t};\n\t\t};" +
-                                        
-                                        
-                                        "\n\t\tfitness_value = sum(fitness_vals);" +
-                                        "\n\t};" +
-                                        "\n\treturn fitness_value;\n}\n\n\n")
-    
+                                    "\n\tcodons = nucs.nucleotides(format = \"codon\");" +
+                                    "\n\tposes = which(codons != ANC_CODONS);" +
+                                    "\n\tif (size(poses) == 0) return " + ("c(1.0, ALL_FUNCTIONAL)" if gene_model else "1.0") + ";" +
+                                    "\n\taa = CODON_TO_AA[codons[poses]];" +
+                                    "\n\tchanged = aa != ANC_AA[poses];" +
+                                    "\n\tif (!any(changed)) return " + ("c(1.0, ALL_FUNCTIONAL)" if gene_model else "1.0") + ";" +
+                                    "\n\tposes = poses[changed];" +
+                                    "\n\taa = aa[changed];")
+            if (gene_model):
+                genome_fitness_function_string += ("\n\tfunctional = ALL_FUNCTIONAL;" +
+                                    "\n\tnull_genes = c(NULL_IF_CHANGED[poses], NULL_IF_STOP[poses[aa == X_INDEX]]);" +
+                                    "\n\tnull_genes = null_genes[null_genes >= 0];" +
+                                    "\n\tif (size(null_genes) > 0) functional[null_genes] = 0.0;" +
+                                    "\n\treturn c(exp(sum(FIT_TABLE[aa * N_PROF + PROFILE_OF_CODON[poses]] - ANC_FIT[poses])), functional);\n}\n\n\n")
+            else:
+                genome_fitness_function_string += "\n\treturn exp(sum(FIT_TABLE[aa * N_PROF + PROFILE_OF_CODON[poses]] - ANC_FIT[poses]));\n}\n\n\n"
+
             self.output_file.write(genome_fitness_function_string)
 
+            if (not self.start_params["nonWF"]):
+                if (gene_model):
+                    self.output_file.write("fitnessEffect() {" +
+                                           "\n\tw1 = get_genome_fitness(individual.haploidGenome1);" +
+                                           "\n\tw2 = get_genome_fitness(individual.haploidGenome2);" +
+                                           "\n\treturn w1[0] * w2[0] * product(NULL_FACTORS[asInteger(w1[1:N_GENES] + w2[1:N_GENES])]);\n}\n\n\n")
+                else:
+                    self.output_file.write("fitnessEffect() {" +
+                                           "\n\treturn get_genome_fitness(individual.haploidGenome1) * get_genome_fitness(individual.haploidGenome2);\n}\n\n\n")
+            else:
+                self.output_file.write(self.nonwf_fitness_function())
 
 
+    #Stop model and penalty (see utils/findFitness.apply_stop_model and README "Stop codons")
+    def stop_model(self):
+        return self.start_params.get("stop_model", "site")
 
-        #Now write out the fitness callback based on the fitness distribution
-            fitness_callback_string = ("fitnessEffect() {return((get_genome_fitness(individual.genome1)+get_genome_fitness(individual.genome2)) / " + 
-                    str(2*population_parameters["scaling_value"]) + ");" + 
-                    "//If error says total fitness < 0.0, mutation rate is lethal\n}\n\n\n")
+    #Per-copy log-fitness gap of the site stop model: S_stop / (4 N_ref - 2), with N_ref the population size the
+    #profiles were fitted at (the same convention as calculateFitnesses.ratio_func)
+    def stop_penalty_delta(self):
+        return float(self.start_params.get("stop_penalty", 100.0)) / (4.0 * self.start_params["population_size"] - 2.0)
 
-            self.output_file.write(fitness_callback_string)
+    #Eidos constants for fitness (written inside setup_fitness). Per gene: GENE_STARTS/GENE_ENDS (codon indices of its
+    #start and terminal stop codon). Site stop model: those codons use the two boundary profiles (the last two columns of
+    #FIT_TABLE). Gene stop model: per codon (-1 = none) GENE_OF_CODON, NULL_IF_CHANGED (the gene whose start or stop codon
+    #this is) and NULL_IF_STOP (the gene that a stop codon here knocks out: any codon strictly between its start and stop
+    #codons), and NULL_FACTORS (fitness factor for 0, 1 or 2 functional copies). Then the integer lookups used by
+    #get_genome_fitness
+    def fitness_constants(self):
+        coding = np.asarray(self.start_params["coding_seqs"]).reshape(-1, 2)
+        starts = [int(s) for s in coding[:, 0]]
+        ends = [int(e) for e in coding[:, 1]]
+
+        def eidos_vector(values):
+            return "c(" + ", ".join(repr(v) for v in values) + ")"
+
+        out = ("\n\tdefineConstant(\"N_GENES\", " + str(len(starts)) + ");" +
+               "\n\tdefineConstant(\"GENE_STARTS\", " + eidos_vector(starts) + ");" +
+               "\n\tdefineConstant(\"GENE_ENDS\", " + eidos_vector(ends) + ");")
+        if (self.stop_model() == "gene"):
+            h = float(self.start_params.get("null_dominance", 0.5))
+            s_hom = float(self.start_params.get("null_cost", 1.0))
+            out += ("\n\tdefineConstant(\"ALL_FUNCTIONAL\", rep(1.0, N_GENES));" +
+                    "\n\tdefineConstant(\"NULL_FACTORS\", " + eidos_vector([1.0 - s_hom, 1.0 - h * s_hom, 1.0]) + ");" +
+                    "\n\tgene_of_codon = rep(-1, " + str(self.start_params["genome_length"]) + ");" +
+                    "\n\tnull_if_changed = gene_of_codon;" +
+                    "\n\tnull_if_stop = gene_of_codon;" +
+                    "\n\tfor (gene in 0:(N_GENES - 1)){" +
+                    "\n\t\tgene_of_codon[GENE_STARTS[gene]:GENE_ENDS[gene]] = gene;" +
+                    "\n\t\tnull_if_changed[c(GENE_STARTS[gene], GENE_ENDS[gene])] = gene;" +
+                    "\n\t\tif (GENE_ENDS[gene] - GENE_STARTS[gene] > 1) null_if_stop[(GENE_STARTS[gene] + 1):(GENE_ENDS[gene] - 1)] = gene;" +
+                    "\n\t}" +
+                    "\n\tdefineConstant(\"GENE_OF_CODON\", gene_of_codon);" +
+                    "\n\tdefineConstant(\"NULL_IF_CHANGED\", null_if_changed);" +
+                    "\n\tdefineConstant(\"NULL_IF_STOP\", null_if_stop);")
+        out += ("\n\tprofile_of_codon = sim.getValue(\"fitness_profiles\");" +
+                ("\n\tprofile_of_codon[GENE_STARTS] = N_PROF - 2;\n\tprofile_of_codon[GENE_ENDS] = N_PROF - 1;"
+                 if self.stop_model() == "site" else "") +
+                #Integer lookups for get_genome_fitness: codon (0-63) -> index into AA_LETTERS, and ancestral state per codon
+                "\n\tdefineConstant(\"PROFILE_OF_CODON\", profile_of_codon);" +
+                "\n\tdefineConstant(\"CODON_TO_AA\", match(codonsToAminoAcids(0:63, paste = F), AA_LETTERS));" +
+                "\n\tdefineConstant(\"X_INDEX\", match(\"X\", AA_LETTERS));" +
+                "\n\tdefineConstant(\"ANC_CODONS\", sim.chromosome.ancestralNucleotides(format = \"codon\"));" +
+                "\n\tdefineConstant(\"ANC_AA\", CODON_TO_AA[ANC_CODONS]);" +
+                "\n\tdefineConstant(\"ANC_FIT\", FIT_TABLE[ANC_AA * N_PROF + PROFILE_OF_CODON]);\n")
+        return out
 
 
-    #Write the reproduction callback for non-Wright-Fisher models
+    #Non-WF models raise each individual's selection factor to the power NONWF_SELECTION_SCALE (gene-model null-allele
+    #factors are not scaled). The value, K / Ne per tick, depends on the life cycle written by write_reproduction and the early()
+    #events: utils/nonWFLifeCycle.py derives it and states the assumptions (11/16 with one offspring per tick)
+
+    #Non-WF models compute fitness in each subpopulation's early() event instead of a fitnessEffect() callback, so that
+    #survival can be normalized by total fitness: an individual with fitness w survives with probability w * K / sum(w),
+    #which keeps the expected population size at K whatever the mean fitness (soft selection)
+    def nonwf_fitness_function(self):
+        return ("function (void) set_fitness_nonwf (object<Subpopulation>$ subpop, numeric$ K){" +
+                "\n\tinds = subpop.individuals;" +
+                "\n\tif (size(inds) == 0) return;" +
+                ("\n\tw = sapply(inds, \"w1 = get_genome_fitness(applyValue.haploidGenome1); w2 = get_genome_fitness(applyValue.haploidGenome2); " +
+                 "(w1[0] * w2[0]) ^ NONWF_SELECTION_SCALE * product(NULL_FACTORS[asInteger(w1[1:N_GENES] + w2[1:N_GENES])]);\");"
+                 if self.stop_model() == "gene" else
+                 "\n\tw = sapply(inds, \"(get_genome_fitness(applyValue.haploidGenome1) * get_genome_fitness(applyValue.haploidGenome2)) " +
+                 "^ NONWF_SELECTION_SCALE;\");") +
+                "\n\tinds.fitnessScaling = w;" +
+                "\n\ttotal = sum(w);" +
+                "\n\tif (total > 0) subpop.fitnessScaling = K / total; else subpop.fitnessScaling = 0.0;\n}\n\n\n")
+
+    #Eidos for the density regulation in a non-WF subpopulation's early() event
+    def nonwf_early_commands(self, pop_name, population_size):
+        if (self.start_params["neutral_evolution"]):
+            return pop_name + ".fitnessScaling = " + str(int(population_size)) + "/" + pop_name + ".individualCount;"
+        return "set_fitness_nonwf(" + pop_name + ", " + str(int(population_size)) + ");"
+
+
+    #Write the reproduction callback for non-Wright-Fisher models: each individual is the first parent of
+    #nonWFLifeCycle.OFFSPRING_PER_TICK offspring, each with a random second parent. The non-WF selection scale is derived
+    #for this life cycle (utils/nonWFLifeCycle.py), so change both together.
     def write_reproduction(self):
-        #Basic reproduction callback for now; more functionality could be added later if necessary.
-        reproduction_string = ("reproduction(){\n\tsubpop.addCrossed(individual, subpop.sampleIndividuals(1));\n}\n\n\n")
+        b = nonWFLifeCycle.OFFSPRING_PER_TICK
+        cross = "subpop.addCrossed(individual, subpop.sampleIndividuals(1));"
+        reproduction_string = ("reproduction(){\n\t" + (cross if b == 1 else "for (i in seqLen(" + str(b) + ")) " + cross) + "\n}\n\n\n")
 
         self.output_file.write(reproduction_string)
 
@@ -273,7 +360,7 @@ class writeSLiM:
                         "\n\t\tancestral_genome = sim.getValue(\"fixations_" + pop_name + "\");" +
                         "\n\t\trow_num = " + pop_name + ".individualCount* 2;" +
                         "\n\t\tmuts_mat = integer(row_num*1500);\n\t\tmuts_mat = " + pop_name + 
-                        ".genomes.nucleotides(NULL, NULL, \"integer\");"+
+                        ".haplosomes.nucleotides(NULL, NULL, \"integer\");"+
                         "\n\t\tmuts_mat = matrix(muts_mat, nrow = row_num, byrow = T);" +
                         "\n\t\tcompare_seq = c(muts_mat[0,]);"+
                         "\n\n\t\tfixed_nucs = apply(muts_mat, 1, " +
@@ -412,9 +499,7 @@ class writeSLiM:
 
         #Write the early commands - this may need tweaking w/ the fitness algorithm
         early_event = (str(int(population_parameters["dist_from_start"]) + 1) + ":" + str(int(population_parameters["end_dist"])) +
-                        " early(){\n\t" + pop_name + ".fitnessScaling = " +
-                        str(int(population_parameters["population_size"])) + "/" + pop_name +
-                        ".individualCount;" )
+                        " early(){\n\t" + self.nonwf_early_commands(pop_name, population_parameters["population_size"]))
 
         early_event+= "\n}\n\n\n"
 
@@ -454,12 +539,12 @@ class writeSLiM:
 
         #Write files containing polymorphisms in each population and relative proportions
         if(population_parameters["polymorphisms"]):
-            end_population_string += ("\n\tpop_seq = sample("+ population_parameters["pop_name"] +".individuals.genomes, 1).nucleotides();" +
+            end_population_string += ("\n\tpop_seq = sample("+ population_parameters["pop_name"] +".individuals.haplosomes, 1).nucleotides();" +
                                         "\n\tpop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = \"\");" +
                                         "\n\tpolymorph_str = c();\n\tfixed_str=c();" +
                                         "\n\tfor (a in 0:(length(pop_seq)-1)) " +
                                         "{\n\t\tdiffs = c();" + 
-                                        "\n\t\tfor (g in " + population_parameters["pop_name"] + ".individuals.genomes.nucleotides()){" +
+                                        "\n\t\tfor (g in " + population_parameters["pop_name"] + ".individuals.haplosomes.nucleotides()){" +
                                         "\n\t\t\taa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = \"\");" +
                                         "\n\t\t\tdiffs = c(diffs, aa_seq[a]);\n\t\t}" +
                                         "\n\t\tunique_diffs = unique(diffs);" +
@@ -504,7 +589,7 @@ class writeSLiM:
             terminal_output_string = ("\n\n\tconsensus = \"\";" +
                                     "\n\tfor (i in 0:" + str(self.start_params["genome_length"] * 3 - 1) + "){" +
                                     "\n\t\tconsensus = consensus+ c(\"A\", \"C\", \"G\", \"T\")[whichMax(nucleotideCounts(paste0(matrix(sapply(" + pop +
-                                    ".genomes.nucleotides(), \"strsplit(applyValue, sep = '');\"), ncol = " + str(self.start_params["genome_length"] * 3) + 
+                                    ".haplosomes.nucleotides(), \"strsplit(applyValue, sep = '');\"), ncol = " + str(self.start_params["genome_length"] * 3) + 
                                     ", byrow = T)[,i])))];\n\t}" +
                                     "\n\n\tfasta_string_nuc = paste0(\">" + clade_name + ": \\n\", consensus);" +
                                     "\n\twriteFile(\"" + self.start_params["filenames"][7] + "/nuc.fasta" + "\", fasta_string_nuc,append = T);" +
@@ -513,9 +598,9 @@ class writeSLiM:
 
         else:
             if(samp_size == "all"):
-                terminal_output_string = "\n\tgenomes = " + pop + ".genomes;"
+                terminal_output_string = "\n\tgenomes = " + pop + ".haplosomes;"
             else:
-                terminal_output_string = ("\n\tgenomes = sample(" + pop + ".genomes, min(" + str(int(samp_size)) +
+                terminal_output_string = ("\n\tgenomes = sample(" + pop + ".haplosomes, min(" + str(int(samp_size)) +
                                     ", 2*" + pop + ".individualCount), replace=F);")
 
 

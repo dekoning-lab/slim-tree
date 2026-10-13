@@ -11,8 +11,13 @@ from utils.writeSLiMHPC import writeSLiMHPC
 
 def _make_start_params(base_path, slurm_dir=None, nonWF=False, neutral=False,
                        count_subs=False, calculate_selection=False,
-                       backup=False, output_gens=False, polymorphisms=False):
+                       backup=False, output_gens=False, polymorphisms=False, stop_model="site"):
     return {
+        "population_size": 100,
+        "stop_model": stop_model,
+        "stop_penalty": 100.0,
+        "null_cost": 1.0,
+        "null_dominance": 0.5,
         "filenames": [base_path, base_path, None, slurm_dir, None, None, None, base_path, base_path],
         "nonWF": nonWF,
         "ancestral_sequence": ["14", "20", "30"],
@@ -183,12 +188,65 @@ class testWriteSLiM(unittest.TestCase):
         self.assertIn("function (float) get_genome_fitness (object nucs)", c)
         self.assertIn("fitnessEffect()", c)
 
-    def test_write_fitness_scaling_value_in_denominator(self):
+    def test_write_fitness_nonwf_is_multiplicative_and_normalized(self):
+        # nonWF models use the same multiplicative genome fitness, set in early() and normalized by total fitness
+        sp = _make_start_params(self.base_path, nonWF=True)
+        w = self._writer_with_open_file("p1", sp)
+        w.write_fitness(self.root)
+        w.output_file.close()
+        c = self._read("p1")
+        self.assertIn("function (void) set_fitness_nonwf (object<Subpopulation>$ subpop, numeric$ K)", c)
+        self.assertIn('defineConstant("NONWF_SELECTION_SCALE", 0.6875);', c)
+        self.assertIn("(get_genome_fitness(applyValue.haploidGenome1) * get_genome_fitness(applyValue.haploidGenome2)) ^ NONWF_SELECTION_SCALE", c)
+        self.assertIn("subpop.fitnessScaling = K / total;", c)
+        self.assertNotIn("fitnessEffect()", c)
+        self.assertNotIn("200.0", c)
+
+    def test_write_fitness_wf_is_multiplicative(self):
+        # Wright-Fisher models multiply the two haplosomes' fitness (no scaling denominator). Site stop model (default):
+        # no gene-level factors, and each gene's start and terminal stop codon use the two boundary profiles
         w = self._writer_with_open_file("p1")
         w.write_fitness(self.root)
         w.output_file.close()
-        # denominator = 2 * scaling_value = 2 * 100.0 = 200.0
-        self.assertIn("200.0", self._read("p1"))
+        c = self._read("p1")
+        self.assertIn("return get_genome_fitness(individual.haploidGenome1) * get_genome_fitness(individual.haploidGenome2);", c)
+        self.assertIn('defineConstant("N_PROF", 3);', c)        # 1 fixture profile + start and terminal-stop profiles
+        self.assertIn("profile_of_codon[GENE_STARTS] = N_PROF - 2;", c)
+        self.assertIn("profile_of_codon[GENE_ENDS] = N_PROF - 1;", c)
+        self.assertIn('defineConstant("ANC_FIT", FIT_TABLE[ANC_AA * N_PROF + PROFILE_OF_CODON]);', c)
+        self.assertNotIn("NULL_FACTORS", c)
+        self.assertNotIn("200.0", c)
+
+    def test_write_fitness_site_model_boundary_profiles(self):
+        # start profile: M optimal; terminal-stop profile: X optimal; anything else costs S_stop / (4N - 2) = 100 / 398
+        w = self._writer_with_open_file("p1")
+        w.write_fitness(self.root)
+        w.output_file.close()
+        c = self._read("p1")
+        table = c.split('defineConstant("FIT_TABLE", c(')[1].split("))")[0]
+        values = [float(v) for v in table.split(",")]
+        letters = list(_make_start_params(self.base_path)["fitness_profiles"].keys())
+        delta = 100.0 / 398.0
+        for i, aa in enumerate(letters):
+            if aa == "neutral":                                   # fixture quirk: not an amino acid
+                continue
+            start_value, stop_value = values[3 * i + 1], values[3 * i + 2]
+            self.assertAlmostEqual(start_value, 1.0 if aa == "M" else 1.0 - delta, places=12)
+            self.assertAlmostEqual(stop_value, 1.0 if aa == "X" else 1.0 - delta, places=12)
+
+    def test_write_fitness_gene_model(self):
+        # gene stop model: null alleles with explicit fitness factors; a null copy's codons stay in the selection factor
+        sp = _make_start_params(self.base_path, stop_model="gene")
+        sp["null_cost"], sp["null_dominance"] = 0.4, 0.25
+        w = self._writer_with_open_file("p1", sp)
+        w.write_fitness(self.root)
+        w.output_file.close()
+        c = self._read("p1")
+        self.assertIn('defineConstant("NULL_FACTORS", c(0.6, 0.9, 1.0));', c)
+        self.assertIn("return w1[0] * w2[0] * product(NULL_FACTORS[asInteger(w1[1:N_GENES] + w2[1:N_GENES])]);", c)
+        self.assertIn('defineConstant("N_PROF", 1);', c)
+        self.assertNotIn("keep = match", c)
+        self.assertNotIn("profile_of_codon[GENE_STARTS]", c)
 
     def test_write_fitness_neutral_omits_fitness_functions(self):
         sp = _make_start_params(self.base_path, neutral=True)
@@ -254,8 +312,17 @@ class testWriteSLiM(unittest.TestCase):
         w.write_subpop_nonwf(self.root)
         w.close_file()
         c = self._read("p1")
-        self.assertIn("fitnessScaling", c)
+        self.assertIn("set_fitness_nonwf(p1, 100);", c)
         self.assertIn("reproduction()", c)
+
+    def test_write_subpop_nonwf_neutral_scales_by_census(self):
+        sp = _make_start_params(self.base_path, nonWF=True, neutral=True)
+        w = writeSLiM(sp)
+        w.write_subpop_nonwf(self.root)
+        w.close_file()
+        c = self._read("p1")
+        self.assertIn("p1.fitnessScaling = 100/p1.individualCount;", c)
+        self.assertNotIn("set_fitness_nonwf", c)
 
     def test_write_subpop_nonwf_last_child_uses_takemigrants(self):
         sp = _make_start_params(self.base_path, nonWF=True)
@@ -360,7 +427,7 @@ class testWriteSLiM(unittest.TestCase):
     def test_write_terminal_output_all_outputs_all_genomes(self):
         w = writeSLiM(self.sp)
         result = w.write_terminal_output(self.root)
-        self.assertIn("genomes = p1.genomes", result)
+        self.assertIn("genomes = p1.haplosomes", result)
         self.assertIn("_nuc.fasta", result)
         self.assertIn("_aa.fasta", result)
 
@@ -369,7 +436,7 @@ class testWriteSLiM(unittest.TestCase):
         result = w.write_terminal_output(_make_root_pop(sample_size="consensus"))
         self.assertIn("consensus", result)
         self.assertIn("whichMax", result)
-        self.assertNotIn("genomes = p1.genomes", result)
+        self.assertNotIn("genomes = p1.haplosomes", result)
 
     def test_write_terminal_output_n_samples_uses_sample(self):
         w = writeSLiM(self.sp)
@@ -489,7 +556,8 @@ class testWriteSLiMHPC(unittest.TestCase):
         w.write_subpop_nonwf(self.root)
         c = self._read_slim("p1")
         self.assertIn("reproduction()", c)
-        self.assertIn("fitnessScaling", c)
+        self.assertIn("set_fitness_nonwf(p1, 100);", c)
+        self.assertIn("p2.fitnessScaling = 0;", c)
 
     # ── write_end_sim ──
 

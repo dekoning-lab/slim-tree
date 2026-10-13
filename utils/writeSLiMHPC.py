@@ -136,9 +136,7 @@ class writeSLiMHPC(writeSLiM):
         #Write the early commands - this may need tweaking w/ the fitness algorithm
         pop_name = population_parameters["pop_name"]
         early_event = (str(int(population_parameters["dist_from_start"]) + 2) + ":" + str(int(population_parameters["end_dist"]) + 1) +
-                        " early(){\n\t" + "p1.fitnessScaling = " +
-                        str(int(population_parameters["population_size"])) + "/" +
-                        "p1.individualCount;" +
+                        " early(){\n\t" + self.nonwf_early_commands("p1", population_parameters["population_size"]) +
                         "\n\t p2.fitnessScaling = 0;")
 
         early_event+= "\n}\n\n\n"
@@ -193,11 +191,11 @@ class writeSLiMHPC(writeSLiM):
 
         #Write files containing polymorphisms in each population and relative proportions
         if(population_parameters["polymorphisms"]):
-            end_population_string += ("\n\tpop_seq = sample(p1.individuals.genomes, 1).nucleotides();"+
+            end_population_string += ("\n\tpop_seq = sample(p1.individuals.haplosomes, 1).nucleotides();"+
                                     "\n\tpop_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(pop_seq)), sep = \"\");" +
                                     "\n\tpolymorph_str = c();\n\tfixed_str=c();"+
                                     "\n\tfor (a in 0:(length(pop_seq)-1)) {" +
-                                    "\n\t\tdiffs = c();\n\t\tfor (g in p1.individuals.genomes.nucleotides()){"+
+                                    "\n\t\tdiffs = c();\n\t\tfor (g in p1.individuals.haplosomes.nucleotides()){"+
                                     "\n\t\t\taa_seq = strsplit(codonsToAminoAcids(nucleotidesToCodons(g)), sep = \"\");"+
                                     "\n\t\t\tdiffs = c(diffs, aa_seq[a]);\n\t\t}" +
                                     "\n\t\tunique_diffs = unique(diffs);\n\t\tif (length(unique_diffs) > 1) {"+

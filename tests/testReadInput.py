@@ -44,6 +44,10 @@ class testReadInput(unittest.TestCase):
                 self.output_gens = False
                 self.backup = False
                 self.polymorphisms = False
+                self.stop_model = 'site'
+                self.stop_penalty = 100.0
+                self.null_cost = 1.0
+                self.null_dominance = 0.5
                 self.calculate_selection = False
                 self.neutral_evolution = False
             
@@ -105,6 +109,16 @@ class testReadInput(unittest.TestCase):
         return_val = self.input_reader.check_arguments(self.arguments)
         self.assertTrue(return_val)
         
+        #Stop-model parameters must be in range
+        self.arguments.stop_penalty = -1.0
+        with redirect_stderr(io.StringIO()):
+            self.assertFalse(self.input_reader.check_arguments(self.arguments))
+        self.arguments.stop_penalty = 100.0
+        self.arguments.null_cost = 1.5
+        with redirect_stderr(io.StringIO()):
+            self.assertFalse(self.input_reader.check_arguments(self.arguments))
+        self.arguments.null_cost = 1.0
+
         #Test to make sure return is true when arguments good with fasta_file
         self.arguments.fasta_file = "my_fasta.fa"
         return_val = self.input_reader.check_arguments(self.arguments)

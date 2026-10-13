@@ -7,7 +7,7 @@ SLiM-Tree automates forward-time population genetics simulations over phylogenet
 Before installing SLiM-Tree, ensure the following are available on your system:
 
 - **Python 3.8+**
-- **SLiM 4.x** — [messerlab.org/slim](https://messerlab.org/slim/)
+- **SLiM 5.x** — [messerlab.org/slim](https://messerlab.org/slim/). Generated scripts use the SLiM 5 haplosome API and do not run on SLiM 4. Validated on SLiM 5.2.
 - **R** with packages: `dplyr`, `BB`, `data.table`, `optparse`, `seqinr`, `doParallel`, `Rfast`
 - **Java and C** — only required when computing fitness effects from protein structure
 
@@ -28,7 +28,7 @@ This installs the `slim-tree` command globally.
 slim-tree my_tree.txt stationary_distributions.csv
 ```
 
-- `my_tree.txt` — Newick tree with branch lengths **in generations**
+- `my_tree.txt` — Newick tree with branch lengths **in generations** (**in ticks** for non-WF runs, `-w`; see [Non-WF models](#non-wf-models--w))
   If your tree has branch lengths in **substitutions per site**, use `-s` to convert automatically: [NEED TO RUN MORE TEST TO MAKE SURE -s WORKS - WORKING ON IT]
 - `stationary_distributions.csv` — codon stationary distributions (61 codons × N profiles)
 
@@ -51,6 +51,7 @@ All output is written relative to the input tree file location:
 ```
 positional arguments:
   input_tree                    Newick tree file; branch lengths must be in generations
+                                (ticks for non-WF models, -w)
                                 (use -s if they are in substitutions per site)
   codon_stationary_distributions
                                 CSV of codon stationary distributions (61 rows × N columns,
@@ -61,9 +62,11 @@ optional arguments:
   -fd FILE                      CSV of amino acid fitness values; if omitted, fitnesses are
                                 computed from the stationary distributions
   -s, --substitutions           convert branch lengths from substitutions per site to
-                                generations using the provided -n and -v values
+                                generations (ticks for non-WF models) using the provided
+                                -n and -v values
   -n INT                        starting population size (default: 100)
-  -b INT                        burn-in multiplier × population size (default: 10)
+  -b INT                        burn-in multiplier × population size (default: 10);
+                                generations, or ticks for non-WF
   -v FLOAT                      per-site mutation rate (default: 2.5e-6)
   -r FLOAT                      recombination rate (default: 2.5e-8)
   -m FILE                       4×4 mutation rate matrix CSV (A,C,G,T order, no header,
@@ -80,8 +83,12 @@ optional arguments:
                                 (see Branch-specific parameters below)
   -w, --nonWF                   use a non-Wright-Fisher model
   -N, --neutral_evolution       run neutral evolution (no fitness effects)
+  --stop_model {site,gene}      how stop codons affect fitness (default: site; see Stop codons)
+  --stop_penalty FLOAT          site model: scaled stop penalty S_stop (default: 100)
+  --null_cost FLOAT             gene model: cost s_hom of no functional copy (default: 1)
+  --null_dominance FLOAT        gene model: dominance h of a null allele (default: 0.5)
   -c, --count_subs              count substitutions per branch (slows simulation)
-  -o, --output_gens             output sequences every 100 generations
+  -o, --output_gens             output sequences every 100 generations (ticks for non-WF)
   -B, --backup                  save simulation checkpoints (increases disk/time usage)
   -P, --polymorphisms           record polymorphic sites at each branch end
   -S, --calculate_selection     compute dN/dS by counting synonymous and non-synonymous
@@ -93,6 +100,67 @@ optional arguments:
   -M MEMORY                     memory to request per Slurm job, e.g. 16g or 32000M
                                 (optional; omit to use the cluster default)
 ```
+
+### Stop codons
+
+**Profile values are log-fitness contributions.** Fitness is multiplicative across sites. Each codon whose amino acid differs from the ancestor's multiplies a haplosome's selection factor by exp(f_new − f_ancestral), where f are the fitted profile values.
+
+**Site model (`--stop_model site`, the default).** A stop codon is one more state at each site, scored like any amino acid. It is a *phenomenological* finite-state model, not a mechanistic model of nonsense-mediated decay or loss of function.
+- **Interior coding sites.** The stop value is the site's lowest amino-acid value minus S_stop/(4N − 2). S_stop is `--stop_penalty` (default 100), and N is the population size the profiles are fitted at (`-n`).
+  - A stop is therefore worse than every amino acid at the site by at least S_stop in population-scaled units. A copy with a stop has relative fitness e^(−δ), where δ ≥ S_stop/(4N − 2) depends on the amino acid replaced. Two copies give e^(−2δ).
+  - The value is computed once per run. Branches with other population sizes (`-d`) keep it, just as they keep the amino-acid values.
+- **Start and terminal stop codons.** Each gene's start codon has ATG as the optimum, and any change costs S_stop. Its terminal stop codon has all three stops equally fit, and read-through to a sense codon costs S_stop.
+- **Non-coding sites** stay neutral, stops included.
+- **No gene-level effects.** A stop's cost does not depend on its position in the gene.
+- **Stops essentially never fix at S_stop = 100, but they do segregate.** At high θ a noticeable fraction of genomes carry a premature stop (about 20% at θ = 0.6 for a 300-codon gene). Such sequences are part of the output and should not be filtered out.
+- **User-supplied fitness files (`-fd`).** The stop value is recomputed from the 20 amino-acid values. The table actually applied is saved as `applied_fitness_table.csv`.
+
+**Gene model (`--stop_model gene`, opt-in).** A gene is a null allele in a haplosome if its start codon or terminal stop codon has changed, or if it carries a premature stop.
+- **Gene factor.** Each gene multiplies fitness by 1, 1 − h·s_hom or 1 − s_hom for two, one or no functional copies (`--null_dominance` h, `--null_cost` s_hom).
+- **The null copy stays under profile selection.** Its codons keep their profile values, and the stop keeps its site value (the site's lowest amino-acid value), so a premature stop has a gene effect plus a small site effect. A knockout can therefore never raise fitness.
+- **This cost doesn't scale.** Its absolute costs are not preserved when N changes at fixed θ.
+- **Supplied stop values** (`-fd`) must not exceed a site's lowest amino-acid value.
+
+### Non-WF models (`-w`)
+
+> **Non-WF runs are calibrated to a specific life cycle.** SLiM-Tree corrects selection strength in non-WF runs with a factor derived for the life cycle below (`utils/nonWFLifeCycle.py`). If you change that life cycle (offspring numbers, age structure, which individuals face survival, how density is regulated), re-derive the factor; the values below no longer apply.
+
+**Life cycle.** Each tick, every individual is the first parent of b offspring (b = 1), each with a random second parent. Then parents and offspring face survival together: an individual with fitness w survives with probability w·K/Σw, where K is the population size (`-n`). Fitness is multiplicative across sites, as in Wright–Fisher runs. This normalization keeps the expected population size at K whatever the mean fitness (soft selection), and leaves relative fitness unchanged.
+
+**Assumptions** behind the values below:
+- every individual faces survival every tick, with no age effects;
+- there is no fecundity selection;
+- mates are drawn at random;
+- selection is genic (multiplicative per copy) and weak;
+- K is large and roughly constant.
+
+**Consequences, in general form.** With φ = b/(1 + b), the fraction of survivors that are newborns:
+
+| Quantity | General form | b = 1 |
+|---|---|---|
+| Generation time | (1 + b)/b ticks | 2 ticks |
+| Neutral substitutions per site per tick | μ·b/(1 + b) | μ/2 |
+| Effective size per tick | 4K(1 + b)²/(b(4b + 7)) | 16K/11 |
+| Effective size per generation | 4K(1 + b)/(4b + 7) | 8K/11 |
+| Neutral diversity | 4μK·4(1 + b)/(4b + 7) | (8/11)·4Kμ |
+| Selection scale applied (K / Ne per tick) | b(4b + 7)/(4(1 + b)²) | 11/16 |
+
+**Derivation.**
+- **Coalescence.** Two gene copies coalesce in one tick with probability [2φ(1 − φ) + φ²(4b − 1)/(4b)]/(2K):
+  - an adult and a newborn: 1/(2K);
+  - two newborns: 1/(2K), unless both copies come from their first parents, in which case they coalesce only if the newborns are siblings;
+  - two adults: never.
+- **Selection.** Survival selection changes an allele's frequency by s·p(1 − p) per tick, so scaled selection is 4·Ne_tick·s. The fitness profiles are fitted for 4Kf, so SLiM-Tree multiplies selection coefficients by K/Ne_tick. As b grows, the life cycle approaches Wright–Fisher and the scale tends to 1.
+
+**Checks.**
+- *Neutral, b = 1:* substitutions were 0.496 ± 0.005 μ per tick (predicted 0.5). Diversity relative to Wright–Fisher was 0.713 ± 0.007 (predicted 0.727).
+- *General b:* Neutral runs with b = 1, 2 and 3 (the generated script's reproduction callback edited to give b offspring; 10 replicates each). Substitution rates were 0.497, 0.655 and 0.738 μ per tick (predicted 0.500, 0.667, 0.750). Diversity was 0.718, 0.783 and 0.827 of 4Kμ (predicted 0.727, 0.800, 0.842). The predicted dependence on b holds, but all six values are 1–2% below prediction at K = 100. For rates, the Wright–Fisher suite shows the same deficit, so that is the measurement. For diversity it is probably the small-population effects the derivation leaves out, such as census fluctuation and self-mating.
+- *Site profiles:* `tests/wf_validation` (`--model nonWF`) checks that site profiles reproduce their stationary distributions. On SLiM 5.2 with b = 1, all 25 scored checks pass. Without the correction, scaled selection would be 16/11 of what the profiles intend.
+
+**Practical consequences:**
+- **Time units: non-WF branch lengths are in ticks.** All times in a non-WF run are in ticks: branch lengths, the burn-in (`-b` × K ticks) and the `-o` output interval. One generation is (1 + b)/b ticks (2 for b = 1), so a branch of t ticks accrues the neutral divergence of t·b/(1 + b) generations. The default burn-in of 10K ticks is therefore 5K generations. With `-s`, SLiM-Tree converts substitutions to ticks: it evaluates the Wright–Fisher conversion at the effective size per generation (8K/11) and multiplies by the generation time.
+- **θ.** With the same `-n` and `-v`, non-WF neutral diversity is 8/11 of the Wright–Fisher value.
+- **Run record.** Each run prints these values and records them in `<tree>_parameters.yaml` (`nonWF_*` keys).
 
 ## Branch-specific parameters
 
@@ -134,3 +202,7 @@ slim-tree ex1_tree.txt stationary_distributions.csv
 ## Post-processing
 
 The `DataPostProcessing/` directory contains scripts for downstream analysis of SLiM-Tree output, including branch length estimation and dN/dS calculations.
+
+## Testing
+
+Unit tests for the script writers and input handling are in `tests/` (`python -m pytest tests`). `tests/wf_validation/` checks that Wright–Fisher and non-WF simulations reproduce weak-mutation theory for substitution rates and stationary codon distributions; see its README.
