@@ -12,6 +12,9 @@ Checks
                       recombination so there is no background selection. For each profile:
                       synonymous and nonsynonymous substitution rates, dN/dS, stationary
                       amino-acid and codon distributions, no premature stop fixes.
+  4. selection_output The site_profiles setup run with SLiM-Tree's own dN/dS output (-S). Its substitution
+                      counts against the observer's, its denominators against the mutational opportunity
+                      computed here from the stationary distributions, and the dN/dS it implies against theory.
 
 Theory uses the fitness values SLiM-Tree actually wrote into the script (so these checks test the
 simulation, not the fitting); a separate check compares the fitted values with the intended ones.
@@ -227,6 +230,64 @@ def evaluate_profiles(name, results, N, mu, intended, B, rng, checks, model="WF"
         checks.extend(stationary_checks(lab, occ_sense, e["Q"], e["pi_codon"], n_sites, g, interval, B, rng, neutral_pi))
 
 
+def evaluate_selection_output(name, results, N, mu, stationary_csv, checks, model="WF"):
+    """Checks of SLiM-Tree's own dN/dS output (-S; utils/calculateSelectionDenominators.py and the counting code in the
+    generated script) for runs of a fitness-profile configuration.
+
+    Counts: the script counts fixed changes at every tick from the start of the run; the observer samples them from
+    the end of the equilibration period. Both leave out each gene's start and terminal stop codon and changes to or
+    from a stop, so the two counts should differ only by the equilibration period and by sampling.
+    Denominators: SLiM-Tree's are the mutational opportunity sum_sites sum_i pi_i mu_ij over synonymous or
+    nonsynonymous sense-to-sense changes (times a constant that cancels in dN/dS), with pi the stationary
+    distributions it was given. The same sums are computed here from theory.rate_matrix."""
+    with open(stationary_csv) as fh:
+        rows = list(csv.reader(fh))
+    by_codon = {r[0]: np.array(r[1:], dtype=float) for r in rows}
+    pi_given = np.array([by_codon[theory.CODONS[c]] for c in theory.SENSE])        # 61 x profiles, SENSE order
+    _, M, syn = theory.rate_matrix(np.ones(20), N, mu)                             # mutation-only rates and synonymy
+    flux_syn_codon, flux_non_codon = np.where(syn, M, 0.0).sum(axis=1), np.where(~syn, M, 0.0).sum(axis=1)
+
+    tot = {k: 0.0 for k in ("syn", "non", "obs_syn", "obs_non", "exp_syn", "exp_non", "flux_syn", "flux_non")}
+    worst = 0.0
+    for r in results:
+        info, sel = r["info"], r["selection_output"]
+        fit, scale, b = info["fitness_profiles"], info.get("selection_scale", 1.0), info.get("offspring_per_tick", 1)
+        run_length = info["equil_gens"] + info["measure_gens"]
+        flux_syn = flux_non = 0.0
+        for p, rec in r["profiles"].items():
+            n = rec["codon_sites"]
+            flux_syn += n * float(pi_given[:, int(p)] @ flux_syn_codon)
+            flux_non += n * float(pi_given[:, int(p)] @ flux_non_codon)
+            e = theory.expected(np.array([fit[a][int(p)] for a in theory.AA_ORDER]), N, mu, model, scale, b)
+            tot["exp_syn"] += n * e["K_syn"] * run_length
+            tot["exp_non"] += n * e["K_nonsyn"] * run_length
+            tot["obs_syn"] += rec["subs"]["syn"]
+            tot["obs_non"] += rec["subs"]["nonsyn"]
+        worst = max(worst, abs((sel["dn_denom"] / sel["ds_denom"]) / (flux_non / flux_syn) - 1.0))
+        tot["syn"] += sel["syn"]
+        tot["non"] += sel["nonsyn"]
+        tot["flux_syn"] += flux_syn
+        tot["flux_non"] += flux_non
+        tot["dn_denom"] = tot.get("dn_denom", 0.0) + sel["dn_denom"]
+        tot["ds_denom"] = tot.get("ds_denom", 0.0) + sel["ds_denom"]
+
+    checks.append({"check": f"{name}: -S denominators, nonsynonymous / synonymous opportunity (largest relative error)",
+                   "observed": worst, "expected": 0, "pass": bool(worst < 1e-6),
+                   "note": "SLiM-Tree's dN and dS denominators against sum_sites sum_i pi_i mu_ij computed independently"})
+    for key, lab in (("non", "nonsynonymous"), ("syn", "synonymous")):
+        obs, ref = tot[key], tot["obs_" + key]
+        checks.append({"check": f"{name}: -S {lab} substitutions vs observer", "observed": obs, "expected": ref,
+                       "ratio": obs / ref if ref else float("nan"), "pass": bool(abs(obs - ref) <= max(3.0, 0.02 * ref)),
+                       "note": "counted in the generated script vs counted from the observer's samples"})
+    reported = (tot["non"] / tot["dn_denom"]) / (tot["syn"] / tot["ds_denom"])
+    expected = (tot["exp_non"] / tot["flux_non"]) / (tot["exp_syn"] / tot["flux_syn"])
+    se = math.sqrt(1.0 / tot["non"] + 1.0 / tot["syn"]) if tot["non"] and tot["syn"] else float("nan")
+    checks.append({"check": f"{name}: -S dN/dS (pooled over replicates)", "observed": reported, "expected": expected,
+                   "ratio": reported / expected, "pass": None,
+                   "note": f"relative standard error from the counts {se:.3f}; not scored: it combines the two substitution "
+                           "rates, which the site_profiles checks score against theory"})
+
+
 STOP_CONTROL_PENALTY = 2.0     # small enough that stop gains and losses are observable (u(-2/(4N)) is about 0.3 x neutral)
 
 
@@ -271,11 +332,12 @@ def main(argv=None):
     ap.add_argument("--reps-flat", type=int, default=10)
     ap.add_argument("--reps-sites", type=int, default=20)
     ap.add_argument("--reps-stop", type=int, default=10)
+    ap.add_argument("--reps-selection", type=int, default=4, help="selection_output replicates (they run with -S, which is slower)")
     ap.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 2))
     ap.add_argument("--bootstrap", type=int, default=1000)
     ap.add_argument("--evaluate-only", action="store_true", help="re-score saved replicates in --outdir without simulating")
     ap.add_argument("--seed-offset", type=int, default=0, help="added to every replicate seed (default runs reuse seeds 1000+, 2000+, 3000+)")
-    ap.add_argument("--only", nargs="*", default=None, help="subset of: neutral_mode flat_profiles site_profiles stop_control")
+    ap.add_argument("--only", nargs="*", default=None, help="subset of: neutral_mode flat_profiles site_profiles stop_control selection_output")
     ap.add_argument("--slimtree-args", default="", help="extra slim-tree arguments for every non-neutral replicate")
     ap.add_argument("--model", choices=("WF", "nonWF"), default="WF", help="Wright-Fisher (default) or SLiM-Tree's non-WF model")
     a = ap.parse_args(argv)
@@ -289,7 +351,7 @@ def main(argv=None):
     rng = np.random.default_rng(12345)
     base = dict(N=N, mu=mu, codons=a.codons, measure_gens=a.measure_gens, equil_gens=equil,
                 sample_interval=a.interval, extra_args=tuple(a.slimtree_args.split()), nonWF=a.model == "nonWF")
-    only = set(a.only) if a.only else {"neutral_mode", "flat_profiles", "site_profiles", "stop_control"}
+    only = set(a.only) if a.only else {"neutral_mode", "flat_profiles", "site_profiles", "stop_control", "selection_output"}
     checks, timing, all_results = [], {}, []
 
     if "neutral_mode" in only:
@@ -337,6 +399,18 @@ def main(argv=None):
         timing["stop_control"] = time.time() - t
         all_results += res
         evaluate_stop_control("stop_control", res, N, mu, STOP_CONTROL_PENALTY, checks)
+
+    if "selection_output" in only:
+        sel_csv = os.path.join(a.outdir, "selection_stationary.csv")
+        write_stationary_csv(sel_csv, validation_profiles(N).values(), N)
+        t = time.time()
+        # Sites start at stationarity, and -S counts from the first tick, so the unscored period is kept to N generations
+        sel_base = dict(base, equil_gens=N, extra_args=base["extra_args"] + ("-S",))
+        res = load_results("selection_output", a.outdir) if a.evaluate_only else run_config("selection_output", make_jobs(dict(sel_base, stationary_csv=sel_csv, recombination=0.5),
+                                                    a.reps_selection, 5000 + a.seed_offset), a.outdir, a.jobs)
+        timing["selection_output"] = time.time() - t
+        all_results += res
+        evaluate_selection_output("selection_output", res, N, mu, sel_csv, checks, a.model)
 
     versions = sorted({r.get("slim_version", "unknown") for r in all_results})
     report = {"settings": {**vars(a), "mu": mu, "equil_gens": equil, "slim_version": ", ".join(versions)},

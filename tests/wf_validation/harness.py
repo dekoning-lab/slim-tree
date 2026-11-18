@@ -212,6 +212,24 @@ def parse(info):
             "generations": last_tick - first_tick, "n_samples": n_samples}
 
 
+def parse_selection_output(workdir, pop="p1"):
+    """Read SLiM-Tree's own dN/dS output (-S) for one population: the file written by the generated script at the
+    end of that population's branch. Returns the substitution counts and denominators it reports, and the logged
+    substitutions as (codon position, old amino acid, new amino acid)."""
+    folder = os.path.join(workdir, "selectionCalculationOutput")
+    names = [n for n in sorted(os.listdir(folder)) if n.endswith("_" + pop + "_dNdS.txt")]
+    if len(names) != 1:
+        raise RuntimeError(f"expected one dN/dS file for {pop} in {folder}, found {names}")
+    with open(os.path.join(folder, names[0])) as fh:
+        text = fh.read()
+    m = re.match(r"dN: (\d+) / (\S+) = \S+\ndS: (\d+) / (\S+) = \S+", text)
+    if m is None:
+        raise RuntimeError(f"could not read {names[0]}")
+    subs = [[int(pos), old, new] for pos, old, new in re.findall(r"\n(\d+)([A-Z]):([A-Z])", text)]
+    return {"file": names[0], "nonsyn": int(m.group(1)), "dn_denom": float(m.group(2)),
+            "syn": int(m.group(3)), "ds_denom": float(m.group(4)), "substitutions": subs}
+
+
 def replicate(job):
     """Worker entry point: generate, run and parse one replicate. `job` is a dict of generate() kwargs
     plus 'workdir'."""
@@ -222,6 +240,8 @@ def replicate(job):
     res = parse(info)
     res["info"] = {k: v for k, v in info.items() if k not in ("ancestral_codons",)}
     res["slim_seconds"] = secs
+    if "-S" in info["args"]:
+        res["selection_output"] = parse_selection_output(workdir)
     with open(os.path.join(workdir, "slim_version.txt")) as fh:
         res["slim_version"] = fh.read().splitlines()[1]
     with open(os.path.join(workdir, "result.json"), "w") as fh:

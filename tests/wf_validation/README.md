@@ -10,6 +10,7 @@ This suite checks that SLiM-Tree's Wright–Fisher simulations, and with `--mode
 | `flat_profiles` | One uniform stationary distribution (every amino acid equally fit) | Sense-codon substitution rate (stops effectively lethal at S_stop = 100), dN/dS = 1, uniform stationary codon distribution, no premature stop fixes |
 | `site_profiles` | Three site-heterogeneous profiles (strong, graded and weak amino-acid preferences), free recombination | Synonymous and nonsynonymous substitution rates, dN/dS, stationary amino-acid and codon distributions, no premature stop fixes |
 | `stop_control` | One flat profile with a small stop penalty (S_stop = 2), free recombination (Wright–Fisher only) | The stop value SLiM-Tree wrote; synonymous, nonsynonymous, stop-gain and stop-loss substitution rates against a 64-state chain with stops as finite-fitness states |
+| `selection_output` | The `site_profiles` setup run with SLiM-Tree's own dN/dS output (`-S`) | The script's synonymous and nonsynonymous counts against the observer's; its dN and dS denominators against the mutational opportunity computed from the stationary distributions; the dN/dS it implies against theory (reported, not scored) |
 
 For the profile configurations, the suite also checks that SLiM-Tree's fitting step (`utils/calculateFitnesses.py`) recovers the intended fitness values from the stationary distributions it is given.
 
@@ -56,7 +57,7 @@ WFV_RESULTS=tests/wf_validation/runs/<name>/results.json python -m pytest tests/
 ```
 
 - **Defaults:** N = 100, θ = 0.01, 300 codons, 100,000 measured generations after 1,000, sampled every 100 generations.
-- **Replicates:** 10 neutral-mode, 10 flat-profile, 20 site-profile and 10 stop-control replicates.
+- **Replicates:** 10 neutral-mode, 10 flat-profile, 20 site-profile, 10 stop-control and 4 selection-output replicates. The selection-output replicates run with `-S`, which checks for fixed changes at every tick and is several times slower.
 - **Genotype tests:** `test_genotypes.py` builds haplosomes with chosen mutations inside a generated script and checks `get_genome_fitness` exactly against values computed independently in Python. The cases are:
   - premature stops, two stops and a reversion;
   - changes among terminal stops, read-through and start loss;
@@ -106,5 +107,5 @@ With `--model nonWF`, rates are per tick. The harness reads the selection scale 
 - **Model type:** Wright–Fisher models (default) and SLiM-Tree's non-WF model (`--model nonWF`). The non-WF theory is a diffusion approximation for the life cycle described above.
 - **Script writer:** it tests the local writer (`writeSLiM`). The HPC writer (`writeSLiMHPC`) inherits the same `write_initialize`, `write_fitness` and `write_repeated_commands`, so the fitness model is the same code, but HPC orchestration is not exercised.
 - **Genome and mutation model:** a single gene (coding ratio 1) under Jukes–Cantor mutation. Mutation matrices and multiple genes are not covered.
-- **dN/dS outputs:** SLiM-Tree's own dN/dS output (`-S`, `calculateSelectionDenominators.py`) is not checked here. The suite computes substitution counts independently from the observer.
+- **dN/dS outputs:** `selection_output` checks SLiM-Tree's own dN/dS output (`-S`, `calculateSelectionDenominators.py`) for a single gene under Jukes–Cantor mutation. Genomes with non-coding sequence, mutation matrices and per-branch denominators (HPC profile shifts) are covered only by unit tests (`tests/testCalculateSelectionDenominators.py`, `tests/testWriteSLiM.py`).
 - **Stop codons:** the main configurations treat stops as lethal, which matches the site model at S_stop = 100 (stationary distributions exclude stops). `stop_control` tests the stop penalty directly at S_stop = 2. The segregating stop burden at high θ is not tested here; it belongs in the high-θ pilots.

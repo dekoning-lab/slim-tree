@@ -123,6 +123,55 @@ class testCalculateSelectionDenominators(unittest.TestCase):
                             [0.0, 0.0, 0.0, 0.0, 0.0]])
         test_dn_ds = self.denom_calculator.calculate_selection_denominators([0,0,0,0,0], correct_syn_codons)
         self.assertEqual(list(test_dn_ds), [2.303004757e-06*5*3, 2.87875642e-07*5*3])
-    
-    
-   
+
+
+    def test_calculate_selection_denominators_unused_profile(self):
+        correct_syn_codons = [[True,False,False,False,False],
+                                [False,True,True,True,False],
+                                [False,True,True,True,False],
+                                [False,True,True,True,False],
+                                [False,False,False,False,True]]
+
+        # Sites must be matched to their own profile when a lower-numbered profile is not used at all
+        ds_dn = [self.denom_calculator.get_dist_ds_dn(profile, 1, correct_syn_codons) for profile in range(3)]
+
+        test_dn_ds = self.denom_calculator.calculate_selection_denominators([2, 2, 2], correct_syn_codons)
+        numpy.testing.assert_allclose(test_dn_ds, numpy.array(ds_dn[2]) * 3 * 3, rtol = 1e-12)
+
+        test_dn_ds = self.denom_calculator.calculate_selection_denominators([0, 2, 2], correct_syn_codons)
+        numpy.testing.assert_allclose(test_dn_ds, (numpy.array(ds_dn[0]) + 2 * numpy.array(ds_dn[2])) * 3, rtol = 1e-12)
+
+        # The order in which sites are listed does not matter
+        test_dn_ds = self.denom_calculator.calculate_selection_denominators([2, 0, 1, 2], correct_syn_codons)
+        numpy.testing.assert_allclose(test_dn_ds,
+                (numpy.array(ds_dn[0]) + numpy.array(ds_dn[1]) + 2 * numpy.array(ds_dn[2])) * 3, rtol = 1e-12)
+
+        # No counted sites gives no mutational opportunity
+        self.assertEqual(list(self.denom_calculator.calculate_selection_denominators([], correct_syn_codons)), [0.0, 0.0])
+
+
+    def test_sites_restrict_denominators(self):
+        # Only the listed codon positions contribute: here the first and last codons are left out
+        all_sites = calculateSelectionDenominators.calculateSelectionDenominators(
+                self.partial_stationary_dist, [1, 2], 2.5e-06, None)
+        inner_sites = calculateSelectionDenominators.calculateSelectionDenominators(
+                self.partial_stationary_dist, [0, 1, 2, 0], 2.5e-06, None, sites = [1, 2])
+        self.assertEqual(inner_sites.get_dn(), all_sites.get_dn())
+        self.assertEqual(inner_sites.get_ds(), all_sites.get_ds())
+
+
+    def test_selection_sites(self):
+        selection_sites = calculateSelectionDenominators.selection_sites
+
+        # One gene over the whole genome: its start and terminal stop codons are left out
+        self.assertEqual(selection_sites([[0, 5]], 6), [1, 2, 3, 4])
+
+        # Two genes with non-coding codons between and after them
+        self.assertEqual(selection_sites(numpy.array([[0, 3], [6, 9]]), 12), [1, 2, 7, 8])
+
+        # A gene with no codon between its start and stop has nothing to count
+        self.assertEqual(selection_sites([[0, 1]], 2), [])
+
+        # Neutral runs have no genes, so every codon counts
+        self.assertEqual(selection_sites([[0, 5]], 6, neutral_evolution = True), [0, 1, 2, 3, 4, 5])
+

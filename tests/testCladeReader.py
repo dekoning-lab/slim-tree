@@ -24,6 +24,7 @@ class testCladeReader(unittest.TestCase):
         starting_params['fitness_finder'].process_existing_fitness_file(self.test_file_path +  "table_fitness_dists_full.csv")
         starting_params['fitness_finder'].process_fitness_dists()
         starting_params["coding_ratio"] = 1.0
+        starting_params.setdefault("memory", None) #not in the saved parameter files
         starting_params["genome_length"] = len(starting_params['fitness_profile_nums'])
 
         self.read_clades = cladeReader.cladeReader(starting_params)
@@ -274,4 +275,39 @@ class testCladeReader(unittest.TestCase):
                 'parent_pop_name': 'p1','clade_name': 'population_A', 'dist_from_start': 1000, 'pop_end': 1200.0,
                 'terminal_clade': True, 'last_child_clade': True}], tree_output)
 
-        
+    def test_find_selection_denominators(self):
+        # Give the reader what it needs to work out dN/dS denominators (calculate_selection is off in the fixture)
+        from utils import calculateSelectionDenominators as csd
+        sp = self.read_clades.start_params
+        profile_nums = sp["fitness_profile_nums"]
+        sp["stat_mat"] = sp["fitness_finder"].get_stationary_mat()
+        sp["selection_sites"] = csd.selection_sites(sp["coding_seqs"], sp["genome_length"])
+        sp["jukes_cantor"] = True
+        sp["mutation_rate"] = 2.5e-6
+        sp["mutation_matrix"] = None
+        start = csd.calculateSelectionDenominators(sp["stat_mat"], profile_nums, 2.5e-6, None, sp["selection_sites"])
+        sp["dn_denom"], sp["ds_denom"] = start.get_dn(), start.get_ds()
+        clade = {"jukes_cantor": True, "mutation_rate": 2.5e-6, "fitness_profile_nums": list(profile_nums)}
+
+        # A clade with the starting profiles and mutation rate reuses the starting denominators
+        self.assertEqual(self.read_clades.find_selection_denominators(clade), (sp["dn_denom"], sp["ds_denom"]))
+
+        # A profile shift gives the clade its own denominators, calculated from the shifted profiles
+        shifted = list(profile_nums)
+        shifted[3] = 2
+        expected = csd.calculateSelectionDenominators(sp["stat_mat"], shifted, 2.5e-6, None, sp["selection_sites"])
+        found = self.read_clades.find_selection_denominators(dict(clade, fitness_profile_nums = shifted))
+        self.assertEqual(found, (expected.get_dn(), expected.get_ds()))
+        self.assertNotEqual(found, (sp["dn_denom"], sp["ds_denom"]))
+
+        # A new mutation rate scales both denominators, and leaves their ratio unchanged
+        dn, ds = self.read_clades.find_selection_denominators(dict(clade, mutation_rate = 5e-6))
+        self.assertAlmostEqual(dn / sp["dn_denom"], 2.0, places = 10)
+        self.assertAlmostEqual(ds / sp["ds_denom"], 2.0, places = 10)
+
+        # A mutation matrix is used in place of the mutation rate
+        mut_mat = np.array([[0, 1e-6, 4e-6, 1e-6], [1e-6, 0, 1e-6, 4e-6], [4e-6, 1e-6, 0, 1e-6], [1e-6, 4e-6, 1e-6, 0]])
+        expected = csd.calculateSelectionDenominators(sp["stat_mat"], profile_nums, None, (mut_mat, ""), sp["selection_sites"])
+        found = self.read_clades.find_selection_denominators({"jukes_cantor": False, "mutation_matrix": (mut_mat, ""),
+                                                              "fitness_profile_nums": list(profile_nums)})
+        self.assertEqual(found, (expected.get_dn(), expected.get_ds()))
