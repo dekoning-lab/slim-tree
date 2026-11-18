@@ -300,10 +300,11 @@ class testCladeReader(unittest.TestCase):
         self.assertEqual(found, (expected.get_dn(), expected.get_ds()))
         self.assertNotEqual(found, (sp["dn_denom"], sp["ds_denom"]))
 
-        # A new mutation rate scales both denominators, and leaves their ratio unchanged
+        # The denominators are numbers of sites, so a new mutation rate with the same mutation model leaves them unchanged
         dn, ds = self.read_clades.find_selection_denominators(dict(clade, mutation_rate = 5e-6))
-        self.assertAlmostEqual(dn / sp["dn_denom"], 2.0, places = 10)
-        self.assertAlmostEqual(ds / sp["ds_denom"], 2.0, places = 10)
+        self.assertAlmostEqual(dn / sp["dn_denom"], 1.0, places = 10)
+        self.assertAlmostEqual(ds / sp["ds_denom"], 1.0, places = 10)
+        self.assertAlmostEqual(dn + ds, 3.0 * len(sp["selection_sites"]), places = 8)
 
         # A mutation matrix is used in place of the mutation rate
         mut_mat = np.array([[0, 1e-6, 4e-6, 1e-6], [1e-6, 0, 1e-6, 4e-6], [4e-6, 1e-6, 0, 1e-6], [1e-6, 4e-6, 1e-6, 0]])

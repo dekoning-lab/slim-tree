@@ -192,14 +192,16 @@ B:
 
 ## dN/dS output (`-S`)
 
-With `-S`, each branch gets a file in `selectionCalculationOutput/` with its dN, dS and the amino-acid changes that fixed. The dN/dS it gives is the mutation–selection dN/dS of Spielman & Wilke (2015, *MBE*), with observed counts in place of expected rates:
+With `-S`, each branch gets a file in `selectionCalculationOutput/` with its dN, dS and the amino-acid changes that fixed. dN and dS follow Goldman & Yang (1994, *MBE*): they are K_a and K_s, the numbers of nonsynonymous substitutions per nonsynonymous site and of synonymous substitutions per synonymous site. The substitutions are the ones that fixed in the simulation, and the numbers of sites come from the model.
 
 - **Counts.** At every tick the script finds nucleotide sites whose fixed state has changed in the population, and classes each change as synonymous or nonsynonymous from the codon's fixed state before and after. Changes to or from a stop codon are not counted.
-- **Denominators.** The mutational opportunity Σ π_i μ_ij, summed over sites and over synonymous or nonsynonymous single-nucleotide changes between sense codons. π_i is the site's stationary codon distribution, as given in the input file, and μ_ij is the mutation rate.
-- **Sites.** Only codons strictly inside a gene are used. Each gene's start codon and terminal stop codon, and all non-coding codons, are left out of both the counts and the denominators. With `-N` every codon is used.
-- **Branches.** On an HPC run, a branch with its own fitness profiles, mutation rate or mutation matrix gets its own denominators.
+- **Sites.** Each codon has three sites. They are split into synonymous and nonsynonymous sites in proportion to the mutational opportunity Σ π_i μ_ij for synonymous and for nonsynonymous single-nucleotide changes between sense codons, summed over the counted codons. π_i is a codon's frequency in its site's stationary distribution, as given in the input file, and μ_ij is the mutation rate. These proportions are Goldman & Yang's ρ_s^∞ and ρ_a^∞, so the numbers of sites per codon are 3ρ_s^∞ and 3ρ_a^∞.
+- **Counted codons.** Only codons strictly inside a gene are used. Each gene's start codon and terminal stop codon, and all non-coding codons, are left out of both the counts and the numbers of sites. With `-N` every codon is used.
+- **Branches.** On an HPC run, a branch with its own fitness profiles or mutation matrix gets its own numbers of sites.
 
-Read the ratio, not dN or dS alone: the two values are not divided by the branch length, and their denominators share a constant factor that cancels in dN/dS. The denominators assume that sites are at the stationary distributions in the input file. That holds less well after a change of population size, on a branch after a profile shift, or with a mutation matrix (`-m`) that differs from the one implied by the stationary distributions.
+Each file gives the count, the number of sites and their quotient, in the form `dS: 12 / 221.4 = 0.0542`. dN/dS is the quotient of the two values. It equals the mutation–selection dN/dS of Spielman & Wilke (2015, *MBE*), with observed counts in place of expected rates. dS and dN are distances, so they grow with branch length: when synonymous changes are neutral, dS is expected to be close to the mutation rate per site times the number of generations.
+
+The numbers of sites assume that codons are at the stationary distributions in the input file. That holds less well after a change of population size, on a branch after a profile shift, or with a mutation matrix (`-m`) that differs from the one implied by the stationary distributions.
 
 ## Examples
 

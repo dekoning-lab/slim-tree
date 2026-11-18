@@ -10,7 +10,7 @@ This suite checks that SLiM-Tree's Wright–Fisher simulations, and with `--mode
 | `flat_profiles` | One uniform stationary distribution (every amino acid equally fit) | Sense-codon substitution rate (stops effectively lethal at S_stop = 100), dN/dS = 1, uniform stationary codon distribution, no premature stop fixes |
 | `site_profiles` | Three site-heterogeneous profiles (strong, graded and weak amino-acid preferences), free recombination | Synonymous and nonsynonymous substitution rates, dN/dS, stationary amino-acid and codon distributions, no premature stop fixes |
 | `stop_control` | One flat profile with a small stop penalty (S_stop = 2), free recombination (Wright–Fisher only) | The stop value SLiM-Tree wrote; synonymous, nonsynonymous, stop-gain and stop-loss substitution rates against a 64-state chain with stops as finite-fitness states |
-| `selection_output` | The `site_profiles` setup run with SLiM-Tree's own dN/dS output (`-S`) | The script's synonymous and nonsynonymous counts against the observer's; its dN and dS denominators against the mutational opportunity computed from the stationary distributions; the dN/dS it implies against theory (reported, not scored) |
+| `selection_output` | The `site_profiles` setup run with SLiM-Tree's own dN/dS output (`-S`) | The script's synonymous and nonsynonymous counts against the observer's; its numbers of synonymous and nonsynonymous sites (Goldman & Yang 1994) against the mutational opportunity computed from the stationary distributions; its dS, dN and dN/dS against theory (reported, not scored) |
 
 For the profile configurations, the suite also checks that SLiM-Tree's fitting step (`utils/calculateFitnesses.py`) recovers the intended fitness values from the stationary distributions it is given.
 

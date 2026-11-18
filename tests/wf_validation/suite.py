@@ -237,9 +237,10 @@ def evaluate_selection_output(name, results, N, mu, stationary_csv, checks, mode
     Counts: the script counts fixed changes at every tick from the start of the run; the observer samples them from
     the end of the equilibration period. Both leave out each gene's start and terminal stop codon and changes to or
     from a stop, so the two counts should differ only by the equilibration period and by sampling.
-    Denominators: SLiM-Tree's are the mutational opportunity sum_sites sum_i pi_i mu_ij over synonymous or
-    nonsynonymous sense-to-sense changes (times a constant that cancels in dN/dS), with pi the stationary
-    distributions it was given. The same sums are computed here from theory.rate_matrix."""
+    Denominators: SLiM-Tree's are the numbers of synonymous and nonsynonymous sites of Goldman & Yang (1994): three
+    sites per counted codon, split in proportion to the mutational opportunity sum_sites sum_i pi_i mu_ij over
+    synonymous and over nonsynonymous sense-to-sense changes, with pi the stationary distributions it was given. The
+    same sums are computed here from theory.rate_matrix, so dS and dN are substitutions per site."""
     with open(stationary_csv) as fh:
         rows = list(csv.reader(fh))
     by_codon = {r[0]: np.array(r[1:], dtype=float) for r in rows}
@@ -248,7 +249,7 @@ def evaluate_selection_output(name, results, N, mu, stationary_csv, checks, mode
     flux_syn_codon, flux_non_codon = np.where(syn, M, 0.0).sum(axis=1), np.where(~syn, M, 0.0).sum(axis=1)
 
     tot = {k: 0.0 for k in ("syn", "non", "obs_syn", "obs_non", "exp_syn", "exp_non", "flux_syn", "flux_non")}
-    worst = 0.0
+    worst = worst_sites = 0.0
     for r in results:
         info, sel = r["info"], r["selection_output"]
         fit, scale, b = info["fitness_profiles"], info.get("selection_scale", 1.0), info.get("offspring_per_tick", 1)
@@ -264,6 +265,8 @@ def evaluate_selection_output(name, results, N, mu, stationary_csv, checks, mode
             tot["obs_syn"] += rec["subs"]["syn"]
             tot["obs_non"] += rec["subs"]["nonsyn"]
         worst = max(worst, abs((sel["dn_denom"] / sel["ds_denom"]) / (flux_non / flux_syn) - 1.0))
+        codons = sum(rec["codon_sites"] for rec in r["profiles"].values())
+        worst_sites = max(worst_sites, abs((sel["dn_denom"] + sel["ds_denom"]) / (3.0 * codons) - 1.0))
         tot["syn"] += sel["syn"]
         tot["non"] += sel["nonsyn"]
         tot["flux_syn"] += flux_syn
@@ -274,11 +277,21 @@ def evaluate_selection_output(name, results, N, mu, stationary_csv, checks, mode
     checks.append({"check": f"{name}: -S denominators, nonsynonymous / synonymous opportunity (largest relative error)",
                    "observed": worst, "expected": 0, "pass": bool(worst < 1e-6),
                    "note": "SLiM-Tree's dN and dS denominators against sum_sites sum_i pi_i mu_ij computed independently"})
+    checks.append({"check": f"{name}: -S denominators, total sites / (3 x counted codons) (largest relative error)",
+                   "observed": worst_sites, "expected": 0, "pass": bool(worst_sites < 1e-9),
+                   "note": "synonymous plus nonsynonymous sites are three per codon strictly inside the gene"})
     for key, lab in (("non", "nonsynonymous"), ("syn", "synonymous")):
         obs, ref = tot[key], tot["obs_" + key]
         checks.append({"check": f"{name}: -S {lab} substitutions vs observer", "observed": obs, "expected": ref,
                        "ratio": obs / ref if ref else float("nan"), "pass": bool(abs(obs - ref) <= max(3.0, 0.02 * ref)),
                        "note": "counted in the generated script vs counted from the observer's samples"})
+    for key, denom, flux, lab in (("syn", "ds_denom", "flux_syn", "dS"), ("non", "dn_denom", "flux_non", "dN")):
+        value = tot[key] / tot[denom]
+        sites = 3.0 * sum(rec["codon_sites"] for r in results for rec in r["profiles"].values()) * tot[flux] / (tot["flux_syn"] + tot["flux_non"])
+        want = tot["exp_" + key] / sites
+        checks.append({"check": f"{name}: -S {lab}, substitutions per site (pooled over replicates)", "observed": value,
+                       "expected": want, "ratio": value / want, "pass": None,
+                       "note": "not scored: the count is checked above and the rate by the site_profiles checks"})
     reported = (tot["non"] / tot["dn_denom"]) / (tot["syn"] / tot["ds_denom"])
     expected = (tot["exp_non"] / tot["flux_non"]) / (tot["exp_syn"] / tot["flux_syn"])
     se = math.sqrt(1.0 / tot["non"] + 1.0 / tot["syn"]) if tot["non"] and tot["syn"] else float("nan")

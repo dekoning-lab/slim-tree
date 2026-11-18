@@ -120,7 +120,7 @@ class calculateSelectionDenominators:
     
     
     
-    # Calculates the denominator of the dN and dS true equations based on the fitness profiles numbers
+    # Calculates the denominators of dS and dN: the numbers of synonymous and nonsynonymous sites in the counted codons
     def calculate_selection_denominators(self, fitness_profile_nums, syn_subs):    
         
         # Find how many sites use each profile, keyed by profile number. A profile that no site uses is simply absent
@@ -134,8 +134,16 @@ class calculateSelectionDenominators:
         ds_dn = np.array([self.get_dist_ds_dn(profile_num, quantity, syn_subs) for profile_num, quantity in num_each_profile])
 
         
-        #Sum to get the denominators of dn and ds - multiply for 3 areas
-        return (sum(ds_dn)*3)
+        #Sum the mutational opportunities over sites: sum of pi_i * mu_ij for synonymous and for nonsynonymous changes
+        opportunity = sum(ds_dn)
+        if(sum(opportunity) == 0):
+            return (np.zeros(2))
+
+        #Goldman & Yang (1994): the proportions of the opportunity that are synonymous and nonsynonymous (their rho_s
+        #and rho_a at V = infinity, which sum to 1), times 3, are the numbers of synonymous and nonsynonymous nucleotide
+        #sites per codon. Multiplied by the number of counted codons they are the numbers of sites in the sequence, so
+        #that count / denominator is Ks or Ka: substitutions per synonymous or per nonsynonymous site
+        return (3 * len(fitness_profile_nums) * opportunity / sum(opportunity))
         
         
     #Return dn to public
