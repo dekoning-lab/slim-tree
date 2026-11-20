@@ -93,15 +93,7 @@ class cladeReader:
                     self.start_params["coding_ratio"] != 1)
                 
                 
-                #Need to calculate a new denominator for scaling with the new fitness profiles
-                if(self.start_params["calculate_selection"]):                    
-                    sel_denom = calculateSelectionDenominators.calculateSelectionDenominators(self.start_params["stat_mat"],
-                        new_dict["fitness_profile_nums"], self.start_params["mutation_rate"], self.start_params["mutation_matrix"])
-                    new_dict["dn_denom"] = sel_denom.get_dn()
-                    new_dict["ds_denom"] = sel_denom.get_ds()
-        
-                
-           
+
             yaml_data[dat] = new_dict   
             
         return(yaml_data)
@@ -221,8 +213,8 @@ class cladeReader:
             starting_parameter_dict["mutation_matrix"] = self.start_params["mutation_matrix"]
 
         if(self.start_params["calculate_selection"]):
-            starting_parameter_dict["dn_denom"] = self.start_params["dn_denom"],
-            starting_parameter_dict["ds_denom"] = self.start_params["ds_denom"],
+            starting_parameter_dict["dn_denom"] = self.start_params["dn_denom"]
+            starting_parameter_dict["ds_denom"] = self.start_params["ds_denom"]
 
         try:
             clade_dict_list = self.recurse_through_clades(phylogeny.get_nonterminals()[0],
@@ -337,7 +329,40 @@ class cladeReader:
         if(not clade_dict['jukes_cantor'] and 'mutation_rate' in clade_dict.keys()):
             clade_dict.pop('mutation_rate')
 
+        #A branch whose fitness profiles, mutation rate or mutation matrix differ from the starting ones needs its own
+        #dN/dS denominators. They are worked out from the values this clade ends up with, so child clades follow too
+        if(self.start_params["calculate_selection"]):
+            clade_dict["dn_denom"], clade_dict["ds_denom"] = self.find_selection_denominators(clade_dict)
+
         return [clade_dict]
+
+
+    #dN/dS denominators (dN, dS) for one clade's fitness profiles and mutation model. The starting values are reused
+    #when nothing they depend on has changed, and each distinct combination is calculated once
+    def find_selection_denominators(self, clade_dict):
+        jukes_cantor = clade_dict["jukes_cantor"]
+        profile_nums = clade_dict["fitness_profile_nums"]
+        mutation_rate = clade_dict["mutation_rate"] if jukes_cantor else None
+        mutation_matrix = None if jukes_cantor else clade_dict["mutation_matrix"]
+
+        same_profiles = list(profile_nums) == list(self.start_params["fitness_profile_nums"])
+        if(jukes_cantor):
+            same_mutation = self.start_params["jukes_cantor"] and mutation_rate == self.start_params["mutation_rate"]
+        else:
+            same_mutation = (not self.start_params["jukes_cantor"] and
+                             np.array_equal(mutation_matrix[0], self.start_params["mutation_matrix"][0]))
+        if(same_profiles and same_mutation):
+            return (self.start_params["dn_denom"], self.start_params["ds_denom"])
+
+        if(not hasattr(self, "selection_denominator_cache")):
+            self.selection_denominator_cache = {}
+        key = (tuple(profile_nums), mutation_rate, None if jukes_cantor else np.asarray(mutation_matrix[0]).tobytes())
+        if(key not in self.selection_denominator_cache):
+            sites = self.start_params.get("selection_sites")
+            sel_denom = calculateSelectionDenominators.calculateSelectionDenominators(self.start_params["stat_mat"],
+                        profile_nums, mutation_rate, mutation_matrix, sites)
+            self.selection_denominator_cache[key] = (sel_denom.get_dn(), sel_denom.get_ds())
+        return self.selection_denominator_cache[key]
         
         
     #Return clade dict list to public

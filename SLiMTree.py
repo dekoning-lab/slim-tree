@@ -111,8 +111,12 @@ class SLiMTree:
                             
         #If dN/dS is being calculated find the denominators
         if(start_params["calculate_selection"]):
+            #Only codons inside genes count: start and terminal stop codons and non-coding codons are left out
+            start_params["selection_sites"] = utils.calculateSelectionDenominators.selection_sites(start_params["coding_seqs"],
+                        start_params["genome_length"], start_params["neutral_evolution"])
             sel_denom = utils.calculateSelectionDenominators.calculateSelectionDenominators(start_params["stat_mat"],
-                        start_params["fitness_profile_nums"], start_params["mutation_rate"], start_params["mutation_matrix"])
+                        start_params["fitness_profile_nums"], start_params["mutation_rate"], start_params["mutation_matrix"],
+                        start_params["selection_sites"])
             start_params["dn_denom"] = sel_denom.get_dn()
             start_params["ds_denom"] = sel_denom.get_ds()
             

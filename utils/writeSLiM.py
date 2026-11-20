@@ -9,7 +9,7 @@
 
 import random, csv, os, pandas, sys
 import numpy as np
-from utils import nonWFLifeCycle
+from utils import nonWFLifeCycle, calculateSelectionDenominators
 
 #Base class from which other classes inherit
 class writeSLiM:
@@ -172,6 +172,7 @@ class writeSLiM:
             if(self.start_params["calculate_selection"]):
                 set_up_fitness += "\n\tsim.setValue(\"dN_p1\", 0);"
                 set_up_fitness += "\n\tsim.setValue(\"dS_p1\", 0);"
+                set_up_fitness += self.selection_codons_constant()
                 
             set_up_fitness += "\n\tsim.setValue(\"subs_p1\", \"\\n\\nSubstitutions:\");"
         set_up_fitness += "\n}\n\n\n"
@@ -244,6 +245,34 @@ class writeSLiM:
                                            "\n\treturn get_genome_fitness(individual.haploidGenome1) * get_genome_fitness(individual.haploidGenome2);\n}\n\n\n")
             else:
                 self.output_file.write(self.nonwf_fitness_function())
+
+
+    #dN/dS counts only the codons that its denominators cover (calculateSelectionDenominators.selection_sites): codons
+    #strictly inside a gene, or every codon in neutral runs. DNDS_CODONS is a logical vector with one entry per codon
+    def selection_codons_constant(self):
+        genome_length = int(self.start_params["genome_length"])
+        sites = self.start_params.get("selection_sites")
+        if (sites is None):
+            sites = calculateSelectionDenominators.selection_sites(self.start_params["coding_seqs"], genome_length,
+                                                                    self.start_params["neutral_evolution"])
+        out = "\n\tdnds_codons = rep(F, " + str(genome_length) + ");"
+        #Write the counted codons as runs of consecutive positions
+        run_start = None
+        previous = None
+        for site in list(sites) + [None]:
+            if (previous is not None and site != previous + 1):
+                out += "\n\tdnds_codons[" + str(run_start) + ":" + str(previous) + "] = T;"
+                run_start = None
+            if (run_start is None):
+                run_start = site
+            previous = site
+        return out + "\n\tdefineConstant(\"DNDS_CODONS\", dnds_codons);"
+
+
+    #The dN/dS denominator ("dn_denom" or "ds_denom") for a population: its own value when its fitness profiles or
+    #mutation model differ from the starting ones (utils/cladeReader.py), otherwise the starting value
+    def selection_denominator(self, population_parameters, name):
+        return population_parameters.get(name, self.start_params[name])
 
 
     #Stop model and penalty (see utils/findFitness.apply_stop_model and README "Stop codons")
@@ -379,6 +408,7 @@ class writeSLiM:
                                 "\n\t\t\tdS_name = \"dS_" + pop_name + "\";" +
                                 "\n\t\t\tsubs_name = \"subs_" + pop_name + "\";"+
                                 "\n\t\t\tfor(fix in new_fixations_space){" +
+                                "\n\t\t\t\tif (!DNDS_CODONS[integerDiv(fix, 3)]) next;" +
                                 "\n\t\t\t\tfix_pos = (fix + 1) % 3;" +
                                 "\n\t\t\t\tif (fix_pos == 0) {" +
                                 "\n\t\t\t\t\told_nucs = ancestral_genome[(fix-2):fix];" +
@@ -531,10 +561,10 @@ class writeSLiM:
         #Write file with the number of synonymous and synonymous substitutions
         if(population_parameters["calculate_selection"]):
             end_population_string += ("\n\twriteFile(\"" + self.start_params["filenames"][4] +"/"+ population_parameters["clade_name"] + "_dNdS.txt\"," +
-                "paste0(\"dN: \", sim.getValue(\"dN_" + population_parameters["pop_name"] + "\"), \" / " + str(self.start_params["dn_denom"]) + " = \", " +
-                "sim.getValue(\"dN_" + population_parameters["pop_name"] + "\") / " + str(self.start_params["dn_denom"]) + ", " +
-                "\"\\ndS: \", sim.getValue(\"dS_" + population_parameters["pop_name"] + "\"), \" / " + str(self.start_params["ds_denom"]) + " = \", " +
-                "sim.getValue(\"dS_" + population_parameters["pop_name"] + "\") / " + str(self.start_params["ds_denom"]) + ", " +
+                "paste0(\"dN: \", sim.getValue(\"dN_" + population_parameters["pop_name"] + "\"), \" / " + str(self.selection_denominator(population_parameters, "dn_denom")) + " = \", " +
+                "sim.getValue(\"dN_" + population_parameters["pop_name"] + "\") / " + str(self.selection_denominator(population_parameters, "dn_denom")) + ", " +
+                "\"\\ndS: \", sim.getValue(\"dS_" + population_parameters["pop_name"] + "\"), \" / " + str(self.selection_denominator(population_parameters, "ds_denom")) + " = \", " +
+                "sim.getValue(\"dS_" + population_parameters["pop_name"] + "\") / " + str(self.selection_denominator(population_parameters, "ds_denom")) + ", " +
                 "sim.getValue(\"subs_" + population_parameters["pop_name"] + "\")));" )
 
         #Write files containing polymorphisms in each population and relative proportions

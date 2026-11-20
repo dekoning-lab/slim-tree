@@ -276,6 +276,36 @@ class testWriteSLiM(unittest.TestCase):
         self.assertIn("dN_p1", c)
         self.assertIn("dS_p1", c)
 
+    def test_write_fitness_calculate_selection_marks_counted_codons(self):
+        # dN/dS counts codons strictly inside genes: here two genes, [0, 3] and [6, 9], in a 12-codon genome
+        sp = _make_start_params(self.base_path, calculate_selection=True)
+        sp["genome_length"] = 12
+        sp["coding_seqs"] = np.array([[0, 3], [6, 9]])
+        sp["ancestral_sequence"] = ["14"] * 12
+        sp["fitness_profile_nums"] = [0] * 12
+        w = self._writer_with_open_file("p1", sp)
+        w.write_fitness(_make_root_pop(fitness_profile_nums=[0] * 12))
+        w.output_file.close()
+        c = self._read("p1")
+        self.assertIn("dnds_codons = rep(F, 12);", c)
+        self.assertIn("dnds_codons[1:2] = T;", c)
+        self.assertIn("dnds_codons[7:8] = T;", c)
+        self.assertEqual(c.count("] = T;"), 2)
+        self.assertIn('defineConstant("DNDS_CODONS", dnds_codons);', c)
+
+    def test_write_fitness_neutral_counts_every_codon(self):
+        sp = _make_start_params(self.base_path, neutral=True, calculate_selection=True)
+        w = self._writer_with_open_file("p1", sp)
+        w.write_fitness(self.root)
+        w.output_file.close()
+        self.assertIn("dnds_codons[0:2] = T;", self._read("p1"))
+
+    def test_write_fitness_without_selection_has_no_counted_codons(self):
+        w = self._writer_with_open_file("p1", _make_start_params(self.base_path, count_subs=True))
+        w.write_fitness(self.root)
+        w.output_file.close()
+        self.assertNotIn("DNDS_CODONS", self._read("p1"))
+
     # ── write_subpop (WF) ──
 
     def test_write_subpop_root_contains_all_sections(self):
@@ -381,7 +411,36 @@ class testWriteSLiM(unittest.TestCase):
         self.assertIn("dN_p1", c)
         self.assertIn("dS_p1", c)
 
+    def test_write_repeated_commands_calculate_selection_skips_uncounted_codons(self):
+        w = self._writer_with_open_file("p1")
+        w.write_repeated_commands(_make_root_pop(count_subs=True, calculate_selection=True))
+        w.output_file.close()
+        self.assertIn("if (!DNDS_CODONS[integerDiv(fix, 3)]) next;", self._read("p1"))
+
     # ── write_end_pop ──
+
+    def test_write_end_pop_uses_population_selection_denominators(self):
+        # A population with its own denominators (changed profiles or mutation model) reports them
+        sp = _make_start_params(self.base_path, calculate_selection=True)
+        sp["filenames"][4] = self.base_path
+        w = self._writer_with_open_file("p1", sp)
+        w.write_end_pop(_make_root_pop(calculate_selection=True, dn_denom=0.25, ds_denom=0.125))
+        w.output_file.close()
+        c = self._read("p1")
+        self.assertIn(" / 0.25 = ", c)
+        self.assertIn(" / 0.125 = ", c)
+        self.assertNotIn(" / 1.5 = ", c)
+
+    def test_write_end_pop_falls_back_to_starting_selection_denominators(self):
+        sp = _make_start_params(self.base_path, calculate_selection=True)
+        sp["filenames"][4] = self.base_path
+        w = self._writer_with_open_file("p1", sp)
+        w.write_end_pop(_make_root_pop(calculate_selection=True))
+        w.output_file.close()
+        c = self._read("p1")
+        self.assertIn(" / 1.5 = ", c)
+        self.assertIn(" / 3.0 = ", c)
+
 
     def test_write_end_pop_terminal_outputs_fasta(self):
         w = self._writer_with_open_file("p1")
